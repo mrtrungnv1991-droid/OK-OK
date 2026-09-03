@@ -4,21 +4,21 @@
  */
 
 export class ApiClient {
-  private static token: string | null = 'usr-buyer-01';
+  private static token: string | null = null;
 
-  public static setToken(token: string) {
+  public static setToken(token: string | null) {
     this.token = token;
   }
 
   public static async request<T = any>(endpoint: string, options: RequestInit = {}): Promise<{ success: boolean; data?: T; error?: string }> {
+    const token = this.token || (typeof localStorage !== 'undefined' ? localStorage.getItem('cyberpool_auth_token') : null);
     const headers: Record<string, string> = {
       'Content-Type': 'application/json',
       ...(options.headers as any)
     };
 
-    if (this.token) {
-      headers['Authorization'] = `Bearer ${this.token}`;
-      headers['x-user-id'] = this.token;
+    if (token) {
+      headers['Authorization'] = `Bearer ${token}`;
     }
 
     try {

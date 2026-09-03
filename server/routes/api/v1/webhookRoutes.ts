@@ -225,16 +225,21 @@ webhookRouter.post('/telco', async (req: Request, res: Response) => {
       return res.status(400).json({ success: false, error: 'Thiếu requestId' });
     }
 
-    // Verify Telco HMAC signature if callbackSign is used
-    if (callbackSign) {
-      const expectedSign = crypto
-        .createHmac('sha256', TELCO_SECRET)
-        .update(`${requestId}:${declaredAmount || 0}:${status}`)
-        .digest('hex');
+    // Enforce Telco HMAC signature verification strictly in all environments
+    if (!callbackSign || typeof callbackSign !== 'string') {
+      return res.status(401).json({ success: false, error: 'Unauthorized: Thiếu chữ ký xác thực callbackSign' });
+    }
 
-      if (callbackSign !== expectedSign && callbackSign !== 'SKIP_DEV') {
-        return res.status(401).json({ success: false, error: 'Chữ ký telco callback không hợp lệ' });
-      }
+    const expectedSign = crypto
+      .createHmac('sha256', TELCO_SECRET)
+      .update(`${requestId}:${declaredAmount || 0}:${status}`)
+      .digest('hex');
+
+    const expectedBuf = Buffer.from(expectedSign, 'utf8');
+    const actualBuf = Buffer.from(callbackSign, 'utf8');
+
+    if (expectedBuf.length !== actualBuf.length || !crypto.timingSafeEqual(expectedBuf, actualBuf)) {
+      return res.status(401).json({ success: false, error: 'Unauthorized: Chữ ký telco callback không hợp lệ (Signature Mismatch)' });
     }
 
     // Persistent idempotency
