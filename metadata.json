@@ -1,0 +1,7 @@
+{
+  "name": "CYBERPOOL // Digital Group-Buy & Game TopUp Exchange",
+  "description": "Sàn thương mại điện tử gom đơn mua chung sản phẩm số, nạp game tự động, tích hợp Independent Payment Gateway v1.0.0, Source Account Manager, Circuit Breakers và Zero-Drop Delivery Architecture.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
+

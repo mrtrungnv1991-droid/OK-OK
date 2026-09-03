@@ -1,0 +1,49 @@
+version: '3.8'
+
+services:
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: cyberpool_app_dev
+    restart: unless-stopped
+    ports:
+      - "3000:3000"
+    environment:
+      - NODE_ENV=development
+      - PORT=3000
+      - DATABASE_URL=postgres://cyber_user:cyber_secret_2026@postgres:5432/cyberpool_db
+      - REDIS_URL=redis://redis:6379
+      - JWT_SECRET=cyber_jwt_super_secret_production_key_2026
+    volumes:
+      - .:/app
+      - /app/node_modules
+    depends_on:
+      - postgres
+      - redis
+
+  postgres:
+    image: postgres:16-alpine
+    container_name: cyberpool_postgres_dev
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: cyber_user
+      POSTGRES_PASSWORD: cyber_secret_2026
+      POSTGRES_DB: cyberpool_db
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data_dev:/var/lib/postgresql/data
+
+  redis:
+    image: redis:7-alpine
+    container_name: cyberpool_redis_dev
+    restart: unless-stopped
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data_dev:/data
+
+volumes:
+  postgres_data_dev:
+  redis_data_dev:
