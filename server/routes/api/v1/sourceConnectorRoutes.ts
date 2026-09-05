@@ -5,6 +5,7 @@ import { Router } from 'express';
 import { sourceConnectorService } from '../../../services/sourceConnector/sourceConnectorService';
 import { BUILT_IN_SCANNER_PROFILES } from '../../../services/sourceConnector/scannerProfile';
 import { categoryMapper } from '../../../services/sourceConnector/categoryMapper';
+import { cyborgPipelineService } from '../../../services/sourceConnector/cyborgPipelineService';
 
 export const sourceConnectorRouter = Router();
 
@@ -189,3 +190,121 @@ sourceConnectorRouter.get('/profiles', (req, res) => {
 sourceConnectorRouter.get('/audit-logs', (req, res) => {
   res.json({ success: true, data: sourceConnectorService.getAuditLogs() });
 });
+
+// ==============================================================================
+// 17. CYBORG // G2UP.NET 4-STEP DIRECT API PIPELINE ROUTES
+// ==============================================================================
+
+// Get current pipeline status
+sourceConnectorRouter.get('/cyborg/status', (req, res) => {
+  try {
+    const status = cyborgPipelineService.getStatus();
+    res.json({ success: true, data: status });
+  } catch (err) {
+    res.status(500).json({ success: false, message: (err as Error).message });
+  }
+});
+
+// Step 1: Login Cyborg account (Verify session, API key & fetch live balance)
+sourceConnectorRouter.post('/cyborg/login', async (req, res) => {
+  try {
+    const result = await cyborgPipelineService.executeStep1Login();
+    res.json(result);
+  } catch (err) {
+    res.status(500).json({ success: false, message: (err as Error).message });
+  }
+});
+
+// Step 2: Scan live products & categories from G2UP.NET API
+sourceConnectorRouter.post('/cyborg/scan', async (req, res) => {
+  try {
+    const result = await cyborgPipelineService.executeStep2Scan();
+    res.json(result);
+  } catch (err) {
+    res.status(500).json({ success: false, message: (err as Error).message });
+  }
+});
+
+// Step 3: Update & view Cyborg pricing configuration
+sourceConnectorRouter.post('/cyborg/pricing-config', (req, res) => {
+  try {
+    const updated = cyborgPipelineService.updatePricingConfig(req.body);
+    res.json({ success: true, data: updated, status: cyborgPipelineService.getStatus() });
+  } catch (err) {
+    res.status(500).json({ success: false, message: (err as Error).message });
+  }
+});
+
+// Step 4: Publish/Post scanned G2UP products directly to Storefront (db.products)
+sourceConnectorRouter.post('/cyborg/publish', async (req, res) => {
+  try {
+    const { publishAllOrInStock, includeZeroStockSamples } = req.body || {};
+    const result = await cyborgPipelineService.executeStep4Publish({
+      publishAllOrInStock,
+      includeZeroStockSamples
+    });
+    res.json(result);
+  } catch (err) {
+    res.status(500).json({ success: false, message: (err as Error).message });
+  }
+});
+
+// Full 1-Click Pipeline Execution (Login -> Scan -> Pricing Formula -> Post to Web)
+sourceConnectorRouter.post('/cyborg/run-full-pipeline', async (req, res) => {
+  try {
+    const result = await cyborgPipelineService.runFullPipeline();
+    res.json(result);
+  } catch (err) {
+    res.status(500).json({ success: false, message: (err as Error).message });
+  }
+});
+
+// Auto-Classify All Products by Keywords (Account, Server, Key, Topup...)
+sourceConnectorRouter.post('/cyborg/auto-classify', (req, res) => {
+  try {
+    const result = cyborgPipelineService.autoClassifyAllProducts();
+    res.json(result);
+  } catch (err) {
+    res.status(500).json({ success: false, message: (err as Error).message });
+  }
+});
+
+// Manual/Batch Update Classification for a product
+sourceConnectorRouter.post('/cyborg/update-classification', (req, res) => {
+  try {
+    const { productId, category, salesType, allowGroupBuy } = req.body;
+    if (!productId) {
+      return res.status(400).json({ success: false, message: 'Thiếu productId' });
+    }
+    const result = cyborgPipelineService.updateProductClassification(productId, {
+      category,
+      salesType,
+      allowGroupBuy
+    });
+    res.json(result);
+  } catch (err) {
+    res.status(500).json({ success: false, message: (err as Error).message });
+  }
+});
+
+// Safety Settings for Live Source Buy API
+sourceConnectorRouter.get('/cyborg/safety-settings', (req, res) => {
+  try {
+    const result = cyborgPipelineService.getSafetySettings();
+    res.json({ success: true, data: result });
+  } catch (err) {
+    res.status(500).json({ success: false, message: (err as Error).message });
+  }
+});
+
+sourceConnectorRouter.post('/cyborg/safety-settings', (req, res) => {
+  try {
+    const { liveBuyEnabled } = req.body;
+    const result = cyborgPipelineService.setSafetySettings(Boolean(liveBuyEnabled));
+    res.json(result);
+  } catch (err) {
+    res.status(500).json({ success: false, message: (err as Error).message });
+  }
+});
+
+

@@ -68,5 +68,65 @@ export const productsApi = {
 
   getGameById: async (id: string): Promise<ApiResponse<{ game: GameItem }>> => {
     return api.get<{ game: GameItem }>(`/games/${id}`);
+  },
+
+  // ==========================================
+  // CYBORG // G2UP.NET 4-STEP DIRECT PIPELINE API
+  // ==========================================
+  cyborgGetStatus: async (): Promise<ApiResponse<any>> => {
+    return api.get('/source-connector/cyborg/status');
+  },
+
+  cyborgLogin: async (): Promise<ApiResponse<any>> => {
+    return api.post('/source-connector/cyborg/login', {});
+  },
+
+  cyborgScan: async (): Promise<ApiResponse<any>> => {
+    return api.post('/source-connector/cyborg/scan', {});
+  },
+
+  cyborgUpdatePricing: async (config: {
+    marginPercent?: number;
+    fixedFee?: number;
+    roundTo?: number;
+    groupDiscountPercent?: number;
+  }): Promise<ApiResponse<any>> => {
+    return api.post('/source-connector/cyborg/pricing-config', config);
+  },
+
+  cyborgPublishToStorefront: async (options?: {
+    publishAllOrInStock?: 'all' | 'in_stock';
+  }): Promise<ApiResponse<any>> => {
+    return api.post('/source-connector/cyborg/publish', options || {});
+  },
+
+  cyborgRunFullPipeline: async (): Promise<ApiResponse<any>> => {
+    return api.post('/source-connector/cyborg/run-full-pipeline', {});
+  },
+
+  cyborgAutoClassify: async (): Promise<ApiResponse<any>> => {
+    return api.post('/source-connector/cyborg/auto-classify', {});
+  },
+
+  cyborgUpdateClassification: async (
+    productId: string,
+    update: {
+      category?: string;
+      salesType?: 'retail_only' | 'group_buy_only' | 'both';
+      allowGroupBuy?: boolean;
+    }
+  ): Promise<ApiResponse<any>> => {
+    return api.post('/source-connector/cyborg/update-classification', {
+      productId,
+      ...update
+    });
+  },
+
+  cyborgGetSafetySettings: async (): Promise<ApiResponse<any>> => {
+    return api.get('/source-connector/cyborg/safety-settings');
+  },
+
+  cyborgUpdateSafetySettings: async (liveBuyEnabled: boolean): Promise<ApiResponse<any>> => {
+    return api.post('/source-connector/cyborg/safety-settings', { liveBuyEnabled });
   }
 };

@@ -712,6 +712,17 @@ export const INITIAL_TICKETS: SupportTicket[] = [
 
 export const INITIAL_SUPPLIERS: SupplierApiConfig[] = [
   {
+    id: 'sup-g2up-net',
+    providerName: 'G2UP.NET (Roblox Blox Fruits & Game Accounts Direct API)',
+    apiUrl: 'https://g2up.net/api/profile.php',
+    apiKey: '885e5d18c3626f03b8356130b162c0af',
+    balance: 100000,
+    status: 'connected',
+    lastSync: 'Vừa xong (Live Connected - cyborg)',
+    autoCheckLive: true,
+    supportedGames: ['Blox Fruits', 'GodHuman', 'Roblox Private Server', 'Anime Expeditions']
+  },
+  {
     id: 'sup-midasbuy',
     providerName: 'Midasbuy HoYoverse & Tencent API',
     apiUrl: 'https://api.midasbuy.cyberpool.network/v2/topup',

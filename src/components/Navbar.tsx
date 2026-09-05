@@ -351,8 +351,8 @@ export const Navbar: React.FC<NavbarProps> = ({
               {/* User Avatar with Status Dot */}
               <div className="relative shrink-0">
                 <img
-                  src={user.avatar || "https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=100&auto=format&fit=crop&q=80"}
-                  alt={user.name}
+                  src={user?.avatar || "https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=100&auto=format&fit=crop&q=80"}
+                  alt={user?.name || 'Tài khoản'}
                   className="w-7 h-7 sm:w-8 sm:h-8 rounded-full object-cover border-2 border-cyan-400 shadow-[0_0_10px_rgba(6,182,212,0.6)]"
                 />
                 <span className="absolute -bottom-0.5 -right-0.5 w-2 h-2 sm:w-2.5 sm:h-2.5 rounded-full bg-emerald-400 border-2 border-black animate-pulse"></span>
@@ -362,14 +362,14 @@ export const Navbar: React.FC<NavbarProps> = ({
               <div className="hidden sm:block min-w-0 pr-0.5">
                 <div className="flex items-center gap-1">
                   <span className="text-xs font-bold font-mono text-white truncate max-w-[90px]">
-                    {user.name}
+                    {user?.name || 'Tài khoản'}
                   </span>
                   <span className="px-1 py-0.2 rounded text-[8px] font-mono font-bold bg-cyan-950 text-cyan-300 border border-cyan-500/40">
                     VIP
                   </span>
                 </div>
                 <div className="text-[11px] font-bold font-mono text-emerald-400 leading-none mt-0.5">
-                  {formatCurrency(user.walletBalance, user.currency)}
+                  {formatCurrency(user?.walletBalance ?? 0, user?.currency ?? 'VND')}
                 </div>
               </div>
 
@@ -392,8 +392,8 @@ export const Navbar: React.FC<NavbarProps> = ({
                     <div className="flex items-center gap-2 min-w-0">
                       <div className="relative shrink-0">
                         <img
-                          src={user.avatar || "https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=100&auto=format&fit=crop&q=80"}
-                          alt={user.name}
+                          src={user?.avatar || "https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=100&auto=format&fit=crop&q=80"}
+                          alt={user?.name || 'Tài khoản'}
                           className="w-8 h-8 sm:w-9 sm:h-9 rounded-full object-cover border border-cyan-400 shadow-[0_0_10px_rgba(6,182,212,0.5)]"
                         />
                         <span className="absolute bottom-0 right-0 w-2 h-2 rounded-full bg-emerald-400 border border-[#090d16]"></span>
@@ -402,10 +402,10 @@ export const Navbar: React.FC<NavbarProps> = ({
                       <div className="min-w-0 flex-1">
                         <div className="flex items-center gap-1">
                           <h4 className="text-xs sm:text-sm font-bold font-mono text-white truncate max-w-[130px]">
-                            {user.name}
+                            {user?.name || 'Tài khoản'}
                           </h4>
                           <span className="px-1 py-0.2 rounded text-[7px] sm:text-[8px] font-mono font-bold bg-amber-950 text-amber-300 border border-amber-500/50 uppercase shrink-0">
-                            {user.role === 'admin' ? t('nav.role_admin') : t('nav.role_vip')}
+                            {user?.role === 'admin' ? t('nav.role_admin') : t('nav.role_vip')}
                           </span>
                         </div>
                         <div className="flex items-center gap-1.5 text-[9px] sm:text-[10px] font-mono text-slate-400 truncate">

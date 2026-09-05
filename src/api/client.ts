@@ -9,6 +9,8 @@ export interface ApiResponse<T = any> {
   error?: string;
   code?: string;
   requestId?: string;
+  message?: string;
+  [key: string]: any;
 }
 
 class ApiService {

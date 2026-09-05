@@ -14,9 +14,9 @@ export const AdminDatabaseSchemaTab: React.FC<AdminDatabaseSchemaTabProps> = () 
 
   const filteredTables = DATABASE_64_TABLES.filter(t => {
     const matchCat = tableCategoryFilter === 'all' || t.category === tableCategoryFilter;
-    const matchSearch = t.name.toLowerCase().includes(tableSearchTerm.toLowerCase()) ||
-      t.description.toLowerCase().includes(tableSearchTerm.toLowerCase()) ||
-      t.sampleColumns.some(c => c.toLowerCase().includes(tableSearchTerm.toLowerCase()));
+    const matchSearch = (t.name || '').toLowerCase().includes(tableSearchTerm.toLowerCase()) ||
+      (t.description || '').toLowerCase().includes(tableSearchTerm.toLowerCase()) ||
+      t.sampleColumns.some(c => (c || '').toLowerCase().includes(tableSearchTerm.toLowerCase()));
     return matchCat && matchSearch;
   });
 

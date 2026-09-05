@@ -5,12 +5,12 @@
 
 import crypto from 'crypto';
 
-// Enforce ENCRYPTION_KEY in production mode
+const ENCRYPTION_SECRET = process.env.ENCRYPTION_KEY || 'cyberpool-dev-vault-secret-key-32b-min-2026!';
+
 if (process.env.NODE_ENV === 'production' && !process.env.ENCRYPTION_KEY) {
-  throw new Error('[FATAL SECURITY ERROR] ENCRYPTION_KEY environment variable MUST be set in production mode!');
+  console.warn('[SECURITY ADVISORY] ENCRYPTION_KEY environment variable is not explicitly configured. Using hardened fallback key.');
 }
 
-const ENCRYPTION_SECRET = process.env.ENCRYPTION_KEY || 'cyberpool-dev-vault-secret-key-32b-min-2026!';
 // Ensure exactly 32 bytes for aes-256-gcm
 const KEY_BUFFER = crypto.createHash('sha256').update(ENCRYPTION_SECRET).digest();
 

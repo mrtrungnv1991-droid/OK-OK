@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { 
   ShoppingBag, 
   Search, 
@@ -15,10 +15,12 @@ import {
   Gamepad2, 
   Gift, 
   Zap,
-  Cpu
+  Cpu,
+  RefreshCw
 } from 'lucide-react';
 import { Currency } from '../../types';
 import { formatCurrency } from '../../utils/formatters';
+import { ordersApi } from '../../api/orders';
 
 interface SoldOrderItem {
   id: string;
@@ -118,6 +120,45 @@ export const AdminSoldOrdersTab: React.FC<AdminSoldOrdersTabProps> = ({ currency
   const [typeFilter, setTypeFilter] = useState('all');
   const [copiedId, setCopiedId] = useState<string | null>(null);
   const [viewDetailOrder, setViewDetailOrder] = useState<SoldOrderItem | null>(null);
+  const [isLoading, setIsLoading] = useState(false);
+
+  const loadRealOrders = async () => {
+    setIsLoading(true);
+    try {
+      const res = await ordersApi.getAdminOrders();
+      if (res.success && res.data?.orders && Array.isArray(res.data.orders)) {
+        const backendOrders: SoldOrderItem[] = res.data.orders.map(o => ({
+          id: o.id,
+          orderCode: o.id,
+          customerName: 'Khách Hàng (Hệ Thống)',
+          customerEmail: 'buyer@cyberpool.io',
+          productTitle: o.productTitle,
+          productType: o.productTitle.toLowerCase().includes('acc') ? 'account' : 'key_game',
+          fulfillmentType: 'automatic',
+          price: o.pricePaid,
+          deliveredData: (o as any).deliveredData?.keys?.join('\n') || (o as any).deliveredKey || 'Đã bàn giao tự động',
+          paymentMethod: 'balance',
+          soldAt: new Date((o as any).createdAt).toLocaleString('vi-VN'),
+          status: 'delivered'
+        }));
+
+        // Merge backend orders at top, avoiding duplicates
+        setSoldOrders(prev => {
+          const ids = new Set(backendOrders.map(b => b.id));
+          const filteredPrev = prev.filter(p => !ids.has(p.id));
+          return [...backendOrders, ...filteredPrev];
+        });
+      }
+    } catch (err) {
+      console.warn('Cannot fetch admin backend orders:', err);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    loadRealOrders();
+  }, []);
 
   const filteredOrders = soldOrders.filter(ord => {
     const matchSearch = ord.orderCode.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -171,8 +212,17 @@ export const AdminSoldOrdersTab: React.FC<AdminSoldOrdersTabProps> = ({ currency
         </div>
 
         <div className="flex items-center gap-3">
+          <button
+            onClick={loadRealOrders}
+            disabled={isLoading}
+            className="px-2.5 py-1.5 rounded-lg bg-slate-800/80 hover:bg-slate-700 text-slate-300 border border-slate-700 text-xs flex items-center gap-1 transition-colors cursor-pointer"
+            title="Làm mới danh sách đơn hàng thực"
+          >
+            <RefreshCw className={`w-3.5 h-3.5 ${isLoading ? 'animate-spin text-emerald-400' : ''}`} />
+            <span>{isLoading ? 'Đang tải...' : 'Làm Mới'}</span>
+          </button>
           <div className="px-3 py-1.5 rounded-lg bg-emerald-950/80 border border-emerald-500/30 text-emerald-300 font-bold font-mono text-xs">
-            Tổng Doanh Thu Đã Bán: {formatCurrency(totalRevenue, currency)}
+            Tổng Doanh Thu: {formatCurrency(totalRevenue, currency)}
           </div>
           <button
             onClick={handleExportCSV}

@@ -1,6 +1,7 @@
 export type ProductCategory = 
   | 'all' 
   | 'accounts' 
+  | 'servers'
   | 'key_games' 
   | 'key_apps' 
   | 'topup_games' 
@@ -26,6 +27,8 @@ export interface CartItem {
 }
 
 export type DeliveryType = 'instant_key' | 'giftup_card' | 'account_invite' | 'activation_token' | 'direct_topup';
+
+export type DeliveryBranch = 'ACCOUNT' | 'KEY' | 'LINK' | 'GIFTCARD';
 
 export type ProductPlatform = 
   | 'Steam' 
@@ -143,6 +146,8 @@ export interface Product {
     tags?: string[];
   }>;
   category: ProductCategory;
+  salesType?: 'retail_only' | 'group_buy_only' | 'both';
+  allowGroupBuy?: boolean;
   bannerImg: string;
   platform: ProductPlatform;
   retailPrice: number;
@@ -163,6 +168,9 @@ export interface Product {
   tags: string[];
   fulfillmentType?: 'automatic' | 'manual';
   productType?: 'account' | 'key_game' | 'key_app' | 'gift_card' | 'topup' | 'topup_manual' | 'software' | 'other';
+  deliveryBranch?: DeliveryBranch;
+  outputFormat?: string;
+  outputTemplate?: string;
   subcategoryId?: string;
   discountPercent?: number; // Giảm giá riêng cho từng sản phẩm (%)
   originalPrice?: number;
@@ -266,6 +274,16 @@ export interface UserOrder {
   createdAt: string;
   deliveredKey?: string;
   pinCode?: string;
+  deliveryBranch?: DeliveryBranch;
+  outputFormat?: string;
+  deliveredData?: any;
+  inviteLink?: string;
+  accountCredentials?: {
+    username?: string;
+    password?: string;
+    cookie?: string;
+    extra?: string;
+  };
   topupDetails?: {
     gameName?: string;
     uid: string;

@@ -121,12 +121,20 @@ export interface ServerOrder {
   discountAmount: number;
   deliveredData?: {
     keys?: string[];
+    deliveryBranch?: string;
+    accountCredentials?: any;
+    inviteLink?: string;
+    cardCode?: string;
+    pinCode?: string;
+    giftCardInfo?: any;
     giftUpCard?: any;
     topupUid?: string;
     topupServer?: string;
     characterName?: string;
     tierName?: string;
+    [key: string]: any;
   };
+  deliveryBranch?: string;
   escrowId?: string;
   poolId?: string;
   createdAt: string;

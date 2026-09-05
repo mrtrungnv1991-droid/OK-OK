@@ -39,13 +39,14 @@ import {
   CurrencyCode 
 } from '../../types';
 import { formatCurrency } from '../../utils/formatters';
+import { AdminCyborgPipelineStation } from './AdminCyborgPipelineStation';
 
 interface AdminSourceConnectorTabProps {
   currency: CurrencyCode;
 }
 
 export const AdminSourceConnectorTab: React.FC<AdminSourceConnectorTabProps> = ({ currency }) => {
-  const [activeSubTab, setActiveSubTab] = useState<'accounts' | 'monitor' | 'products' | 'routing' | 'profiles' | 'audit'>('accounts');
+  const [activeSubTab, setActiveSubTab] = useState<'cyborg_pipeline' | 'accounts' | 'monitor' | 'products' | 'routing' | 'profiles' | 'audit'>('cyborg_pipeline');
   
   // Data state
   const [accounts, setAccounts] = useState<SourceAccountRecord[]>([]);
@@ -343,6 +344,19 @@ export const AdminSourceConnectorTab: React.FC<AdminSourceConnectorTabProps> = (
       {/* Sub-tabs Navigation */}
       <div className="flex items-center gap-2 border-b border-slate-800 pb-2 overflow-x-auto">
         <button
+          onClick={() => setActiveSubTab('cyborg_pipeline')}
+          className={`px-4 py-2 rounded-xl text-xs font-extrabold flex items-center gap-2 transition whitespace-nowrap ${
+            activeSubTab === 'cyborg_pipeline'
+              ? 'bg-gradient-to-r from-cyan-500 to-blue-600 text-black shadow-[0_0_20px_rgba(6,182,212,0.4)]'
+              : 'bg-cyan-950/60 text-cyan-300 border border-cyan-500/40 hover:bg-cyan-900/60'
+          }`}
+        >
+          <Zap className="w-3.5 h-3.5 fill-current" />
+          ⚡ G2UP.NET // CYBORG 4-BƯỚC ĐẤU NỐI
+          <span className="px-1.5 py-0.5 rounded text-[10px] bg-black/40 font-mono font-bold">LIVE</span>
+        </button>
+
+        <button
           onClick={() => setActiveSubTab('accounts')}
           className={`px-4 py-2 rounded-xl text-xs font-semibold flex items-center gap-2 transition whitespace-nowrap ${
             activeSubTab === 'accounts'
@@ -419,6 +433,13 @@ export const AdminSourceConnectorTab: React.FC<AdminSourceConnectorTabProps> = (
       </div>
 
       {/* ========================================================================= */}
+      {/* SUB-TAB 0: CYBORG // G2UP.NET 4-STEP DIRECT PIPELINE STATION */}
+      {/* ========================================================================= */}
+      {activeSubTab === 'cyborg_pipeline' && (
+        <AdminCyborgPipelineStation currency={currency} />
+      )}
+
+      {/* ========================================================================= */}
       {/* SUB-TAB 1: SOURCE ACCOUNTS LIST & BROWSER PROFILES */}
       {/* ========================================================================= */}
       {activeSubTab === 'accounts' && (
@@ -453,6 +474,18 @@ export const AdminSourceConnectorTab: React.FC<AdminSourceConnectorTabProps> = (
                       {acc.status}
                     </span>
                   </div>
+
+                  {acc.domain.includes('g2up') && (
+                    <div className="mt-3 px-3 py-2 bg-gradient-to-r from-cyan-950/60 to-blue-950/40 border border-cyan-500/30 rounded-xl flex items-center justify-between text-[11px]">
+                      <div className="flex items-center gap-1.5 text-cyan-300 font-medium">
+                        <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400" />
+                        <span>Đã đấu nối trực tiếp API G2UP.NET</span>
+                      </div>
+                      <span className="font-mono text-[10px] text-cyan-300 bg-cyan-900/60 px-2 py-0.5 rounded border border-cyan-500/40">
+                        cyborg / 123123ad
+                      </span>
+                    </div>
+                  )}
 
                   {/* Balance & Threshold */}
                   <div className="my-4 p-3 bg-slate-950/80 border border-slate-800 rounded-xl space-y-2">

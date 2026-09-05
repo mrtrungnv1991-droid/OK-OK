@@ -102,6 +102,47 @@ export const AdminProductsTab: React.FC<AdminProductsTabProps> = ({
   const [uploadedFileSize, setUploadedFileSize] = useState<string | null>(null);
   const fileInputRef = React.useRef<HTMLInputElement>(null);
 
+  // Quick Image Edit Modal for Any Product (especially G2UP cloned items without images)
+  const [imageModalProduct, setImageModalProduct] = useState<Product | null>(null);
+  const [imageModalUrl, setImageModalUrl] = useState<string>('');
+  const [imageModalMode, setImageModalMode] = useState<'pc' | 'url'>('pc');
+  const [imageModalFileName, setImageModalFileName] = useState<string | null>(null);
+  const [imageModalFileSize, setImageModalFileSize] = useState<string | null>(null);
+  const [imageModalDragOver, setImageModalDragOver] = useState(false);
+  const modalFileInputRef = React.useRef<HTMLInputElement>(null);
+
+  const handleOpenImageModal = (prod: Product) => {
+    setImageModalProduct(prod);
+    setImageModalUrl(prod.bannerImg || '');
+    setImageModalFileName(null);
+    setImageModalFileSize(null);
+    setImageModalMode(prod.bannerImg ? 'url' : 'pc');
+  };
+
+  const handleProcessModalImageFile = (file: File) => {
+    if (!file) return;
+    if (!file.type.startsWith('image/')) {
+      alert('Vui lòng chọn file hình ảnh hợp lệ (PNG, JPG, WEBP, GIF, SVG).');
+      return;
+    }
+    setImageModalFileName(file.name);
+    setImageModalFileSize(`${(file.size / 1024).toFixed(1)} KB`);
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      const result = e.target?.result as string;
+      setImageModalUrl(result);
+    };
+    reader.readAsDataURL(file);
+  };
+
+  const handleSaveModalImage = () => {
+    if (!imageModalProduct) return;
+    if (onUpdateProduct) {
+      onUpdateProduct(imageModalProduct.id, { bannerImg: imageModalUrl.trim() });
+    }
+    setImageModalProduct(null);
+  };
+
   const handleProcessImageFile = (file: File) => {
     if (!file) return;
     if (!file.type.startsWith('image/')) {
@@ -280,9 +321,9 @@ export const AdminProductsTab: React.FC<AdminProductsTabProps> = ({
   };
 
   const filteredProducts = products.filter(p => 
-    p.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    p.category.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    (p.tags && p.tags.some(t => t.toLowerCase().includes(searchTerm.toLowerCase())))
+    (p.title || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
+    (p.category || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
+    (p.tags && p.tags.some(t => (t || '').toLowerCase().includes(searchTerm.toLowerCase())))
   );
 
   return (
@@ -355,6 +396,10 @@ export const AdminProductsTab: React.FC<AdminProductsTabProps> = ({
                 onChange={(e) => setNewProdForm({ ...newProdForm, category: e.target.value as ProductCategory })}
                 className="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-xs text-white focus:border-cyan-400 focus:outline-none"
               >
+                <option value="accounts">👤 Tài Khoản Game (Roblox, Blox Fruit, Acc...)</option>
+                <option value="servers">🖥️ Server Riêng VIP (VIP Server, Private Host...)</option>
+                <option value="key_games">🔑 Key Game Bản Quyền / Game Keys</option>
+                <option value="topup_games">💎 Nạp Game / Tiền Tệ Game</option>
                 <option value="ai_tools">Phần Mềm Trí Tuệ Nhân Tạo (AI Tools)</option>
                 <option value="gaming">Game Steam / AAA Digital Keys</option>
                 <option value="streaming">Giải Trí (Netflix / Spotify / Youtube)</option>
@@ -615,37 +660,39 @@ export const AdminProductsTab: React.FC<AdminProductsTabProps> = ({
               <div className="flex flex-col md:flex-row md:items-center justify-between gap-3 border-b border-slate-800/70 pb-3">
                 <div className="flex items-center gap-3 min-w-0">
                   <div className="relative group shrink-0">
-                    <img
-                      src={isEditing ? (productEditForm.bannerImg ?? prod.bannerImg) : prod.bannerImg}
-                      alt={prod.title}
-                      className="w-12 h-12 rounded-xl object-cover border border-slate-700 bg-slate-950 shrink-0 shadow-sm"
-                    />
-                    {isEditing && (
-                      <label 
-                        title="Tải ảnh mới trực tiếp từ PC" 
-                        className="absolute inset-0 bg-black/75 opacity-0 group-hover:opacity-100 flex flex-col items-center justify-center rounded-xl cursor-pointer transition-opacity text-white text-center p-0.5"
-                      >
-                        <Upload className="w-3.5 h-3.5 text-cyan-400" />
-                        <span className="text-[8px] font-bold text-cyan-300">Đổi ảnh PC</span>
-                        <input
-                          type="file"
-                          accept="image/*"
-                          className="hidden"
-                          onChange={(e) => {
-                            if (e.target.files && e.target.files[0]) {
-                              const file = e.target.files[0];
-                              const reader = new FileReader();
-                              reader.onload = (evt) => {
-                                if (evt.target?.result) {
-                                  setProductEditForm(prev => ({ ...prev, bannerImg: evt.target?.result as string }));
-                                }
-                              };
-                              reader.readAsDataURL(file);
-                            }
-                          }}
-                        />
-                      </label>
-                    )}
+                    {(() => {
+                      const currentImg = isEditing ? (productEditForm.bannerImg ?? prod.bannerImg) : prod.bannerImg;
+                      const hasImage = Boolean(currentImg && currentImg.trim() !== '');
+                      
+                      return hasImage ? (
+                        <div 
+                          onClick={() => handleOpenImageModal(prod)}
+                          title="Nhấp để xem hoặc đổi ảnh sản phẩm"
+                          className="relative cursor-pointer group rounded-xl overflow-hidden"
+                        >
+                          <img
+                            src={currentImg}
+                            alt={prod.title}
+                            className="w-13 h-13 rounded-xl object-cover border border-slate-700 bg-slate-950 shrink-0 shadow-sm transition-transform duration-300 group-hover:scale-105"
+                          />
+                          <div className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 flex flex-col items-center justify-center transition-opacity text-white text-center p-0.5">
+                            <Upload className="w-3.5 h-3.5 text-cyan-400" />
+                            <span className="text-[8px] font-bold text-cyan-300">Đổi ảnh</span>
+                          </div>
+                        </div>
+                      ) : (
+                        <button
+                          type="button"
+                          onClick={() => handleOpenImageModal(prod)}
+                          title="Sản phẩm chưa có ảnh. Bấm để tự thêm ảnh từ máy tính hoặc dán URL"
+                          className="w-13 h-13 rounded-xl border-2 border-dashed border-amber-500/70 hover:border-amber-400 bg-amber-950/25 hover:bg-amber-950/45 transition-all flex flex-col items-center justify-center p-1 cursor-pointer group shadow-sm text-center"
+                        >
+                          <ImageIcon className="w-4 h-4 text-amber-400 group-hover:scale-110 transition-transform mb-0.5" />
+                          <span className="text-[7.5px] font-bold text-amber-300 leading-tight">Chưa có ảnh</span>
+                          <span className="text-[7px] text-slate-400 font-semibold group-hover:text-cyan-300">+ Thêm</span>
+                        </button>
+                      );
+                    })()}
                   </div>
                   
                   {isEditing ? (
@@ -754,13 +801,23 @@ export const AdminProductsTab: React.FC<AdminProductsTabProps> = ({
                       </button>
 
                       <button
+                        onClick={() => handleOpenImageModal(prod)}
+                        className="px-2.5 py-1.5 rounded-lg bg-cyan-950/70 hover:bg-cyan-900/90 text-cyan-300 border border-cyan-500/40 text-xs font-semibold flex items-center gap-1 cursor-pointer transition-colors shadow-sm"
+                        title="Tự thêm ảnh từ máy tính hoặc dán URL"
+                      >
+                        <ImageIcon className="w-3.5 h-3.5 text-cyan-400" />
+                        <span>{prod.bannerImg && prod.bannerImg.trim() !== '' ? 'Đổi Ảnh' : '+ Thêm Ảnh'}</span>
+                      </button>
+
+                      <button
                         onClick={() => {
                           setEditingProductId(prod.id);
                           setProductEditForm({
                             title: prod.title,
                             groupPrice: prod.groupPrice,
                             retailPrice: prod.retailPrice,
-                            ctvPrice: prod.tierPrices?.ctv1 || Math.round(prod.groupPrice * 0.9)
+                            ctvPrice: prod.tierPrices?.ctv1 || Math.round(prod.groupPrice * 0.9),
+                            bannerImg: prod.bannerImg || ''
                           });
                         }}
                         className="px-2.5 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-medium flex items-center gap-1 cursor-pointer transition-colors border border-slate-700"
@@ -1254,6 +1311,196 @@ export const AdminProductsTab: React.FC<AdminProductsTabProps> = ({
                 className="px-5 py-2 rounded-xl bg-red-600 hover:bg-red-500 text-white font-bold text-xs shadow-lg shadow-red-500/30"
               >
                 Áp Dụng Flash Sale
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* QUICK IMAGE EDIT MODAL (FOR ADDING/UPDATING IMAGES ON ANY PRODUCT) */}
+      {imageModalProduct && (
+        <div className="fixed inset-0 z-[9999] bg-black/85 backdrop-blur-sm flex items-center justify-center p-4">
+          <div className="w-full max-w-lg rounded-2xl bg-gradient-to-b from-slate-900 via-[#0d1424] to-slate-950 border border-cyan-500/40 p-6 space-y-4 shadow-2xl animate-in fade-in zoom-in-95 duration-200">
+            {/* Header */}
+            <div className="flex items-center justify-between border-b border-slate-800 pb-3">
+              <div className="flex items-center gap-2.5">
+                <div className="p-2 rounded-xl bg-cyan-950/80 border border-cyan-500/30 text-cyan-400">
+                  <ImageIcon className="w-5 h-5" />
+                </div>
+                <div>
+                  <h4 className="text-sm font-bold text-white uppercase tracking-wide flex items-center gap-2">
+                    <span>Thêm / Đổi Ảnh Sản Phẩm</span>
+                    {!imageModalProduct.bannerImg && (
+                      <span className="px-2 py-0.5 rounded text-[10px] bg-amber-950 text-amber-300 border border-amber-500/30">
+                        Hiện Đang Trống
+                      </span>
+                    )}
+                  </h4>
+                  <p className="text-[11px] text-slate-400 font-mono truncate max-w-sm">
+                    {imageModalProduct.title}
+                  </p>
+                </div>
+              </div>
+              <button
+                onClick={() => setImageModalProduct(null)}
+                className="p-1 rounded-lg text-slate-400 hover:text-white hover:bg-slate-800 cursor-pointer"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            {/* Note box */}
+            <div className="p-3 rounded-xl bg-slate-950/70 border border-cyan-500/20 text-[11px] text-slate-300 space-y-1">
+              <div className="text-cyan-300 font-bold flex items-center gap-1.5">
+                <Sparkles className="w-3.5 h-3.5" />
+                <span>Cơ chế quản lý ảnh sản phẩm:</span>
+              </div>
+              <p className="text-slate-400 leading-relaxed">
+                Khi bóc tách từ G2UP hoặc nguồn API không có ảnh, hệ thống mặc định để trống. Bạn có thể tự tải ảnh bìa sắc nét từ máy tính hoặc dán đường dẫn ảnh bất kỳ.
+              </p>
+            </div>
+
+            {/* Mode Tabs */}
+            <div className="flex items-center gap-2 p-1 rounded-xl bg-slate-950 border border-slate-800">
+              <button
+                type="button"
+                onClick={() => setImageModalMode('pc')}
+                className={`flex-1 py-1.5 rounded-lg text-xs font-bold transition-all flex items-center justify-center gap-1.5 cursor-pointer ${
+                  imageModalMode === 'pc'
+                    ? 'bg-cyan-500 text-black shadow-md shadow-cyan-500/20'
+                    : 'text-slate-400 hover:text-white'
+                }`}
+              >
+                <Upload className="w-3.5 h-3.5" />
+                <span>Tải Từ Máy Tính (PC)</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => setImageModalMode('url')}
+                className={`flex-1 py-1.5 rounded-lg text-xs font-bold transition-all flex items-center justify-center gap-1.5 cursor-pointer ${
+                  imageModalMode === 'url'
+                    ? 'bg-cyan-500 text-black shadow-md shadow-cyan-500/20'
+                    : 'text-slate-400 hover:text-white'
+                }`}
+              >
+                <Globe className="w-3.5 h-3.5" />
+                <span>Dán Đường Dẫn (URL)</span>
+              </button>
+            </div>
+
+            {/* Content per mode */}
+            {imageModalMode === 'pc' ? (
+              <div
+                onDragOver={(e) => { e.preventDefault(); setImageModalDragOver(true); }}
+                onDragLeave={() => setImageModalDragOver(false)}
+                onDrop={(e) => {
+                  e.preventDefault();
+                  setImageModalDragOver(false);
+                  if (e.dataTransfer.files && e.dataTransfer.files[0]) {
+                    handleProcessModalImageFile(e.dataTransfer.files[0]);
+                  }
+                }}
+                onClick={() => modalFileInputRef.current?.click()}
+                className={`border-2 border-dashed rounded-xl p-5 text-center cursor-pointer transition-all ${
+                  imageModalDragOver
+                    ? 'border-cyan-400 bg-cyan-950/40'
+                    : 'border-slate-700 hover:border-cyan-500/60 bg-slate-950/60'
+                }`}
+              >
+                <input
+                  ref={modalFileInputRef}
+                  type="file"
+                  accept="image/*"
+                  className="hidden"
+                  onChange={(e) => {
+                    if (e.target.files && e.target.files[0]) {
+                      handleProcessModalImageFile(e.target.files[0]);
+                    }
+                  }}
+                />
+                <div className="flex flex-col items-center justify-center gap-2">
+                  <div className="p-3 rounded-full bg-cyan-950/80 text-cyan-400 border border-cyan-500/30">
+                    <Upload className="w-6 h-6" />
+                  </div>
+                  <div>
+                    <span className="text-xs font-bold text-white">Nhấp để chọn ảnh từ máy tính</span>
+                    <p className="text-[10px] text-slate-400 mt-0.5">Hỗ trợ kéo thả PNG, JPG, WEBP, GIF (Tự động lưu Base64 an toàn)</p>
+                  </div>
+                  {imageModalFileName && (
+                    <div className="px-3 py-1 rounded-full bg-emerald-950 text-emerald-400 border border-emerald-500/30 text-[11px] font-mono flex items-center gap-1.5 mt-1">
+                      <Check className="w-3.5 h-3.5" />
+                      <span>{imageModalFileName} ({imageModalFileSize})</span>
+                    </div>
+                  )}
+                </div>
+              </div>
+            ) : (
+              <div className="space-y-2">
+                <label className="text-[11px] font-bold text-slate-300">Đường dẫn hình ảnh (Image URL):</label>
+                <input
+                  type="url"
+                  value={imageModalUrl}
+                  onChange={(e) => setImageModalUrl(e.target.value)}
+                  placeholder="https://example.com/banner-product.jpg"
+                  className="w-full bg-slate-950 border border-slate-700 rounded-xl p-2.5 text-xs text-white font-mono placeholder:text-slate-600 focus:border-cyan-400 outline-none"
+                />
+              </div>
+            )}
+
+            {/* Live Preview Box */}
+            <div className="space-y-1.5">
+              <div className="flex items-center justify-between text-[11px]">
+                <span className="text-slate-400 font-bold">Xem Trước Ảnh (Preview):</span>
+                {imageModalUrl && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setImageModalUrl('');
+                      setImageModalFileName(null);
+                    }}
+                    className="text-red-400 hover:text-red-300 cursor-pointer text-[10px] font-bold underline"
+                  >
+                    Để Trống (Xóa ảnh)
+                  </button>
+                )}
+              </div>
+
+              <div className="h-32 w-full rounded-xl border border-slate-800 bg-slate-950 overflow-hidden relative flex items-center justify-center">
+                {imageModalUrl && imageModalUrl.trim() !== '' ? (
+                  <img
+                    src={imageModalUrl}
+                    alt="Preview"
+                    className="w-full h-full object-cover"
+                    onError={() => {
+                      // Fallback if URL is broken
+                    }}
+                  />
+                ) : (
+                  <div className="flex flex-col items-center justify-center text-center p-4 text-slate-500 space-y-1">
+                    <ImageIcon className="w-8 h-8 text-slate-600" />
+                    <span className="text-xs font-bold text-slate-400">Chưa có ảnh (Trống)</span>
+                    <span className="text-[10px] text-slate-500">Thẻ sản phẩm trên web sẽ hiển thị biểu tượng CyberPool chuyên nghiệp</span>
+                  </div>
+                )}
+              </div>
+            </div>
+
+            {/* Footer buttons */}
+            <div className="flex items-center justify-end gap-2 pt-3 border-t border-slate-800">
+              <button
+                type="button"
+                onClick={() => setImageModalProduct(null)}
+                className="px-4 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs font-semibold cursor-pointer"
+              >
+                Hủy
+              </button>
+              <button
+                type="button"
+                onClick={handleSaveModalImage}
+                className="px-5 py-2 rounded-xl bg-cyan-500 hover:bg-cyan-400 text-black font-bold text-xs shadow-lg shadow-cyan-500/25 flex items-center gap-1.5 cursor-pointer"
+              >
+                <Check className="w-4 h-4" />
+                <span>LƯU ẢNH SẢN PHẨM</span>
               </button>
             </div>
           </div>

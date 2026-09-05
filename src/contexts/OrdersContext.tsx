@@ -395,10 +395,14 @@ export const OrdersProvider: React.FC<{ children: ReactNode }> = ({ children }) 
     setManualOrders(prev => prev.map(o => {
       if (o.id === orderId) {
         let nextStatus: ManualOrder['status'] = o.status;
-        if (action === 'start_processing') nextStatus = 'processing';
-        if (action === 'fulfill') nextStatus = 'completed';
-        if (action === 'reject') nextStatus = 'pending_process';
-        if (action === 'refund') nextStatus = 'refunded';
+        // Quy tắc tiến trình 1 chiều: Chờ xử lý -> Đang xử lý -> Đã giao (Tuyệt đối không quay lui)
+        if (action === 'start_processing' && o.status === 'pending_process') {
+          nextStatus = 'processing';
+        } else if (action === 'fulfill' && (o.status === 'processing' || o.status === 'pending_process')) {
+          nextStatus = 'completed';
+        } else if (action === 'refund' && o.status !== 'completed' && o.status !== 'refunded') {
+          nextStatus = 'refunded';
+        }
 
         return {
           ...o,

@@ -7,6 +7,8 @@ import {
   Filter, 
   Send, 
   RotateCcw, 
+  Loader2,
+  ArrowRight,
   Eye, 
   Gamepad2, 
   Gift, 
@@ -33,10 +35,16 @@ import { DualStreamChatModal } from './DualStreamChatModal';
 
 interface AdminManualOrdersTabProps {
   currency?: Currency;
+  manualOrders?: ManualOrder[];
+  onProcessManualOrder?: (orderId: string, action: 'start_processing' | 'fulfill' | 'reject' | 'refund', data?: { deliveredContent?: string; note?: string; secretKey?: string; barcode?: string }) => void;
 }
 
-export const AdminManualOrdersTab: React.FC<AdminManualOrdersTabProps> = ({ currency = 'VND' }) => {
-  const [orders, setOrders] = useState<ManualOrder[]>(INITIAL_MANUAL_ORDERS);
+export const AdminManualOrdersTab: React.FC<AdminManualOrdersTabProps> = ({ 
+  currency = 'VND',
+  manualOrders,
+  onProcessManualOrder 
+}) => {
+  const [orders, setOrders] = useState<ManualOrder[]>(manualOrders || INITIAL_MANUAL_ORDERS);
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState<string>('all');
   const [typeFilter, setTypeFilter] = useState<string>('all');
@@ -46,6 +54,13 @@ export const AdminManualOrdersTab: React.FC<AdminManualOrdersTabProps> = ({ curr
   const [saveNotice, setSaveNotice] = useState<string | null>(null);
   const [copiedId, setCopiedId] = useState<string | null>(null);
   const [activeDualStreamOrder, setActiveDualStreamOrder] = useState<SourcePendingOrder | null>(null);
+
+  // Synchronize if prop updates
+  React.useEffect(() => {
+    if (manualOrders && manualOrders.length > 0) {
+      setOrders(manualOrders);
+    }
+  }, [manualOrders]);
 
   // Comprehensive overview metrics
   const totalOrders = orders.length;
@@ -87,10 +102,71 @@ export const AdminManualOrdersTab: React.FC<AdminManualOrdersTabProps> = ({ curr
 
   const filteredRevenue = filteredOrders.reduce((sum, o) => sum + o.totalPrice, 0);
 
+  const handleUpdateStatus = (orderId: string, newStatus: ManualOrder['status'], customNote?: string) => {
+    const currentOrder = orders.find(o => o.id === orderId);
+    if (!currentOrder) return;
+
+    // Quy tắc tiến trình 1 chiều: Chờ xử lý -> Đang xử lý -> Đã giao (không thể quay lui)
+    if (currentOrder.status === 'processing' && newStatus === 'pending_process') {
+      setSaveNotice('⚠️ Tiến trình 1 chiều: Đơn hàng đang xử lý không thể quay về Chờ xử lý!');
+      setTimeout(() => setSaveNotice(null), 3000);
+      return;
+    }
+    if (currentOrder.status === 'completed' && (newStatus === 'processing' || newStatus === 'pending_process')) {
+      setSaveNotice('⚠️ Tiến trình 1 chiều: Đơn hàng đã giao hoàn tất, không thể quay lại trạng thái trước!');
+      setTimeout(() => setSaveNotice(null), 3000);
+      return;
+    }
+
+    const updated = orders.map(o => {
+      if (o.id === orderId) {
+        return {
+          ...o,
+          status: newStatus,
+          adminNote: customNote !== undefined ? customNote : o.adminNote,
+          processedAt: new Date().toLocaleTimeString('vi-VN') + ' - ' + new Date().toLocaleDateString('vi-VN'),
+          processedBy: 'Root_SuperAdmin'
+        };
+      }
+      return o;
+    });
+
+    setOrders(updated);
+
+    if (onProcessManualOrder) {
+      if (newStatus === 'processing') {
+        onProcessManualOrder(orderId, 'start_processing', { note: customNote });
+      } else if (newStatus === 'completed') {
+        onProcessManualOrder(orderId, 'fulfill', { note: customNote });
+      } else if (newStatus === 'refunded') {
+        onProcessManualOrder(orderId, 'refund', { note: customNote });
+      }
+    }
+
+    const statusLabel = 
+      newStatus === 'processing' ? 'Đang Xử Lý' : 
+      newStatus === 'completed' ? 'Đã Giao Hàng' : 
+      newStatus === 'pending_process' ? 'Chờ Xử Lý' : 'Đã Hoàn Tiền';
+
+    setSaveNotice(`Đã chuyển đơn sang trạng thái: "${statusLabel}"!`);
+    setTimeout(() => setSaveNotice(null), 3000);
+  };
+
   const handleOpenProcess = (ord: ManualOrder) => {
     setSelectedOrder(ord);
     setDeliveryContentInput(ord.deliveredContent || '');
     setAdminNoteInput(ord.adminNote || '');
+  };
+
+  const handleSetProcessingFromModal = (orderId: string) => {
+    handleUpdateStatus(orderId, 'processing', adminNoteInput.trim() || undefined);
+    setSelectedOrder(prev => prev ? {
+      ...prev,
+      status: 'processing',
+      adminNote: adminNoteInput.trim() || prev.adminNote,
+      processedAt: new Date().toLocaleTimeString('vi-VN') + ' - ' + new Date().toLocaleDateString('vi-VN'),
+      processedBy: 'Root_SuperAdmin'
+    } : null);
   };
 
   const handleFulfillOrder = (e: React.FormEvent) => {
@@ -117,7 +193,15 @@ export const AdminManualOrdersTab: React.FC<AdminManualOrdersTabProps> = ({ curr
     });
 
     setOrders(updated);
-    setSaveNotice(`Đã hoàn tất duyệt và gửi bàn giao đơn "${selectedOrder.orderCode}" thành công!`);
+
+    if (onProcessManualOrder) {
+      onProcessManualOrder(selectedOrder.id, 'fulfill', {
+        deliveredContent: deliveryContentInput.trim(),
+        note: adminNoteInput.trim()
+      });
+    }
+
+    setSaveNotice(`Đã hoàn tất duyệt và bàn giao đơn "${selectedOrder.orderCode}" (Đã Giao) thành công!`);
     setSelectedOrder(null);
     setTimeout(() => setSaveNotice(null), 3000);
   };
@@ -137,6 +221,11 @@ export const AdminManualOrdersTab: React.FC<AdminManualOrdersTabProps> = ({ curr
     });
 
     setOrders(updated);
+
+    if (onProcessManualOrder) {
+      onProcessManualOrder(ord.id, 'refund', { note: 'Hoàn tiền ví' });
+    }
+
     setSaveNotice(`Đã hủy & hoàn tiền ${formatCurrency(ord.totalPrice, currency)} cho đơn "${ord.orderCode}"!`);
     if (selectedOrder?.id === ord.id) setSelectedOrder(null);
     setTimeout(() => setSaveNotice(null), 3000);
@@ -186,7 +275,7 @@ export const AdminManualOrdersTab: React.FC<AdminManualOrdersTabProps> = ({ curr
       case 'processing':
         return (
           <span className="px-2.5 py-1 rounded-md bg-cyan-950 text-cyan-300 border border-cyan-500/40 text-xs font-semibold inline-flex items-center gap-1.5 whitespace-nowrap">
-            <RotateCcw className="w-3.5 h-3.5 animate-spin" />
+            <Loader2 className="w-3.5 h-3.5 animate-spin text-cyan-400" />
             <span>Đang Xử Lý</span>
           </span>
         );
@@ -299,7 +388,7 @@ export const AdminManualOrdersTab: React.FC<AdminManualOrdersTabProps> = ({ curr
           >
             <div className="flex items-center justify-between">
               <span className="text-[11px] font-bold text-cyan-400 uppercase tracking-wider flex items-center gap-1.5">
-                <RotateCcw className="w-3.5 h-3.5 animate-spin" />
+                <Loader2 className="w-3.5 h-3.5 animate-spin" />
                 <span>Đang Nạp / Check</span>
               </span>
               <span className="text-[10px] font-mono px-1.5 py-0.5 rounded bg-cyan-950 text-cyan-300 border border-cyan-500/30">
@@ -480,7 +569,7 @@ export const AdminManualOrdersTab: React.FC<AdminManualOrdersTabProps> = ({ curr
               : 'bg-slate-900/80 hover:bg-slate-800 text-slate-400 border border-slate-800'
           }`}
         >
-          <RotateCcw className="w-3.5 h-3.5 text-cyan-400" />
+          <Loader2 className="w-3.5 h-3.5 text-cyan-400 animate-spin" />
           <span>Đang Xử Lý</span>
           <span className={`px-1.5 py-0.5 rounded-full text-[10px] font-mono ${
             statusFilter === 'processing' ? 'bg-black text-cyan-300 font-bold' : 'bg-cyan-950 text-cyan-300'
@@ -581,7 +670,7 @@ export const AdminManualOrdersTab: React.FC<AdminManualOrdersTabProps> = ({ curr
               <th className="py-3 px-3 min-w-[210px]">Thông Tin Đầu Vào (UID / Email / Ghi Chú)</th>
               <th className="py-3 px-3 whitespace-nowrap w-28 text-right">Tổng Tiền</th>
               <th className="py-3 px-3 whitespace-nowrap w-28 text-center">Trạng Thái</th>
-              <th className="py-3 px-3 whitespace-nowrap w-32 text-center">Thao Tác</th>
+              <th className="py-3 px-3 whitespace-nowrap min-w-[220px] text-center">Thao Tác</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-slate-800/60">
@@ -660,7 +749,7 @@ export const AdminManualOrdersTab: React.FC<AdminManualOrdersTabProps> = ({ curr
                 </td>
 
                 <td className="py-3 px-3 text-center whitespace-nowrap align-top">
-                  <div className="flex items-center justify-center gap-1.5">
+                  <div className="flex items-center justify-center gap-1.5 flex-wrap">
                     <button
                       type="button"
                       onClick={() => {
@@ -695,18 +784,57 @@ export const AdminManualOrdersTab: React.FC<AdminManualOrdersTabProps> = ({ curr
                       <MessageSquare className="w-3.5 h-3.5 text-cyan-400" />
                     </button>
 
-                    <button
-                      type="button"
-                      onClick={() => handleOpenProcess(ord)}
-                      className={`px-2.5 py-1.5 rounded-lg font-semibold cursor-pointer flex items-center gap-1 text-xs transition-colors ${
-                        ord.status === 'completed'
-                          ? 'bg-slate-900 text-slate-300 hover:bg-slate-800 border border-slate-800'
-                          : 'bg-amber-500 hover:bg-amber-400 text-slate-950 shadow-md font-bold'
-                      }`}
-                    >
-                      <Send className="w-3 h-3" />
-                      <span>{ord.status === 'completed' ? 'Chi Tiết' : 'Xử Lý'}</span>
-                    </button>
+                    {/* Bước 1/3: Chờ Xử Lý -> Thao tác duy nhất 1 chiều: Đang Xử Lý */}
+                    {ord.status === 'pending_process' && (
+                      <button
+                        type="button"
+                        onClick={() => handleUpdateStatus(ord.id, 'processing')}
+                        className="px-3 py-1.5 rounded-lg font-bold cursor-pointer flex items-center gap-1.5 text-xs transition-colors bg-cyan-600 hover:bg-cyan-500 text-white shadow-sm"
+                        title="Tiến trình 1 chiều: Bắt đầu xử lý (Chuyển sang Đang Xử Lý)"
+                      >
+                        <ArrowRight className="w-3.5 h-3.5" />
+                        <span>Đang Xử Lý</span>
+                      </button>
+                    )}
+
+                    {/* Bước 2/3: Đang Xử Lý -> Thao tác duy nhất 1 chiều: Đã Giao (Tuyệt đối không thể quay về Chờ Xử Lý) */}
+                    {ord.status === 'processing' && (
+                      <button
+                        type="button"
+                        onClick={() => handleOpenProcess(ord)}
+                        className="px-3 py-1.5 rounded-lg font-bold cursor-pointer flex items-center gap-1.5 text-xs transition-colors bg-emerald-600 hover:bg-emerald-500 text-white shadow-sm"
+                        title="Tiến trình 1 chiều: Bàn giao đơn hàng (Chuyển sang Đã Giao)"
+                      >
+                        <CheckCircle2 className="w-3.5 h-3.5" />
+                        <span>Đã Giao</span>
+                      </button>
+                    )}
+
+                    {/* Bước 3/3: Đã Giao -> Đã hoàn tất 1 chiều, thao tác duy nhất: Xem Chi Tiết (Không thể quay lui) */}
+                    {ord.status === 'completed' && (
+                      <button
+                        type="button"
+                        onClick={() => handleOpenProcess(ord)}
+                        className="px-3 py-1.5 rounded-lg font-medium cursor-pointer flex items-center gap-1.5 text-xs transition-colors bg-slate-900 text-slate-300 hover:bg-slate-800 border border-slate-800"
+                        title="Xem chi tiết nội dung đã bàn giao (Đơn đã hoàn tất)"
+                      >
+                        <Eye className="w-3.5 h-3.5 text-slate-400" />
+                        <span>Chi Tiết</span>
+                      </button>
+                    )}
+
+                    {/* Thao tác Đã Hoàn Tiền: Xem chi tiết */}
+                    {ord.status === 'refunded' && (
+                      <button
+                        type="button"
+                        onClick={() => handleOpenProcess(ord)}
+                        className="px-2.5 py-1.5 rounded-lg font-medium cursor-pointer flex items-center gap-1 text-xs transition-colors bg-slate-900 text-slate-400 hover:bg-slate-800 border border-slate-800"
+                        title="Xem chi tiết hoàn tiền"
+                      >
+                        <Eye className="w-3 h-3 text-slate-400" />
+                        <span>Chi Tiết</span>
+                      </button>
+                    )}
 
                     {ord.status !== 'refunded' && ord.status !== 'completed' && (
                       <button
@@ -715,7 +843,7 @@ export const AdminManualOrdersTab: React.FC<AdminManualOrdersTabProps> = ({ curr
                         className="p-1.5 rounded-lg bg-rose-950 text-rose-400 border border-rose-500/30 hover:bg-rose-900 cursor-pointer transition-colors"
                         title="Hủy đơn & Hoàn tiền ví"
                       >
-                        <RotateCcw className="w-3.5 h-3.5" />
+                        <XCircle className="w-3.5 h-3.5" />
                       </button>
                     )}
                   </div>
@@ -766,6 +894,42 @@ export const AdminManualOrdersTab: React.FC<AdminManualOrdersTabProps> = ({ curr
               >
                 ✕
               </button>
+            </div>
+
+            {/* One-way Status Flow Indicator */}
+            <div className="flex items-center justify-between p-2.5 rounded-xl bg-slate-900/80 border border-slate-800 text-xs flex-wrap gap-2">
+              <div className="flex items-center gap-2">
+                <span className="text-slate-400 font-medium text-[11px]">Trạng thái hiện tại:</span>
+                {getStatusBadge(selectedOrder.status)}
+              </div>
+              <div className="flex items-center gap-2 text-[11px]">
+                <span className="text-slate-500 font-medium">Tiến trình 1 chiều:</span>
+                <div className="flex items-center gap-1.5 font-medium">
+                  <span className={`px-2 py-0.5 rounded text-[10px] font-bold ${
+                    selectedOrder.status === 'pending_process'
+                      ? 'bg-amber-500/20 text-amber-300 border border-amber-500/40'
+                      : 'text-slate-500'
+                  }`}>
+                    1. Chờ Xử Lý
+                  </span>
+                  <span className="text-slate-600">➔</span>
+                  <span className={`px-2 py-0.5 rounded text-[10px] font-bold ${
+                    selectedOrder.status === 'processing'
+                      ? 'bg-cyan-500/20 text-cyan-300 border border-cyan-500/40'
+                      : 'text-slate-500'
+                  }`}>
+                    2. Đang Xử Lý
+                  </span>
+                  <span className="text-slate-600">➔</span>
+                  <span className={`px-2 py-0.5 rounded text-[10px] font-bold ${
+                    selectedOrder.status === 'completed'
+                      ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/40'
+                      : 'text-slate-500'
+                  }`}>
+                    3. Đã Giao
+                  </span>
+                </div>
+              </div>
             </div>
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 p-3 rounded-xl bg-slate-900/60 border border-slate-800 text-[11px]">
@@ -820,33 +984,50 @@ export const AdminManualOrdersTab: React.FC<AdminManualOrdersTabProps> = ({ curr
                 />
               </div>
 
-              <div className="flex items-center justify-between pt-3 border-t border-slate-800">
+              <div className="flex items-center justify-between pt-3 border-t border-slate-800 flex-wrap gap-2">
                 {selectedOrder.status !== 'refunded' && selectedOrder.status !== 'completed' ? (
                   <button
                     type="button"
                     onClick={() => handleRefundOrder(selectedOrder)}
                     className="px-3.5 py-2 rounded-lg bg-rose-950 text-rose-300 border border-rose-500/40 hover:bg-rose-900 font-bold cursor-pointer text-xs flex items-center gap-1.5"
                   >
-                    <RotateCcw className="w-3.5 h-3.5" />
+                    <XCircle className="w-3.5 h-3.5" />
                     <span>Hủy & Hoàn Tiền Ví</span>
                   </button>
                 ) : <div />}
 
-                <div className="flex gap-2">
+                <div className="flex items-center gap-2 flex-wrap">
+                  {/* Ở bước Chờ Xử Lý: Chỉ có nút Chuyển Sang: Đang Xử Lý (1 chiều tiến tới) */}
+                  {selectedOrder.status === 'pending_process' && (
+                    <button
+                      type="button"
+                      onClick={() => handleSetProcessingFromModal(selectedOrder.id)}
+                      className="px-4 py-2 rounded-lg bg-cyan-600 hover:bg-cyan-500 text-white font-bold flex items-center gap-1.5 cursor-pointer text-xs shadow-md transition-colors"
+                      title="Tiến trình 1 chiều: Bắt đầu xử lý (Chuyển sang Đang Xử Lý)"
+                    >
+                      <ArrowRight className="w-3.5 h-3.5" />
+                      <span>Chuyển Sang: Đang Xử Lý</span>
+                    </button>
+                  )}
+
                   <button
                     type="button"
                     onClick={() => setSelectedOrder(null)}
-                    className="px-4 py-2 rounded-lg bg-slate-900 hover:bg-slate-800 text-slate-300 font-bold cursor-pointer text-xs"
+                    className="px-3.5 py-2 rounded-lg bg-slate-900 hover:bg-slate-800 text-slate-300 font-bold cursor-pointer text-xs"
                   >
                     Đóng
                   </button>
-                  <button
-                    type="submit"
-                    className="px-5 py-2 rounded-lg bg-amber-500 hover:bg-amber-400 text-black font-bold flex items-center gap-1.5 cursor-pointer shadow-lg text-xs"
-                  >
-                    <Check className="w-4 h-4" />
-                    <span>Xác Nhận Bàn Giao Cho Khách</span>
-                  </button>
+
+                  {/* Ở bước Đang Xử Lý: Chỉ có nút Xác Nhận Bàn Giao (Đã Giao) - Không thể quay lui */}
+                  {selectedOrder.status === 'processing' && (
+                    <button
+                      type="submit"
+                      className="px-4 py-2 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white font-bold flex items-center gap-1.5 cursor-pointer shadow-lg text-xs transition-colors"
+                    >
+                      <CheckCircle2 className="w-4 h-4" />
+                      <span>Xác Nhận Bàn Giao (Đã Giao)</span>
+                    </button>
+                  )}
                 </div>
               </div>
             </form>

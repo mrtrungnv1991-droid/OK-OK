@@ -18,6 +18,7 @@ import { UserOrder } from '../types';
 import { formatCurrency } from '../utils/formatters';
 import { GiftUpCardViewer } from './GiftUpCardViewer';
 import { useTranslation } from '../i18n';
+import { WebDeliveryOutput } from './WebDeliveryOutput';
 
 interface KeyVaultModalProps {
   orders: UserOrder[];
@@ -39,11 +40,12 @@ export const KeyVaultModal: React.FC<KeyVaultModalProps> = ({
   const [testingOrderId, setTestingOrderId] = useState<string | null>(null);
   const [testResult, setTestResult] = useState<{ id: string; msg: string } | null>(null);
   const [selectedGiftUpOrder, setSelectedGiftUpOrder] = useState<UserOrder | null>(null);
+  const [expandedOutputs, setExpandedOutputs] = useState<Record<string, boolean>>({});
 
   if (!isOpen) return null;
 
   const filteredOrders = orders.filter(order => {
-    const matchesSearch = order.productTitle.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    const matchesSearch = (order.productTitle || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
                           (order.deliveredKey && order.deliveredKey.toLowerCase().includes(searchTerm.toLowerCase()));
     if (!matchesSearch) return false;
     if (activeTab === 'giftup') return order.platform === 'GiftUp';
@@ -241,6 +243,14 @@ export const KeyVaultModal: React.FC<KeyVaultModalProps> = ({
                             <span>{isCopied ? t('common.copied') : t('key_vault.copy_key')}</span>
                           </button>
 
+                          {/* Toggle Web Delivery Output */}
+                          <button
+                            onClick={() => setExpandedOutputs(prev => ({ ...prev, [order.id]: !prev[order.id] }))}
+                            className="flex items-center gap-1.5 px-3 py-1.5 rounded bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-mono border border-slate-700 transition-colors"
+                          >
+                            <span>{expandedOutputs[order.id] ? 'Ẩn Giao Diện' : 'Xem Output Web'}</span>
+                          </button>
+
                           {/* If GiftUp Card: View E-Card */}
                           {isGiftUp && (
                             <button
@@ -269,6 +279,25 @@ export const KeyVaultModal: React.FC<KeyVaultModalProps> = ({
                         <div className="p-2 rounded bg-emerald-950/80 border border-emerald-500/40 text-emerald-400 text-xs font-mono flex items-center gap-2">
                           <CheckCircle2 className="w-4 h-4" />
                           <span>{testMsg}</span>
+                        </div>
+                      )}
+
+                      {/* Web Delivery Output View (Account, Key, Link, Giftcard) */}
+                      {expandedOutputs[order.id] && (
+                        <div className="pt-2 animate-in fade-in zoom-in-95 duration-150">
+                          <WebDeliveryOutput
+                            branch={order.deliveryBranch}
+                            rawKey={order.deliveredKey}
+                            accountCredentials={order.deliveredData?.accountCredentials}
+                            inviteLink={order.deliveredData?.inviteLink}
+                            giftCardInfo={
+                              order.deliveredData?.giftCardInfo ||
+                              (order.pinCode
+                                ? { cardNumber: order.deliveredKey, pinCode: order.pinCode }
+                                : undefined)
+                            }
+                            productTitle={order.productTitle}
+                          />
                         </div>
                       )}
 

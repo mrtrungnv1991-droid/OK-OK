@@ -173,8 +173,8 @@ export const LuckyWheelModal: React.FC<LuckyWheelModalProps> = ({
       setRecentWinners(prev => [
         {
           id: `w-${Date.now()}`,
-          user: user.name,
-          prizeName: prize.name,
+          user: user?.name || 'Thành viên',
+          prizeName: prize?.name || 'Phần thưởng',
           prizeType: prize.type,
           value: prize.value,
           timestamp: 'Just now',

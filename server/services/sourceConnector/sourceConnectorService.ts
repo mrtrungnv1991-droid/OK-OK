@@ -8,7 +8,8 @@ import {
   SourceAuditLog, 
   BlockedSourceProduct, 
   ScanJobType,
-  ConnectorExecutionResult
+  ConnectorExecutionResult,
+  RawScannedProduct
 } from './types';
 import { encryptSecret, maskSecret, sanitizeLogData } from './encryptionUtils';
 import { scannerEngine } from './scannerEngine';
@@ -17,6 +18,7 @@ import { ConnectorFactory } from './connectors/ConnectorFactory';
 import { distributedLock } from './distributedLock';
 import { sourceOfferService } from './sourceOfferService';
 import { categoryMapper } from './categoryMapper';
+import { ProductNormalizer } from './productNormalizer';
 
 export class SourceConnectorService {
   private accounts: Map<string, SourceAccount> = new Map();
@@ -105,13 +107,129 @@ export class SourceConnectorService {
       updated_at: now
     };
 
+    const accG2up: SourceAccount = {
+      id: 'acc_g2up_net',
+      name: 'G2UP.NET (Roblox & Game Digital Items Direct API)',
+      domain: 'g2up.net',
+      username: 'cyborg',
+      encrypted_password: encryptSecret('123123ad'),
+      encrypted_session: encryptSecret('885e5d18c3626f03b8356130b162c0af'),
+      browser_profile_id: 'prof_g2up_cyborg',
+      connector_type: 'API',
+      scanner_profile: 'G2UP_API_CONNECTOR',
+      status: 'ONLINE',
+      balance: 100000,
+      currency: 'VND',
+      low_balance_threshold: 50000,
+      is_active: true,
+      concurrency_limit: 2,
+      request_delay_ms: 400,
+      last_login_at: now,
+      last_scan_at: now,
+      last_successful_scan_at: now,
+      created_at: now,
+      updated_at: now
+    };
+
+    this.accounts.set(accG2up.id, accG2up);
     this.accounts.set(acc1.id, acc1);
     this.accounts.set(acc2.id, acc2);
     this.accounts.set(acc3.id, acc3);
 
+    // Initial seed products for G2UP
+    const seedG2upProducts: SourceProduct[] = [
+      {
+        id: 'sp_acc_g2up_net_g2up-1752',
+        source_account_id: 'acc_g2up_net',
+        source_product_id: 'g2up-1752',
+        source_url: 'https://g2up.net/api/product.php?product=1752',
+        title: 'GODHUMAN (Roblox Blox Fruits)',
+        description: 'Account Roblox GodHuman - user:pass:cookie 10-day warranty',
+        category_raw: 'GOD(warrantly sec 10day)',
+        original_price: 5800,
+        original_currency: 'VND',
+        stock: 4604,
+        source_status: 'IN_STOCK',
+        raw_data: { g2up_id: '1752', min: '1', max: '1000000' },
+        is_sync_ignored: false,
+        missing_scan_count: 0,
+        auto_sync_price: true,
+        first_seen_at: now,
+        last_seen_at: now,
+        last_synced_at: now,
+        created_at: now,
+        updated_at: now
+      },
+      {
+        id: 'sp_acc_g2up_net_g2up-1937',
+        source_account_id: 'acc_g2up_net',
+        source_product_id: 'g2up-1937',
+        source_url: 'https://g2up.net/api/product.php?product=1937',
+        title: 'Blox Fruits - Roblox Private Server (Thuê 1 Tháng)',
+        description: 'Roblox Private Server VIP link - Rent for 1 month',
+        category_raw: 'Roblox private server',
+        original_price: 13000,
+        original_currency: 'VND',
+        stock: 159,
+        source_status: 'IN_STOCK',
+        raw_data: { g2up_id: '1937', min: '1', max: '1000000' },
+        is_sync_ignored: false,
+        missing_scan_count: 0,
+        auto_sync_price: true,
+        first_seen_at: now,
+        last_seen_at: now,
+        last_synced_at: now,
+        created_at: now,
+        updated_at: now
+      },
+      {
+        id: 'sp_acc_g2up_net_g2up-1940',
+        source_account_id: 'acc_g2up_net',
+        source_product_id: 'g2up-1940',
+        source_url: 'https://g2up.net/api/product.php?product=1940',
+        title: 'Anime Expeditions 200-270k Gem | 200+ Trait Reroll | Level 120+',
+        description: 'User:Pass:Cookie - 100% Hero True Saint Crimson',
+        category_raw: 'Anime Expeditions GEM',
+        original_price: 20000,
+        original_currency: 'VND',
+        stock: 50,
+        source_status: 'IN_STOCK',
+        raw_data: { g2up_id: '1940', min: '1', max: '1000000' },
+        is_sync_ignored: false,
+        missing_scan_count: 0,
+        auto_sync_price: true,
+        first_seen_at: now,
+        last_seen_at: now,
+        last_synced_at: now,
+        created_at: now,
+        updated_at: now
+      }
+    ];
+
+    for (const p of seedG2upProducts) {
+      this.products.set(`${p.source_account_id}:${p.source_product_id}`, p);
+      const internalId = `INT-${p.source_product_id.toUpperCase()}`;
+      sourceOfferService.upsertOffer({
+        id: `offer_${accG2up.id}_${p.source_product_id}`,
+        internal_product_id: internalId,
+        source_account_id: p.source_account_id,
+        source_product_id: p.source_product_id,
+        source_name: accG2up.name,
+        source_price: p.original_price,
+        currency: p.original_currency,
+        calculated_final_price: Math.round(p.original_price * 1.05 + 5000),
+        stock: p.stock,
+        priority: 10,
+        status: p.stock > 0 ? 'ACTIVE' : 'OUT_OF_STOCK',
+        last_verified_at: now,
+        created_at: now,
+        updated_at: now
+      });
+    }
+
     // Initial audit log
     this.recordAuditLog('SYSTEM_BOOT', {
-      message: 'Source Connector Engine initialized with 3 source accounts'
+      message: 'Source Connector Engine initialized with G2UP.NET (Account: cyborg) and 3 other accounts'
     });
   }
 
@@ -308,6 +426,14 @@ export class SourceConnectorService {
     }
 
     return list;
+  }
+
+  public upsertScannedProduct(accountId: string, raw: RawScannedProduct): SourceProduct {
+    const key = `${accountId}:${raw.source_product_id}`;
+    const existing = this.products.get(key);
+    const merged = ProductNormalizer.mergeSnapshot(existing, raw, accountId);
+    this.products.set(key, merged);
+    return merged;
   }
 
   public updateProduct(id: string, updates: Partial<SourceProduct>): SourceProduct | null {

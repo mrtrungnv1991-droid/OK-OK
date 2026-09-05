@@ -73,11 +73,11 @@ export const AffiliateResellerModal: React.FC<AffiliateResellerModalProps> = ({
   const [webhookUrl, setWebhookUrl] = useState('https://myshop.com/api/cyberpool/webhook');
 
   // Bank Withdrawal Form State
-  const currentCommission = user.affiliateEarnings || 425000;
+  const currentCommission = user?.affiliateEarnings || 425000;
   const [withdrawAmount, setWithdrawAmount] = useState<number>(currentCommission);
   const [bankName, setBankName] = useState('MB Bank');
   const [accountNumber, setAccountNumber] = useState('');
-  const [accountName, setAccountName] = useState(user.name.toUpperCase());
+  const [accountName, setAccountName] = useState(user?.name ? user.name.toUpperCase() : 'USER');
   const [paymentMethod, setPaymentMethod] = useState<'bank' | 'momo' | 'usdt'>('bank');
   const [toastNotice, setToastNotice] = useState<string | null>(null);
 
@@ -143,7 +143,7 @@ export const AffiliateResellerModal: React.FC<AffiliateResellerModalProps> = ({
 
   // Filter affiliate withdrawal records for this user
   const userWithdrawals = withdrawals.filter(
-    w => w.ctvId === user.id || w.ctvName.includes(user.name) || w.withdrawalType === 'affiliate_commission'
+    w => (user && w.ctvId === user.id) || (user?.name && w.ctvName?.includes(user.name)) || w.withdrawalType === 'affiliate_commission'
   );
 
   return (

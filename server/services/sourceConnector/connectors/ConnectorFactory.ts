@@ -4,6 +4,7 @@
 import { BaseSourceConnector } from './BaseSourceConnector';
 import { GenericBrowserConnector } from './GenericBrowserConnector';
 import { MuakeyConnector } from './MuakeyConnector';
+import { G2upConnector } from './G2upConnector';
 import { SourceAccount } from '../types';
 import { getScannerProfile } from '../scannerProfile';
 
@@ -14,6 +15,10 @@ export class ConnectorFactory {
   public static createConnector(account: SourceAccount): BaseSourceConnector {
     const profile = getScannerProfile(account.scanner_profile);
     const domain = account.domain.toLowerCase();
+
+    if (domain.includes('g2up')) {
+      return new G2upConnector(account, profile);
+    }
 
     if (domain.includes('muakey')) {
       return new MuakeyConnector(account, profile);

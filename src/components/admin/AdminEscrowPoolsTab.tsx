@@ -51,9 +51,9 @@ export const AdminEscrowPoolsTab: React.FC<AdminEscrowPoolsTabProps> = ({
   );
 
   const filteredPools = allPools.filter(item => {
-    const matchSearch = item.pool.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                        item.product.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                        item.pool.id.toLowerCase().includes(searchTerm.toLowerCase());
+    const matchSearch = (item.pool?.title || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
+                        (item.product?.title || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
+                        (item.pool?.id || '').toLowerCase().includes(searchTerm.toLowerCase());
     if (!matchSearch) return false;
     if (statusFilter === 'all') return true;
     return item.pool.status === statusFilter;

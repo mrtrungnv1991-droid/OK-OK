@@ -38,9 +38,9 @@ export const AdminSecurityIpTab: React.FC<AdminSecurityIpTabProps> = ({
   const [selectedCountries, setSelectedCountries] = useState<string[]>(systemConfig?.geoBlockCountries || ['CN', 'RU', 'KP']);
 
   const filteredIps = blockedList.filter(item => 
-    item.ipAddress.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    item.reason.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    item.blockedBy.toLowerCase().includes(searchTerm.toLowerCase())
+    (item.ipAddress || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
+    (item.reason || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
+    (item.blockedBy || '').toLowerCase().includes(searchTerm.toLowerCase())
   );
 
   const handleAddBlockedIp = (e: React.FormEvent) => {

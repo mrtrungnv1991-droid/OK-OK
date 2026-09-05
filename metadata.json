@@ -1,6 +1,6 @@
 {
   "name": "CYBERPOOL // Digital Group-Buy & Game TopUp Exchange",
-  "description": "Sàn thương mại điện tử gom đơn mua chung sản phẩm số, nạp game tự động, tích hợp Independent Payment Gateway v1.0.0, Source Account Manager, Circuit Breakers và Zero-Drop Delivery Architecture.",
+  "description": "Sàn thương mại điện tử gom đơn mua chung sản phẩm số, nạp game tự động, tích hợp cổng thanh toán độc lập, đấu nối trực tiếp nhà cung cấp G2UP.net (Cyborg Pipeline), tự động bóc tách scan sản phẩm, định giá tăng lãi suất và xuất bản lên gian hàng web.",
   "requestFramePermissions": [],
   "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
 }

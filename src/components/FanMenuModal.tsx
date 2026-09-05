@@ -281,8 +281,8 @@ export const FanMenuModal: React.FC<FanMenuModalProps> = ({
 
   const filteredItems = menuItems.filter(item => {
     const matchCategory = selectedTab === 'all' || item.category === selectedTab || (selectedTab === 'admin' && item.category === 'admin');
-    const matchQuery = item.title.toLowerCase().includes(searchQuery.toLowerCase()) || 
-                       item.subtitle.toLowerCase().includes(searchQuery.toLowerCase());
+    const matchQuery = (item.title || '').toLowerCase().includes(searchQuery.toLowerCase()) || 
+                       (item.subtitle || '').toLowerCase().includes(searchQuery.toLowerCase());
     return matchCategory && matchQuery;
   });
 

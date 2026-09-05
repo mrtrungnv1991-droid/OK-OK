@@ -27,6 +27,7 @@ import { useOrders } from '../contexts/OrdersContext';
 import { formatCurrency } from '../utils/formatters';
 import { UserOrder } from '../types';
 import { useTranslation } from '../i18n';
+import { WebDeliveryOutput, detectDeliveryBranch } from './WebDeliveryOutput';
 
 interface CheckoutConfirmationModalProps {
   onOpenVault?: () => void;
@@ -86,10 +87,54 @@ export const CheckoutConfirmationModal: React.FC<CheckoutConfirmationModalProps>
         updateUserBalance(-finalTotal);
       }
 
-      // 2. Generate delivered orders for each item & quantity
+      // 2. Generate delivered orders for each item & quantity with branch-specific delivery format
       checkoutTargetItems.forEach((item, itemIndex) => {
+        const branch = item.product.deliveryBranch || detectDeliveryBranch(undefined, item.product.title, item.product.platform);
+
         for (let q = 0; q < item.quantity; q++) {
-          const randomKey = `CYBER-${item.product.platform.toUpperCase()}-${Math.floor(1000 + Math.random() * 9000)}-${Math.floor(1000 + Math.random() * 9000)}-${Math.floor(1000 + Math.random() * 9000)}`;
+          let deliveredKey = '';
+          let pinCode: string | undefined = undefined;
+          let deliveredData: any = undefined;
+
+          const platformSafe = (item.product.platform || 'cyber').toLowerCase();
+          const platformUpper = (item.product.platform || 'CYBER').toUpperCase();
+
+          if (branch === 'ACCOUNT') {
+            const username = `cyber_${platformSafe}_${Math.floor(1000 + Math.random() * 9000)}@cyberpool.vn`;
+            const password = `Pass#${Math.floor(100000 + Math.random() * 900000)}`;
+            const cookie = `sess_tok_${Math.random().toString(36).substring(2, 10)}`;
+            deliveredKey = `${username}:${password}:${cookie}`;
+            deliveredData = {
+              accountCredentials: {
+                username,
+                password,
+                cookie,
+                extra: 'Đăng nhập trực tiếp hoặc nhập Cookie session trên trình duyệt'
+              }
+            };
+          } else if (branch === 'LINK') {
+            deliveredKey = `https://${platformSafe.replace(/\s+/g, '')}.com/invite/join?token=CYBER-${Math.floor(100000 + Math.random() * 900000)}`;
+            deliveredData = {
+              inviteLink: deliveredKey
+            };
+          } else if (branch === 'GIFTCARD') {
+            deliveredKey = `GC-${platformUpper}-${Math.floor(1000 + Math.random() * 9000)}-${Math.floor(1000 + Math.random() * 9000)}`;
+            pinCode = `${Math.floor(1000 + Math.random() * 9000)}`;
+            deliveredData = {
+              giftCardInfo: {
+                cardNumber: deliveredKey,
+                pinCode,
+                balance: item.product.retailPrice,
+                currency: 'VND'
+              }
+            };
+          } else {
+            deliveredKey = `CYBER-${platformUpper}-${Math.floor(1000 + Math.random() * 9000)}-${Math.floor(1000 + Math.random() * 9000)}-${Math.floor(1000 + Math.random() * 9000)}`;
+            deliveredData = {
+              keys: [deliveredKey]
+            };
+          }
+
           const txCode = `ORD-${Date.now().toString().slice(-6)}-${itemIndex}${q}`;
 
           const order: UserOrder = {
@@ -101,8 +146,10 @@ export const CheckoutConfirmationModal: React.FC<CheckoutConfirmationModalProps>
             pricePaid: item.product.retailPrice,
             status: 'fulfilled',
             createdAt: new Date().toLocaleString('vi-VN'),
-            deliveredKey: randomKey,
-            pinCode: '778921',
+            deliveryBranch: branch,
+            deliveredKey: deliveredKey,
+            pinCode: pinCode,
+            deliveredData: deliveredData,
             txId: txCode
           };
 
@@ -227,30 +274,22 @@ export const CheckoutConfirmationModal: React.FC<CheckoutConfirmationModalProps>
                         </span>
                       </div>
 
-                      <div className="flex items-center justify-between gap-2 p-2.5 rounded-lg bg-black border border-slate-700 font-mono text-xs">
-                        <span className="text-emerald-400 font-bold break-all select-all">
-                          {order.deliveredKey}
-                        </span>
-                        <button
-                          type="button"
-                          onClick={() => handleCopy(order.deliveredKey || '', idx)}
-                          className="px-3 py-1 rounded bg-slate-800 hover:bg-slate-700 text-cyan-300 hover:text-white text-xs font-bold transition-all cursor-pointer shrink-0 flex items-center gap-1"
-                        >
-                          {copiedKeyIndex === idx ? (
-                            <>
-                              <Check className="w-3.5 h-3.5 text-emerald-400" />
-                              <span>{t('common.copied')}</span>
-                            </>
-                          ) : (
-                            <>
-                              <Copy className="w-3.5 h-3.5" />
-                              <span>{t('common.copy')}</span>
-                            </>
-                          )}
-                        </button>
-                      </div>
+                      {/* Digital Delivery Output for Web (Account, Key, Link, Giftcard) */}
+                      <WebDeliveryOutput
+                        branch={order.deliveryBranch}
+                        rawKey={order.deliveredKey}
+                        accountCredentials={order.deliveredData?.accountCredentials}
+                        inviteLink={order.deliveredData?.inviteLink}
+                        giftCardInfo={
+                          order.deliveredData?.giftCardInfo ||
+                          (order.pinCode
+                            ? { cardNumber: order.deliveredKey, pinCode: order.pinCode }
+                            : undefined)
+                        }
+                        productTitle={order.productTitle}
+                      />
 
-                      <div className="text-[10px] font-mono text-slate-400 flex items-center justify-between">
+                      <div className="text-[10px] font-mono text-slate-400 flex items-center justify-between pt-1">
                         <span>{t('wallet.tx_code')}: <strong className="text-slate-300">{order.txId}</strong></span>
                         <span>{order.createdAt}</span>
                       </div>

@@ -25,7 +25,8 @@ import {
   Zap,
   Cpu,
   CheckCircle2,
-  DollarSign
+  DollarSign,
+  Globe
 } from 'lucide-react';
 import { 
   Product, 
@@ -68,7 +69,6 @@ import { AdminGiftUpExchangeTab } from './admin/AdminGiftUpExchangeTab';
 import { AdminSettingsTab } from './admin/AdminSettingsTab';
 import { AdminAuditSecurityTab } from './admin/AdminAuditSecurityTab';
 import { AdminHeroLayoutTab } from './admin/AdminHeroLayoutTab';
-import { AdminSourceConnectorTab } from './admin/AdminSourceConnectorTab';
 import { AdminOrderReliabilityTab } from './admin/AdminOrderReliabilityTab';
 import { AdminPaymentSystemTab } from './admin/AdminPaymentSystemTab';
 
@@ -91,7 +91,6 @@ export type AdminTabType =
   | 'automation_cron'
   | 'logs'
   | 'suppliers'
-  | 'source_connector'
   | 'source_automation'
   | 'order_reliability'
   | 'affiliate'
@@ -211,12 +210,13 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({
 
   const navTabs: { id: AdminTabType; label: string; icon: React.ComponentType<{ className?: string }>; badge?: string | number }[] = [
     { id: 'dashboard', label: 'Dashboard', icon: TrendingUp },
-    { id: 'hero_layout', label: 'Hero Layout & Banner', icon: Layout, badge: 'UI' },
-    { id: 'products', label: t('nav.products'), icon: ShoppingBag, badge: products.length },
+    { id: 'suppliers', label: '🌐 Nhà Cung Cấp & Kết Nối Nguồn (Suppliers Hub)', icon: Server, badge: 'Unified' },
+    { id: 'products', label: 'Sản Phẩm & Sửa Giá (Products)', icon: ShoppingBag, badge: products.length },
     { id: 'categories', label: t('nav.categories'), icon: Layers, badge: categories?.length },
     { id: 'manual_fulfillment', label: t('nav.orders') + ' (Queue)', icon: Tag, badge: manualOrders?.filter(o => o.status === 'pending' || o.status === 'processing').length },
     { id: 'vouchers', label: 'Vouchers & Coupons', icon: Tag, badge: vouchers?.length },
     { id: 'banking', label: t('nav.banking_topup'), icon: CreditCard, badge: topupInvoices?.filter(i => i.status === 'pending').length },
+    { id: 'payment_system', label: 'Cổng Thanh Toán API (Payment Gateway)', icon: DollarSign, badge: 'v1.0' },
     { id: 'members', label: t('nav.account_profile'), icon: Users, badge: members.length },
     {
       id: 'tickets',
@@ -225,17 +225,15 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({
       badge: (tickets.filter(t => t.status === 'open').length + chatSessions.length) || undefined
     },
     { id: 'escrow_orders', label: t('nav.escrow_pools'), icon: Lock, badge: orders.length },
-    { id: 'games', label: t('nav.game_topup'), icon: Gamepad2, badge: `${games.length} Games` },
+    { id: 'games', label: t('nav.game_topup') + ' & Sửa Giá Bulk', icon: Gamepad2, badge: `${games.length} Games` },
+    { id: 'hero_layout', label: 'Hero Layout & Banner', icon: Layout, badge: 'UI' },
     { id: 'roles', label: 'Roles & Sub-Admin', icon: ShieldCheck },
     { id: 'security_ip', label: 'Security Firewall & IP WAF', icon: ShieldAlert },
     { id: 'automation_cron', label: 'Cron Jobs & Auto Sync', icon: Clock },
     { id: 'logs', label: 'System Logs', icon: FileText },
-    { id: 'suppliers', label: 'Supplier APIs', icon: Server, badge: suppliers.length },
-    { id: 'payment_system', label: 'Hệ Thống Nạp Tiền Độc Lập (Payment Gateway)', icon: DollarSign, badge: 'v1.0' },
-    { id: 'source_connector', label: 'Source Accounts & Web Scanner', icon: Cpu, badge: 'No-API' },
     { id: 'source_automation', label: 'Nguồn Mua & Telegram (Phương Án B)', icon: Bot, badge: 'Zero-Drop' },
     { id: 'order_reliability', label: 'Đơn Hàng Đáng Tin Cậy & Key Vault', icon: CheckCircle2, badge: 'Anti-Duplicate' },
-    { id: 'affiliate', label: t('nav.reseller_api'), icon: Share2 },
+    { id: 'affiliate', label: 'Tài Liệu API Cho Đại Lý (Reseller API)', icon: Share2 },
     { id: 'giftup_admin', label: 'GiftUp Cards', icon: Gift },
     { id: 'settings', label: t('nav.admin_panel') + ' Settings', icon: Settings },
     { id: 'audit_security', label: 'Anti-DDoS & Security Audit', icon: ShieldAlert },
@@ -359,6 +357,8 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({
             {activeTab === 'manual_fulfillment' && (
               <AdminManualOrdersTab
                 currency={currency}
+                manualOrders={manualOrders}
+                onProcessManualOrder={onProcessManualOrder}
               />
             )}
 
@@ -449,10 +449,6 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({
 
             {activeTab === 'payment_system' && (
               <AdminPaymentSystemTab currency={currency} />
-            )}
-
-            {activeTab === 'source_connector' && (
-              <AdminSourceConnectorTab currency={currency} />
             )}
 
             {activeTab === 'source_automation' && (

@@ -7,7 +7,9 @@ import {
   ArrowRight,
   Gift,
   ShoppingCart,
-  Check
+  Check,
+  Gamepad2,
+  Image as ImageIcon
 } from 'lucide-react';
 import { Product, GroupPool } from '../types';
 import { formatCurrency } from '../utils/formatters';
@@ -39,7 +41,11 @@ export const ProductCard: React.FC<ProductCardProps> = ({
   const activePool = (product.activePools && product.activePools.length > 0)
     ? (product.activePools.find(p => p.status === 'filling') || product.activePools[0])
     : undefined;
-  const savingsPercent = Math.round(((product.retailPrice - product.groupPrice) / product.retailPrice) * 100);
+  const effectiveGroupPrice = product.groupPrice || Math.round(product.retailPrice * 0.85);
+  const savingsPercent = product.retailPrice > 0 ? Math.round(((product.retailPrice - effectiveGroupPrice) / product.retailPrice) * 100) : 0;
+  const displayImage = product.bannerImg && product.bannerImg.trim() !== '' 
+    ? product.bannerImg 
+    : (product.images && product.images.length > 0 ? product.images[0] : '');
   
   const filledSlots = activePool ? activePool.filledSlots : 0;
   const targetSlots = activePool ? activePool.targetSlots : product.minSlots;
@@ -71,14 +77,33 @@ export const ProductCard: React.FC<ProductCardProps> = ({
     <div className="group relative rounded-xl bg-[#0e121b] border border-slate-800 hover:border-cyan-500/50 transition-all duration-300 flex flex-col justify-between overflow-hidden shadow-lg hover:shadow-[0_0_25px_-5px_rgba(6,182,212,0.25)] h-full">
       {/* Top Banner Image with Overlay */}
       <div className="relative h-24 xs:h-28 sm:h-36 md:h-40 w-full overflow-hidden bg-slate-950 shrink-0">
-        <img
-          src={product.bannerImg}
-          alt={product.title}
-          referrerPolicy="no-referrer"
-          className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105 opacity-85 group-hover:opacity-100"
-          loading="lazy"
-        />
-        <div className="absolute inset-0 bg-gradient-to-t from-[#0e121b] via-[#0e121b]/30 to-transparent"></div>
+        {displayImage ? (
+          <img
+            src={displayImage}
+            alt={product.title}
+            referrerPolicy="no-referrer"
+            className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105 opacity-85 group-hover:opacity-100"
+            loading="lazy"
+          />
+        ) : (
+          <div className="w-full h-full bg-gradient-to-br from-slate-900 via-[#0a101f] to-[#0d1c3a] flex flex-col items-center justify-center p-3 relative overflow-hidden group-hover:from-slate-800 group-hover:to-cyan-950/50 transition-all">
+            {/* Cyber Grid Accent */}
+            <div className="absolute inset-0 opacity-15 bg-[radial-gradient(#06b6d4_1px,transparent_1px)] [background-size:12px_12px]" />
+            <div className="relative z-10 flex flex-col items-center justify-center text-center space-y-1">
+              <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-xl bg-cyan-950/80 border border-cyan-500/40 flex items-center justify-center text-cyan-400 shadow-[0_0_15px_rgba(6,182,212,0.25)]">
+                <Gamepad2 className="w-4 h-4 sm:w-5 sm:h-5" />
+              </div>
+              <span className="text-[9px] sm:text-[10px] font-mono font-bold text-slate-300 uppercase tracking-wider line-clamp-1 px-2">
+                {product.platform || 'Sản phẩm số'}
+              </span>
+              <span className="text-[8px] sm:text-[9px] font-mono text-slate-500 flex items-center gap-1">
+                <ImageIcon className="w-2.5 h-2.5 text-slate-500" />
+                (Chưa có ảnh)
+              </span>
+            </div>
+          </div>
+        )}
+        <div className="absolute inset-0 bg-gradient-to-t from-[#0e121b] via-[#0e121b]/30 to-transparent pointer-events-none"></div>
 
         {/* Top Badges */}
         <div className="absolute top-1.5 sm:top-2.5 left-1.5 sm:left-2.5 right-1.5 sm:right-2.5 flex items-center justify-between gap-1">
@@ -192,8 +217,8 @@ export const ProductCard: React.FC<ProductCardProps> = ({
               <span>{product.rating || 5.0}</span>
               <span className="text-slate-500 font-normal">({product.reviewCount || product.userReviews?.length || 0})</span>
             </div>
-            <div className="text-[8px] sm:text-[9px] font-mono text-slate-500">
-              {product.seller.name}
+            <div className="text-[8px] sm:text-[9px] font-mono text-slate-500 truncate max-w-[120px]">
+              {product.seller?.name || product.source_info?.supplierName || 'Cyber Verified Store'}
             </div>
           </div>
         </div>

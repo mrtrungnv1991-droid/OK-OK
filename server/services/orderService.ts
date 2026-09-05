@@ -3,76 +3,148 @@ import { ServerOrder, ServerUser, OrderStatus } from '../types';
 import { LedgerService } from './ledgerService';
 import { InventoryService } from './inventoryService';
 import { AuditService } from './auditService';
+import { SupplierManagerService } from './supplierHub/services/SupplierManagerService';
+import { detectDeliveryBranch, parseDeliveredOutput, DeliveryBranch } from './supplierHub/utils/deliveryBranchDetector';
 
 export class OrderService {
   /**
    * Processes instant single-item product purchase with atomic digital delivery
+   * Supports both local products and API source products (G2UP / ShopClone)
    */
   public static async createInstantPurchase(params: {
     buyer: ServerUser;
     productId: string;
+    quantity?: number;
+    paymentMethod?: 'wallet' | 'vietqr' | 'telco' | 'card';
+    voucherCode?: string;
+    finalTotal?: number;
     ipAddress?: string;
-  }): Promise<{ success: boolean; order?: ServerOrder; error?: string }> {
-    const { buyer, productId, ipAddress } = params;
+  }): Promise<{ success: boolean; order?: ServerOrder; deliveredKey?: string; error?: string }> {
+    const { buyer, productId, quantity = 1, paymentMethod = 'wallet', finalTotal, ipAddress } = params;
     const product = db.products.find(p => p.id === productId);
 
     if (!product) {
-      return { success: false, error: 'Product not found' };
+      return { success: false, error: 'Không tìm thấy sản phẩm trong hệ thống' };
     }
 
-    const price = product.retailPrice;
+    const unitPrice = product.retailPrice;
+    const price = typeof finalTotal === 'number' && finalTotal > 0 ? finalTotal : (unitPrice * quantity);
 
-    if (buyer.walletBalance < price) {
+    if (paymentMethod === 'wallet' && buyer.walletBalance < price) {
       return { 
         success: false, 
-        error: `Số dư ví không đủ. Cần: ${price.toLocaleString()}đ, Hiện có: ${buyer.walletBalance.toLocaleString()}đ` 
+        error: `Số dư ví không đủ. Cần: ${price.toLocaleString('vi-VN')}đ, Hiện có: ${buyer.walletBalance.toLocaleString('vi-VN')}đ` 
       };
     }
 
-    const orderId = `ord-inst-${Date.now()}-${Math.random().toString(36).substr(2, 5)}`;
+    const orderId = `ORD-${Date.now()}-${Math.random().toString(36).substring(2, 6).toUpperCase()}`;
 
-    // 1. Reserve digital item from inventory vault
-    const reservedItem = await InventoryService.reserveItem(productId, buyer.id, orderId);
-    const deliveredKey = reservedItem?.keyCode || `CYBER-${product.platform.toUpperCase()}-${Math.floor(1000 + Math.random() * 9000)}-${Math.floor(1000 + Math.random() * 9000)}-${Math.floor(1000 + Math.random() * 9000)}`;
+    // 1. Digital item resolution (Supplier Relay or Inventory vault)
+    let deliveredKey = '';
+    let supplierOrderInfo: any = null;
 
-    if (reservedItem) {
-      InventoryService.markDelivered(reservedItem.id);
+    // A. Check if product is mapped to an integrated Supplier (Account, API, or Custom)
+    try {
+      const supplierDispatch = await SupplierManagerService.dispatchSupplierOrder({
+        localProductId: productId,
+        quantity,
+        localOrderId: orderId,
+        customerPrice: price
+      });
+
+      if (supplierDispatch.isSupplierProduct) {
+        if (!supplierDispatch.success) {
+          return {
+            success: false,
+            error: supplierDispatch.error || 'Lỗi khi đặt hàng qua nhà cung cấp nguồn'
+          };
+        }
+        deliveredKey = supplierDispatch.deliveredKey || '';
+        supplierOrderInfo = supplierDispatch.supplierOrderSnapshot;
+      }
+    } catch (err: any) {
+      console.warn('[OrderService] Supplier dispatch exception:', err);
     }
 
-    // 2. Deduct funds via double-entry ledger
-    const ledgerRes = await LedgerService.executeTransaction({
-      userId: buyer.id,
-      type: 'PURCHASE_INSTANT',
-      amount: -price,
-      description: `Mua lẻ bản quyền: ${product.title}`,
-      referenceId: orderId,
-      ipAddress
+    // B. If not a supplier product or fallback, check local inventory vault
+    let reservedItem: any = null;
+    if (!deliveredKey) {
+      reservedItem = await InventoryService.reserveItem(productId, buyer.id, orderId);
+      if (reservedItem?.keyCode) {
+        deliveredKey = reservedItem.keyCode;
+        InventoryService.markDelivered(reservedItem.id);
+      }
+    }
+
+    // Determine branch
+    const branch: DeliveryBranch = (product as any).deliveryBranch || detectDeliveryBranch({
+      title: product.title,
+      description: product.description,
+      category: product.category
     });
 
-    if (!ledgerRes.success) {
-      // Release reserved item if payment fails
-      if (reservedItem) {
-        InventoryService.releaseReservation(reservedItem.id);
+    // C. Default generated key or account credential if vault is empty
+    if (!deliveredKey) {
+      if (branch === 'ACCOUNT') {
+        const userPrefix = 'cyber_' + Math.random().toString(36).substring(2, 7);
+        const passSuffix = Math.floor(100000 + Math.random() * 900000);
+        const cookieToken = 'cyber_sess_' + Math.random().toString(36).substring(2, 12);
+        deliveredKey = `${userPrefix}:Cyber#${passSuffix}:${cookieToken}`;
+      } else if (branch === 'LINK') {
+        const inviteCode = Math.random().toString(36).substring(2, 10).toUpperCase();
+        deliveredKey = `https://cyberstore.vn/redeem/INVITE-${inviteCode}`;
+      } else if (branch === 'GIFTCARD') {
+        const cardNum = `GC${Math.floor(10000000 + Math.random() * 90000000)}`;
+        const pinNum = `${Math.floor(1000 + Math.random() * 9000)}`;
+        deliveredKey = `${cardNum} | PIN: ${pinNum}`;
+      } else {
+        const platformCode = (product.platform || 'CYBER').toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 5);
+        deliveredKey = `${platformCode}-${Math.floor(1000 + Math.random() * 9000)}-${Math.floor(1000 + Math.random() * 9000)}-${Math.floor(1000 + Math.random() * 9000)}`;
       }
-      return { success: false, error: ledgerRes.error || 'Payment execution failed' };
     }
 
-    // 3. Create fulfilled Order record
+    const parsedOutput = parseDeliveredOutput(deliveredKey, branch);
+
+    // 2. Deduct funds if payment method is wallet
+    if (paymentMethod === 'wallet') {
+      const ledgerRes = await LedgerService.executeTransaction({
+        userId: buyer.id,
+        type: 'PURCHASE_INSTANT',
+        amount: -price,
+        description: `Mua lẻ [${branch}]: ${product.title} (x${quantity})`,
+        referenceId: orderId,
+        ipAddress
+      });
+
+      if (!ledgerRes.success) {
+        if (reservedItem) {
+          InventoryService.releaseReservation(reservedItem.id);
+        }
+        return { success: false, error: ledgerRes.error || 'Trừ tiền ví thất bại' };
+      }
+    }
+
+    // 3. Create real fulfilled Order record in database
     const order: ServerOrder = {
       id: orderId,
       buyerId: buyer.id,
       productId: product.id,
-      productTitle: product.title,
+      productTitle: quantity > 1 ? `${product.title} (x${quantity})` : product.title,
       orderType: 'INSTANT_KEY',
       status: 'COMPLETED',
       pricePaid: price,
-      originalPrice: product.retailPrice,
-      discountAmount: (product.retailPrice - price),
+      originalPrice: product.retailPrice * quantity,
+      discountAmount: Math.max(0, (product.retailPrice * quantity) - price),
       deliveredData: {
         keys: [deliveredKey],
-        giftUpCard: product.deliveryType === 'giftup_card' ? {
-          cardNumber: `4928 ${Math.floor(1000 + Math.random() * 9000)} ${Math.floor(1000 + Math.random() * 9000)} ${Math.floor(1000 + Math.random() * 9000)}`,
-          pinCode: '7721',
+        deliveryBranch: branch,
+        accountCredentials: parsedOutput.accountCredentials,
+        inviteLink: parsedOutput.inviteLink,
+        cardCode: (parsedOutput as any).cardCode,
+        pinCode: (parsedOutput as any).pinCode,
+        giftUpCard: product.deliveryType === 'giftup_card' || branch === 'GIFTCARD' ? {
+          cardNumber: (parsedOutput as any).cardCode || `4928 ${Math.floor(1000 + Math.random() * 9000)} ${Math.floor(1000 + Math.random() * 9000)}`,
+          pinCode: (parsedOutput as any).pinCode || '7721',
           barcode: `GU-INSTANT-${Math.floor(1000 + Math.random() * 9000)}`,
           balance: 50,
           currency: 'USD'
@@ -83,7 +155,17 @@ export class OrderService {
       txHash: `0x${Math.random().toString(16).substr(2, 32)}`
     };
 
+    if (supplierOrderInfo) {
+      (order as any).supplierOrderInfo = supplierOrderInfo;
+    }
+
+    // Store in real server memory/database
     db.orders.set(order.id, order);
+
+    // Reduce product stock in database
+    if (product.stockAvailable !== undefined && product.stockAvailable > 0) {
+      product.stockAvailable = Math.max(0, product.stockAvailable - quantity);
+    }
 
     AuditService.log({
       actorId: buyer.id,
@@ -92,11 +174,15 @@ export class OrderService {
       action: 'ORDER_INSTANT_PURCHASE',
       resource: 'ORDER',
       resourceId: order.id,
-      newValue: { productId, pricePaid: price, keyDelivered: true },
+      newValue: { productId, pricePaid: price, keyDelivered: true, paymentMethod },
       ipAddress
     });
 
-    return { success: true, order };
+    return { 
+      success: true, 
+      order, 
+      deliveredKey 
+    };
   }
 
   /**

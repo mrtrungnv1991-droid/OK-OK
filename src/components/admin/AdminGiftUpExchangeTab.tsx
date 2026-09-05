@@ -59,8 +59,8 @@ export const AdminGiftUpExchangeTab: React.FC<{ currency?: CurrencyCode }> = ({ 
   const [copiedId, setCopiedId] = useState<string | null>(null);
 
   const filteredCards = cards.filter(c => 
-    c.code.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    c.brand.toLowerCase().includes(searchTerm.toLowerCase())
+    (c.code || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
+    (c.brand || '').toLowerCase().includes(searchTerm.toLowerCase())
   );
 
   const handleCopy = (text: string, id: string) => {

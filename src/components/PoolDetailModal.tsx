@@ -57,11 +57,13 @@ export const PoolDetailModal: React.FC<PoolDetailModalProps> = ({
   const [isSubmittingReview, setIsSubmittingReview] = useState<boolean>(false);
   const [reviewSubmittedToast, setReviewSubmittedToast] = useState<boolean>(false);
 
-  const isJoined = pool.participants.some(p => p.id === user.id || p.name.includes(user.name));
-  const isFull = pool.filledSlots >= pool.targetSlots;
-  const remainingSlots = pool.targetSlots - pool.filledSlots;
-  const totalCost = pool.pricePerSlot * selectedSlotCount;
-  const hasEnoughBalance = user.walletBalance >= totalCost;
+  const isJoined = pool?.participants 
+    ? pool.participants.some(p => (user && p.id === user.id) || (p?.name && user?.name && p.name.includes(user.name))) 
+    : false;
+  const isFull = pool ? pool.filledSlots >= pool.targetSlots : false;
+  const remainingSlots = pool ? pool.targetSlots - pool.filledSlots : 0;
+  const totalCost = pool ? pool.pricePerSlot * selectedSlotCount : 0;
+  const hasEnoughBalance = (user?.walletBalance ?? 0) >= totalCost;
 
   const reviewsList = product.userReviews || [];
   const averageRating = product.rating || 5.0;
@@ -77,7 +79,7 @@ export const PoolDetailModal: React.FC<PoolDetailModalProps> = ({
     onRateProduct(product.id, userRating, reviewComment);
     setReviewComment('');
     setIsSubmittingReview(false);
-    showToast(`Đã gửi đánh giá ${userRating}⭐ cho ${product.name}!`, 'success', {
+    showToast(`Đã gửi đánh giá ${userRating}⭐ cho ${product.title || (product as any).name || 'sản phẩm'}!`, 'success', {
       title: '✓ ĐÁNH GIÁ THÀNH CÔNG'
     });
     setReviewSubmittedToast(true);
@@ -247,20 +249,20 @@ export const PoolDetailModal: React.FC<PoolDetailModalProps> = ({
                         {isOccupied ? (
                           <>
                             <img
-                              src={participant.avatar}
-                              alt={participant.name}
+                              src={participant?.avatar || 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?auto=format&fit=crop&w=100&q=80'}
+                              alt={participant?.name || 'Thành viên'}
                               referrerPolicy="no-referrer"
                               className="w-9 h-9 rounded-full object-cover border border-cyan-400"
                             />
                             <div className="flex-1 min-w-0">
                               <div className="text-xs font-bold font-mono text-white truncate flex items-center gap-1">
-                                <span>{participant.name}</span>
+                                <span>{participant?.name || 'Thành viên'}</span>
                                 <CheckCircle2 className="w-3 h-3 text-emerald-400 shrink-0" />
                               </div>
                               <div className="text-[10px] font-mono text-slate-400 flex items-center gap-1 mt-0.5">
                                 <span>Slot #{index + 1}</span>
                                 <span>•</span>
-                                <span className="text-cyan-400">{participant.joinedAt}</span>
+                                <span className="text-cyan-400">{participant?.joinedAt || 'Vừa xong'}</span>
                               </div>
                             </div>
                           </>
@@ -479,11 +481,11 @@ export const PoolDetailModal: React.FC<PoolDetailModalProps> = ({
                   <div className="flex items-center justify-between">
                     <div className="text-[11px] font-mono text-slate-400 flex items-center gap-1.5">
                       <img
-                        src={user.avatar || 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?auto=format&fit=crop&w=100&q=80'}
-                        alt={user.name}
+                        src={user?.avatar || 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?auto=format&fit=crop&w=100&q=80'}
+                        alt={user?.name || 'Tài khoản'}
                         className="w-4 h-4 rounded-full"
                       />
-                      <span>Review as: <strong className="text-cyan-400">{user.name}</strong></span>
+                      <span>Review as: <strong className="text-cyan-400">{user?.name || 'Người dùng'}</strong></span>
                     </div>
 
                     <button

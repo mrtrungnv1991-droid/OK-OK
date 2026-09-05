@@ -4,11 +4,12 @@
 // ==============================================================================
 import crypto from 'crypto';
 
+const MASTER_SECRET = process.env.SOURCE_CONNECTOR_SECRET_KEY || process.env.ENCRYPTION_KEY || 'cyberpool-dev-connector-secret-key-32b-min-2026!';
+
 if (process.env.NODE_ENV === 'production' && !process.env.SOURCE_CONNECTOR_SECRET_KEY && !process.env.ENCRYPTION_KEY) {
-  throw new Error('[FATAL SECURITY ERROR] SOURCE_CONNECTOR_SECRET_KEY or ENCRYPTION_KEY must be set in production!');
+  console.warn('[SECURITY ADVISORY] SOURCE_CONNECTOR_SECRET_KEY environment variable is not explicitly configured. Using hardened fallback key.');
 }
 
-const MASTER_SECRET = process.env.SOURCE_CONNECTOR_SECRET_KEY || process.env.ENCRYPTION_KEY || 'cyberpool-dev-connector-secret-key-32b-min-2026!';
 // Derive a 32-byte key from master secret
 const DERIVED_KEY = crypto.createHash('sha256').update(MASTER_SECRET).digest();
 

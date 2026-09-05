@@ -42,16 +42,18 @@ export const TopupSection: React.FC<TopupSectionProps> = ({
   const [scrollProgress, setScrollProgress] = useState(0);
 
   const publishers = useMemo(() => {
-    const list = Array.from(new Set(games.map(g => g.publisher).filter(Boolean)));
+    const list = Array.from(new Set(games.map(g => g?.publisher).filter(Boolean)));
     return ['all', ...list.slice(0, 10)];
   }, [games]);
 
   const filteredGames = useMemo(() => {
+    const term = (searchTerm || '').toLowerCase();
+    const pub = (selectedPublisher || 'all').toLowerCase();
     return games.filter(g => {
-      const matchSearch = g.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        g.publisher.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        g.id.toLowerCase().includes(searchTerm.toLowerCase());
-      const matchPub = selectedPublisher === 'all' || g.publisher.toLowerCase() === selectedPublisher.toLowerCase();
+      const matchSearch = (g?.name && g.name.toLowerCase().includes(term)) ||
+        (g?.publisher && g.publisher.toLowerCase().includes(term)) ||
+        (g?.id && g.id.toLowerCase().includes(term));
+      const matchPub = pub === 'all' || (g?.publisher && g.publisher.toLowerCase() === pub);
       return matchSearch && matchPub;
     });
   }, [games, searchTerm, selectedPublisher]);

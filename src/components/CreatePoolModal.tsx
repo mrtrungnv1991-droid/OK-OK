@@ -87,10 +87,10 @@ export const CreatePoolModal: React.FC<CreatePoolModalProps> = ({
   const filteredProducts = products.filter(p => {
     const matchCat = selectedCategoryFilter === 'all' || p.category === selectedCategoryFilter;
     const matchSearch = searchTerm.trim() === '' || 
-      p.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      p.subtitle.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      p.platform.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      (p.tags && p.tags.some(t => t.toLowerCase().includes(searchTerm.toLowerCase())));
+      (p.title || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
+      (p.subtitle || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
+      (p.platform || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
+      (p.tags && p.tags.some(t => (t || '').toLowerCase().includes(searchTerm.toLowerCase())));
     return matchCat && matchSearch;
   });
 

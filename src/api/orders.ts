@@ -6,11 +6,22 @@ export const ordersApi = {
     return api.get<{ orders: UserOrder[] }>('/orders');
   },
 
+  getAdminOrders: async (): Promise<ApiResponse<{ orders: UserOrder[] }>> => {
+    return api.get<{ orders: UserOrder[] }>('/orders/admin/all');
+  },
+
   getOrderById: async (orderId: string): Promise<ApiResponse<{ order: UserOrder }>> => {
     return api.get<{ order: UserOrder }>(`/orders/${orderId}`);
   },
 
-  instantBuy: async (payload: { productId: string; idempotencyKey?: string }): Promise<ApiResponse<{ order: UserOrder; deliveredKey: string; message: string }>> => {
+  instantBuy: async (payload: { 
+    productId: string; 
+    quantity?: number; 
+    paymentMethod?: 'wallet' | 'vietqr' | 'telco' | 'card';
+    voucherCode?: string;
+    finalTotal?: number;
+    idempotencyKey?: string 
+  }): Promise<ApiResponse<{ order: UserOrder; deliveredKey: string; message: string }>> => {
     return api.post<{ order: UserOrder; deliveredKey: string; message: string }>('/orders/instant-buy', payload);
   },
 

@@ -981,6 +981,185 @@ export const INITIAL_PRODUCTS: Product[] = [
     reviewCount: 1340,
     stockAvailable: 90,
     tags: ['GENSHIN IMPACT', 'ĐÁ SÁNG THẾ', 'HOYOVERSE', 'NẠP UID']
+  },
+  // ==============================================================================
+  // G2UP.NET (CYBORG API) DIRECT SYNCED PRODUCTS (POST BÊN WEB + TĂNG GIÁ CYBORG)
+  // ==============================================================================
+  {
+    id: 'prod-g2up-godhuman',
+    title: 'Tài Khoản Roblox GODHUMAN (Bảo Hành 10 Ngày)',
+    subtitle: 'Acc Blox Fruits Max Level GodHuman, Superhuman, CDK & Soul Guitar - Auto Giao Key & Cookie',
+    category: 'accounts',
+    platform: 'Roblox',
+    productType: 'account',
+    bannerImg: '',
+    retailPrice: 15000,
+    groupPrice: 10000,
+    minSlots: 3,
+    deliveryType: 'instant_key',
+    deliveryEstimate: 'Giao tức thì < 5 giây qua Kho Key Vault (User:Pass:Cookie)',
+    description: 'Tài khoản Roblox Blox Fruits GodHuman chính hãng từ kho nhà cung cấp G2UP.NET đã được bóc tách và đồng bộ vào kho hệ thống CyberPool. Bàn giao đầy đủ gồm Username, Password và Cookie sạch 100% tức thì qua Vault. Áp dụng chính sách bảo hành 10 ngày an toàn từ hệ thống.',
+    features: [
+      'Sản phẩm đã đồng bộ vào kho hệ thống CyberPool',
+      'GodHuman Max Level, Superhuman, Dragon Talon',
+      'Đã mở Cursed Dual Katana & Soul Guitar',
+      'Bảo hành 10 ngày (10-day warranty) an toàn qua Vault',
+      'Giá gốc G2UP: 5.800 đ (Đã áp dụng công thức tăng giá Cyborg)'
+    ],
+    instructions: [
+      '1. Chọn Mua Ngay để nhận tài khoản tức thì',
+      '2. Thanh toán an toàn bằng số dư ví hoặc VietQR',
+      '3. Vào Kho Key & Vault để lấy tài khoản User:Pass:Cookie'
+    ],
+    seller: {
+      id: 'seller-g2up-cyborg',
+      name: 'G2UP.NET Partner (Cyborg API)',
+      avatar: 'https://images.unsplash.com/photo-1566492031773-4f4e44671857?auto=format&fit=crop&w=150&q=80',
+      badge: 'Official Partner',
+      rating: 4.98,
+      totalDeals: 15400,
+      completedPools: 1200,
+      responseTime: 'Tức thì (< 5s)'
+    },
+    salesType: 'retail_only',
+    allowGroupBuy: false,
+    activePools: [],
+    rating: 4.97,
+    reviewCount: 420,
+    stockAvailable: 4604,
+    tags: ['G2UP API', 'Cyborg Direct', 'Roblox', 'Blox Fruits', 'GodHuman', 'Bảo Hành 10D', 'Auto Giao']
+  },
+  {
+    id: 'prod-g2up-priv-server',
+    title: 'Roblox Private Server - VIP Server Blox Fruits (Thuê 1 Tháng)',
+    subtitle: 'Link Private Server riêng tư cày cấp, săn Sea Beast, nhặt rương & farm mảnh không sợ KS',
+    category: 'key_games',
+    platform: 'Roblox',
+    productType: 'key_game',
+    salesType: 'both',
+    allowGroupBuy: true,
+    bannerImg: '',
+    retailPrice: 21000,
+    groupPrice: 18000,
+    minSlots: 3,
+    deliveryType: 'instant_key',
+    deliveryEstimate: 'Nhận link invite Private Server tức thì sau thanh toán',
+    description: 'Dịch vụ thuê Private Server Blox Fruits (Roblox) thời hạn 1 tháng đã được đồng bộ vào hệ thống CyberPool. Bạn và bạn bè thoải mái tham gia server riêng để cày cấp, thức tỉnh tộc V4, săn boss mà không lo bị bounty hunter quấy rầy. Bàn giao link tự động qua Vault.',
+    features: [
+      'Sản phẩm đã đồng bộ vào hệ thống CyberPool',
+      'Server VIP hoạt động liên tục 24/7 trong 30 ngày',
+      'Chia sẻ link tham gia cho tối đa 12 người bạn cùng chơi',
+      'Đổi link mới miễn phí nếu server gặp sự cố',
+      'Giá gốc G2UP: 13.000 đ (Đã áp dụng công thức tăng giá Cyborg)'
+    ],
+    instructions: [
+      '1. Chọn mua lẻ nhận link ngay hoặc gom đơn chia tiền cùng bạn bè',
+      '2. Nhận link Private Server trong Kho Key Vault',
+      '3. Nhấp vào link để vào thẳng Server VIP trên Roblox'
+    ],
+    seller: {
+      id: 'seller-g2up-cyborg',
+      name: 'G2UP.NET Partner (Cyborg API)',
+      avatar: 'https://images.unsplash.com/photo-1566492031773-4f4e44671857?auto=format&fit=crop&w=150&q=80',
+      badge: 'Official Partner',
+      rating: 4.98,
+      totalDeals: 15400,
+      completedPools: 1200,
+      responseTime: 'Tức thì (< 5s)'
+    },
+    activePools: [],
+    rating: 4.95,
+    reviewCount: 159,
+    stockAvailable: 159,
+    tags: ['G2UP API', 'Cyborg Direct', 'Roblox', 'Private Server', 'Blox Fruits', 'Auto Giao']
+  },
+  {
+    id: 'prod-g2up-anime-exp',
+    title: 'Anime Expeditions 200k-270k Gem + 200 Trait Reroll (Level 120+)',
+    subtitle: 'Account 100% Hero True Saint & Crimson, 200k+ Gold, Đầy đủ User:Pass:Cookie',
+    category: 'accounts',
+    platform: 'Anime Expeditions',
+    productType: 'account',
+    bannerImg: '',
+    retailPrice: 29000,
+    groupPrice: 25000,
+    minSlots: 3,
+    deliveryType: 'instant_key',
+    deliveryEstimate: 'Bàn giao định dạng User:Pass:Cookie tức thì sau thanh toán',
+    description: 'Tài khoản Anime Expeditions đỉnh cao kết nối trực tiếp từ kho G2UP.NET. Sở hữu sẵn 200.000 - 270.000 Kim Cương (Gem), trên 200 vé Trait Reroll, Level 120+, 200k Gold và tỉ lệ 100% sở hữu Hero True Saint & Crimson. Giao tự động 100% qua API Cyborg.',
+    features: [
+      'Đấu nối trực tiếp API G2UP.NET (Account: cyborg)',
+      '200.000 - 270.000 Gems cực khủng sẵn sàng roll',
+      '200+ Vé Trait Reroll tinh hoa, 200k+ Vàng',
+      'Level nhân vật 120+, 100% Hero True Saint & Crimson',
+      'Giá gốc G2UP: 20.000 đ (Đã áp dụng công thức tăng giá Cyborg)'
+    ],
+    instructions: [
+      '1. Chọn mua lẻ để nhận ngay thông tin tài khoản',
+      '2. Nhận thông tin đăng nhập User:Pass:Cookie trong Kho Key',
+      '3. Đăng nhập và trải nghiệm ngay tài khoản VIP'
+    ],
+    seller: {
+      id: 'seller-g2up-cyborg',
+      name: 'G2UP.NET Partner (Cyborg API)',
+      avatar: 'https://images.unsplash.com/photo-1566492031773-4f4e44671857?auto=format&fit=crop&w=150&q=80',
+      badge: 'Official Partner',
+      rating: 4.98,
+      totalDeals: 15400,
+      completedPools: 1200,
+      responseTime: 'Tức thì (< 5s)'
+    },
+    salesType: 'retail_only',
+    allowGroupBuy: false,
+    activePools: [],
+    rating: 4.96,
+    reviewCount: 98,
+    stockAvailable: 50,
+    tags: ['G2UP API', 'Cyborg Direct', 'Anime Expeditions', '270k Gem', 'Level 120+', 'Auto Giao']
+  },
+  {
+    id: 'prod-g2up-fullgear-v4',
+    title: 'Roblox Blox Fruits FULLGEAR V4 (Cyborg / Mink / Shark)',
+    subtitle: 'GodHuman + Cursed Dual Katana + Full Gear V4 + 140k-180k Frag - Bảo Hành 10 Ngày',
+    category: 'accounts',
+    platform: 'Roblox',
+    productType: 'account',
+    salesType: 'retail_only',
+    allowGroupBuy: false,
+    bannerImg: '',
+    retailPrice: 49000,
+    groupPrice: 39000,
+    minSlots: 3,
+    deliveryType: 'instant_key',
+    deliveryEstimate: 'Tự động kiểm tra và giao tài khoản sau 10s',
+    description: 'Acc Blox Fruits Full Gear V4 cao cấp từ G2UP.NET kết nối qua API Cyborg đã được đồng bộ vào hệ thống. Đã hoàn thành nhiệm vụ thức tỉnh V4 Full Gear (Cyborg / Mink / Shark), GodHuman Max Level, Cursed Dual Katana và tích lũy 140.000 - 180.000 Fragments. Bảo hành an toàn 10 ngày.',
+    features: [
+      'Sản phẩm đã đồng bộ vào kho hệ thống CyberPool',
+      'Full Gear V4 tộc Cyborg / Mink / Shark thức tỉnh cực mạnh',
+      'Đầy đủ GodHuman Max Level + Cursed Dual Katana',
+      '140.000 - 180.000 Fragments dồi dào tha hồ nâng cấp',
+      'Giá gốc G2UP: 35.000 đ (Đã áp dụng công thức tăng giá Cyborg)'
+    ],
+    instructions: [
+      '1. Chọn mua lẻ để nhận ngay tài khoản',
+      '2. Nhận User:Pass:Cookie trong Kho Key Vault',
+      '3. Đăng nhập đổi pass và bảo mật tài khoản'
+    ],
+    seller: {
+      id: 'seller-g2up-cyborg',
+      name: 'G2UP.NET Partner (Cyborg API)',
+      avatar: 'https://images.unsplash.com/photo-1566492031773-4f4e44671857?auto=format&fit=crop&w=150&q=80',
+      badge: 'Official Partner',
+      rating: 4.98,
+      totalDeals: 15400,
+      completedPools: 1200,
+      responseTime: 'Tức thì (< 5s)'
+    },
+    activePools: [],
+    rating: 4.99,
+    reviewCount: 145,
+    stockAvailable: 25,
+    tags: ['G2UP API', 'Cyborg Direct', 'Roblox', 'FullGear V4', 'Blox Fruits', 'GodHuman', 'Auto Giao']
   }
 ];
 

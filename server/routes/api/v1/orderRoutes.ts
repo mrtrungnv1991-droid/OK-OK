@@ -6,15 +6,33 @@ import { ServerOrder } from '../../../types';
 
 export const orderRouter = Router();
 
-// GET /api/v1/orders - User Order History / Key Vault
+// GET /api/v1/orders - User Order History / Key Vault / Admin View
 orderRouter.get('/', requireAuth, (req: AuthenticatedRequest, res) => {
-  const userOrders = Array.from(db.orders.values())
-    .filter((o: ServerOrder) => o.buyerId === req.user!.id)
+  const isAdmin = req.user!.role === 'ADMIN' || req.user!.role === 'SUPER_ADMIN';
+  const showAll = req.query.all === 'true' && isAdmin;
+
+  const orders = Array.from(db.orders.values())
+    .filter((o: ServerOrder) => showAll ? true : o.buyerId === req.user!.id)
     .sort((a: ServerOrder, b: ServerOrder) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
 
   res.json({
     success: true,
-    orders: userOrders
+    orders
+  });
+});
+
+// GET /api/v1/orders/admin/all - Explicit Admin Endpoint for Sold Orders & Reporting
+orderRouter.get('/admin/all', requireAuth, (req: AuthenticatedRequest, res) => {
+  if (req.user!.role !== 'ADMIN' && req.user!.role !== 'SUPER_ADMIN') {
+    return res.status(403).json({ success: false, error: 'Quyền truy cập bị từ chối' });
+  }
+
+  const allOrders = Array.from(db.orders.values())
+    .sort((a: ServerOrder, b: ServerOrder) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+
+  res.json({
+    success: true,
+    orders: allOrders
   });
 });
 
@@ -38,7 +56,7 @@ orderRouter.get('/:id', requireAuth, (req: AuthenticatedRequest, res) => {
 
 // POST /api/v1/orders/instant-buy - Instant Single Key/Account Purchase
 orderRouter.post('/instant-buy', requireAuth, async (req: AuthenticatedRequest, res) => {
-  const { productId } = req.body;
+  const { productId, quantity, paymentMethod, voucherCode, finalTotal } = req.body;
   if (!productId) {
     return res.status(400).json({ success: false, error: 'productId is required' });
   }
@@ -46,6 +64,10 @@ orderRouter.post('/instant-buy', requireAuth, async (req: AuthenticatedRequest, 
   const result = await OrderService.createInstantPurchase({
     buyer: req.user!,
     productId,
+    quantity: Number(quantity) || 1,
+    paymentMethod: paymentMethod || 'wallet',
+    voucherCode,
+    finalTotal: typeof finalTotal === 'number' ? finalTotal : undefined,
     ipAddress: req.ip
   });
 

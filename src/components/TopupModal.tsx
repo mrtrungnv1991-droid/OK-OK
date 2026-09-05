@@ -85,13 +85,14 @@ export const TopupModal: React.FC<TopupModalProps> = ({
 
   if (!isOpen || !activeGame) return null;
 
-  const currentTier = selectedTier || activeGame.tiers[0];
+  const currentTier = selectedTier || activeGame.tiers?.[0];
   const price = currentTier ? (mode === 'group_topup' ? currentTier.groupPrice : currentTier.retailPrice) : 0;
   const isBalanceSufficient = currentBalance >= price;
 
+  const search = (gameSearch || '').toLowerCase();
   const filteredGames = games.filter(g => 
-    g.name.toLowerCase().includes(gameSearch.toLowerCase()) || 
-    g.publisher.toLowerCase().includes(gameSearch.toLowerCase())
+    (g?.name && g.name.toLowerCase().includes(search)) || 
+    (g?.publisher && g.publisher.toLowerCase().includes(search))
   );
 
   // Simulate UID Lookup
@@ -126,7 +127,7 @@ export const TopupModal: React.FC<TopupModalProps> = ({
         zoneId: zoneId.trim() || undefined,
         server: selectedServer || undefined,
         characterName: verifiedCharacter ? verifiedCharacter.split(' ')[0] : 'In-game Player',
-        tierName: currentTier.name,
+        tierName: currentTier?.name || 'Gói Tiêu Chuẩn',
         pricePaid: price,
         status: 'completed',
         txId: `TX-TOPUP-${Date.now().toString().slice(-6)}`,

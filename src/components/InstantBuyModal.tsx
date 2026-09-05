@@ -21,12 +21,15 @@ import {
   KeyRound,
   Download,
   AlertCircle,
-  Smartphone
+  Smartphone,
+  Gamepad2
 } from 'lucide-react';
 import { Product, UserProfile, UserOrder } from '../types';
 import { formatCurrency, generateTxHash, generateRandomKey } from '../utils/formatters';
 import { useTranslation } from '../i18n';
 import { useUI } from '../contexts/UIContext';
+import { ordersApi } from '../api/orders';
+import { WebDeliveryOutput } from './WebDeliveryOutput';
 
 interface InstantBuyModalProps {
   isOpen: boolean;
@@ -133,7 +136,7 @@ Thank you for trading on CyberPool Escrow Network!
     URL.revokeObjectURL(url);
   };
 
-  const handleExecutePurchase = (method: 'wallet' | 'vietqr' | 'telco') => {
+  const handleExecutePurchase = async (method: 'wallet' | 'vietqr' | 'telco') => {
     if (method === 'wallet' && !hasEnoughBalance) {
       onOpenWallet();
       return;
@@ -148,35 +151,62 @@ Thank you for trading on CyberPool Escrow Network!
 
     setIsProcessing(true);
 
-    setTimeout(() => {
-      const randomKey = generateRandomKey(product.platform);
-      const newOrder: UserOrder = {
-        id: `ord-retail-${Date.now()}`,
+    try {
+      // Execute REAL backend purchase - NO MORE PHANTOM ORDERS!
+      const res = await ordersApi.instantBuy({
         productId: product.id,
-        productTitle: `${product.title} (x${quantity})`,
-        platform: product.platform,
-        type: 'instant_single',
-        pricePaid: finalTotal,
-        status: 'fulfilled',
-        createdAt: new Date().toLocaleString(),
-        deliveredKey: randomKey,
-        pinCode: '8821',
-        giftUpCard: product.deliveryType === 'giftup_card' ? {
-          cardNumber: `4928 ${Math.floor(1000 + Math.random() * 9000)} ${Math.floor(1000 + Math.random() * 9000)} ${Math.floor(1000 + Math.random() * 9000)}`,
-          pinCode: '8821',
-          barcode: `GU-${Math.floor(1000 + Math.random() * 9000)}-${Math.floor(1000 + Math.random() * 9000)}`,
-          balance: 50,
-          currency: 'USD',
-          expiryDate: '12/2028',
-          redeemUrl: 'https://giftup.app/redeem/cyberpool'
-        } : undefined,
-        txId: `TX-RETAIL-${Date.now().toString().slice(-6)}`
-      };
+        quantity,
+        paymentMethod: method,
+        voucherCode: voucherCode || undefined,
+        finalTotal
+      });
 
+      if (res.success && res.data?.order) {
+        const realOrder = res.data.order;
+        const orderAny = realOrder as any;
+        const orderForState: UserOrder = {
+          id: realOrder.id,
+          productId: realOrder.productId,
+          productTitle: realOrder.productTitle,
+          platform: product.platform,
+          type: 'instant_single',
+          pricePaid: realOrder.pricePaid,
+          status: 'fulfilled',
+          createdAt: new Date(realOrder.createdAt).toLocaleString('vi-VN'),
+          deliveryBranch: orderAny.deliveryBranch || product.deliveryBranch,
+          deliveredKey: orderAny.deliveredData?.keys?.[0] || res.data.deliveredKey || 'DELIVERED',
+          pinCode: orderAny.deliveredData?.giftCardInfo?.pinCode || '8821',
+          deliveredData: orderAny.deliveredData,
+          giftUpCard: orderAny.deliveredData?.giftUpCard ? {
+            cardNumber: orderAny.deliveredData.giftUpCard.cardNumber,
+            pinCode: orderAny.deliveredData.giftUpCard.pinCode,
+            barcode: orderAny.deliveredData.giftUpCard.barcode,
+            balance: orderAny.deliveredData.giftUpCard.balance,
+            currency: orderAny.deliveredData.giftUpCard.currency,
+            expiryDate: '12/2028',
+            redeemUrl: 'https://giftup.app/redeem/cyberpool'
+          } : undefined,
+          txId: orderAny.txHash || `TX-${realOrder.id.slice(-6)}`
+        };
+
+        setIsProcessing(false);
+        setDeliveredOrder(orderForState);
+        onSuccessOrder(orderForState, finalTotal, method);
+        showToast('Đơn hàng thật đã được ghi nhận vào hệ thống và Kho Key!', 'success', {
+          title: 'ĐẶT MUA THÀNH CÔNG'
+        });
+      } else {
+        setIsProcessing(false);
+        showToast(res.error || 'Đặt mua thất bại. Vui lòng kiểm tra lại số dư hoặc kết nối mạng.', 'error', {
+          title: 'GIAO DỊCH KHÔNG THÀNH CÔNG'
+        });
+      }
+    } catch (err: any) {
       setIsProcessing(false);
-      setDeliveredOrder(newOrder);
-      onSuccessOrder(newOrder, finalTotal, method);
-    }, 1200);
+      showToast(err.message || 'Lỗi hệ thống khi tạo đơn hàng!', 'error', {
+        title: 'LỖI MUA HÀNG'
+      });
+    }
   };
 
   return (
@@ -236,59 +266,20 @@ Thank you for trading on CyberPool Escrow Network!
                 </div>
               </div>
 
-              {/* Delivered Key Box */}
-              <div className="p-5 rounded-xl bg-slate-950 border border-cyan-500/40 space-y-4">
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-2">
-                    <KeyRound className="w-4 h-4 text-cyan-400" />
-                    <span className="text-xs font-mono font-bold uppercase text-slate-200">
-                      {t('checkout.keys_delivered')}
-                    </span>
-                  </div>
-                  <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-cyan-950 text-cyan-300 border border-cyan-500/30">
-                    Escrow Guaranteed
-                  </span>
-                </div>
-
-                {/* Big Key Display */}
-                <div className="p-3.5 rounded-lg bg-black/90 border border-cyan-500/60 flex items-center justify-between gap-3 shadow-inner">
-                  <div className="font-mono font-black text-cyan-300 text-sm sm:text-base tracking-wider break-all select-all">
-                    {deliveredOrder.deliveredKey}
-                  </div>
-                  <button
-                    onClick={() => handleCopyText(deliveredOrder.deliveredKey || '', 'delivered_key')}
-                    className="flex items-center gap-1.5 px-3 py-1.5 rounded-md bg-cyan-500 hover:bg-cyan-400 text-black font-mono font-bold text-xs shrink-0 transition-all cursor-pointer shadow-[0_0_10px_rgba(6,182,212,0.4)]"
-                  >
-                    {copiedField === 'delivered_key' ? (
-                      <>
-                        <Check className="w-3.5 h-3.5" />
-                        <span>{t('common.copied')}</span>
-                      </>
-                    ) : (
-                      <>
-                        <Copy className="w-3.5 h-3.5" />
-                        <span>{t('common.copy')}</span>
-                      </>
-                    )}
-                  </button>
-                </div>
-
-                {/* Additional PIN or GiftUp Info */}
-                {deliveredOrder.pinCode && (
-                  <div className="flex items-center justify-between text-xs font-mono p-2.5 rounded bg-slate-900/80 border border-slate-800">
-                    <span className="text-slate-400">PIN:</span>
-                    <div className="flex items-center gap-2">
-                      <span className="font-bold text-white">{deliveredOrder.pinCode}</span>
-                      <button
-                        onClick={() => handleCopyText(deliveredOrder.pinCode || '', 'pin')}
-                        className="text-cyan-400 hover:text-cyan-300 text-[11px] underline cursor-pointer"
-                      >
-                        {copiedField === 'pin' ? t('common.copied') : t('common.copy')}
-                      </button>
-                    </div>
-                  </div>
-                )}
-              </div>
+              {/* Web Digital Delivery Output (Account, Key, Link, Giftcard) */}
+              <WebDeliveryOutput
+                branch={deliveredOrder.deliveryBranch || product.deliveryBranch}
+                rawKey={deliveredOrder.deliveredKey}
+                accountCredentials={deliveredOrder.deliveredData?.accountCredentials}
+                inviteLink={deliveredOrder.deliveredData?.inviteLink}
+                giftCardInfo={
+                  deliveredOrder.deliveredData?.giftCardInfo ||
+                  (deliveredOrder.pinCode
+                    ? { cardNumber: deliveredOrder.deliveredKey, pinCode: deliveredOrder.pinCode }
+                    : undefined)
+                }
+                productTitle={deliveredOrder.productTitle || product.title}
+              />
 
               {/* Action Buttons */}
               <div className="flex flex-col sm:flex-row gap-3 pt-2">
@@ -317,12 +308,19 @@ Thank you for trading on CyberPool Escrow Network!
             <>
               {/* Product Presentation Card */}
               <div className="p-4 rounded-xl bg-slate-900/80 border border-slate-800 flex flex-col sm:flex-row items-start sm:items-center gap-4">
-                <img
-                  src={product.bannerImg}
-                  alt={product.title}
-                  referrerPolicy="no-referrer"
-                  className="w-full sm:w-24 h-24 rounded-lg object-cover border border-slate-700 shrink-0"
-                />
+                {(product.bannerImg && product.bannerImg.trim() !== '') || (product.images && product.images.length > 0) ? (
+                  <img
+                    src={product.bannerImg || product.images?.[0]}
+                    alt={product.title}
+                    referrerPolicy="no-referrer"
+                    className="w-full sm:w-24 h-24 rounded-lg object-cover border border-slate-700 shrink-0"
+                  />
+                ) : (
+                  <div className="w-full sm:w-24 h-24 rounded-lg border border-slate-700 bg-slate-950 flex flex-col items-center justify-center text-center p-2 shrink-0">
+                    <Gamepad2 className="w-6 h-6 text-cyan-400 mb-1" />
+                    <span className="text-[9px] font-mono text-slate-400">Chưa có ảnh</span>
+                  </div>
+                )}
 
                 <div className="flex-1 min-w-0 space-y-1.5">
                   <div className="flex items-center gap-2 flex-wrap">
@@ -346,7 +344,7 @@ Thank you for trading on CyberPool Escrow Network!
                   </p>
 
                   <div className="text-[11px] font-mono text-slate-400 flex items-center gap-2 pt-1">
-                    <span>{product.seller.name}</span>
+                    <span>{product.seller?.name || product.source_info?.supplierName || 'Cyber Verified Store'}</span>
                     <span>•</span>
                     <span className="text-emerald-400">{product.stockAvailable || 15} keys</span>
                   </div>

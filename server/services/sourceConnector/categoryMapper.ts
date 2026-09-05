@@ -17,7 +17,15 @@ export class CategoryMapper {
       { source_category_id: 'cat-muakey-steam', source_category_name: 'Steam Wallet & Game Key', internal_category_id: 'gift-cards-steam', internal_category_name: 'Gift Cards / Steam', mode: 'AUTO' },
       { source_category_id: 'cat-muakey-entertainment', source_category_name: 'Tài Khoản Giải Trí', internal_category_id: 'accounts-streaming', internal_category_name: 'Premium Accounts / Streaming', mode: 'AUTO' },
       { source_category_id: 'cat-muakey-work', source_category_name: 'Phần Mềm & Công Việc', internal_category_id: 'software-licenses', internal_category_name: 'Software Licenses / Office', mode: 'AUTO' },
-      { source_category_id: 'cat-muakey-ai', source_category_name: 'Tài Khoản AI', internal_category_id: 'ai-tools', internal_category_name: 'AI Tools / Accounts', mode: 'AUTO' }
+      { source_category_id: 'cat-muakey-ai', source_category_name: 'Tài Khoản AI', internal_category_id: 'ai-tools', internal_category_name: 'AI Tools / Accounts', mode: 'AUTO' },
+      // G2UP.NET category mappings
+      { source_category_id: 'cat-g2up-8', source_category_name: 'BLOX FRUITS (10 day warranty)', internal_category_id: 'game-roblox', internal_category_name: 'Roblox / Blox Fruits 10D', mode: 'AUTO' },
+      { source_category_id: 'cat-g2up-11', source_category_name: 'BLOX FRUITS FULLGEAR (10-day warranty)', internal_category_id: 'game-roblox', internal_category_name: 'Roblox / Blox Fruits FullGear', mode: 'AUTO' },
+      { source_category_id: 'cat-g2up-102', source_category_name: 'GOD(warrantly sec 10day)', internal_category_id: 'game-roblox', internal_category_name: 'Roblox / GodHuman Accounts', mode: 'AUTO' },
+      { source_category_id: 'cat-g2up-103', source_category_name: 'GOD MYTHICAL (warrantly sec 10day)', internal_category_id: 'game-roblox', internal_category_name: 'Roblox / God Mythical Fruit', mode: 'AUTO' },
+      { source_category_id: 'cat-g2up-106', source_category_name: 'Gear (warrantly sec 10day)', internal_category_id: 'game-roblox', internal_category_name: 'Roblox / Gear V4 Mink/Cyborg', mode: 'AUTO' },
+      { source_category_id: 'cat-g2up-134', source_category_name: 'Roblox private server', internal_category_id: 'game-roblox', internal_category_name: 'Roblox / Private Server Rental', mode: 'AUTO' },
+      { source_category_id: 'cat-g2up-136', source_category_name: 'Anime Expeditions GEM', internal_category_id: 'game-anime', internal_category_name: 'Anime Expeditions Gem & Trait', mode: 'AUTO' }
     ];
 
     for (const d of defaults) {

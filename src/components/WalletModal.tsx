@@ -56,10 +56,10 @@ export const WalletModal: React.FC<WalletModalProps> = ({
   const [successMsg, setSuccessMsg] = useState('');
 
   // Withdrawal Form State
-  const [withdrawAmount, setWithdrawAmount] = useState<number>(Math.min(user.walletBalance, 100000) || 50000);
+  const [withdrawAmount, setWithdrawAmount] = useState<number>(Math.min(user?.walletBalance ?? 0, 100000) || 50000);
   const [withdrawBank, setWithdrawBank] = useState('MB Bank');
   const [withdrawAccountNo, setWithdrawAccountNo] = useState('');
-  const [withdrawAccountName, setWithdrawAccountName] = useState(user.name.toUpperCase());
+  const [withdrawAccountName, setWithdrawAccountName] = useState(user?.name ? user.name.toUpperCase() : 'USER');
   const [withdrawMethod, setWithdrawMethod] = useState<'bank' | 'momo' | 'usdt' | 'crypto_ltc' | 'binance_pay'>('bank');
 
   if (!isOpen) return null;
@@ -118,7 +118,7 @@ export const WalletModal: React.FC<WalletModalProps> = ({
   };
 
   // Filter user's withdrawals
-  const userWithdrawals = withdrawals.filter(w => w.ctvId === user.id || w.ctvName.includes(user.name));
+  const userWithdrawals = withdrawals.filter(w => (user && w.ctvId === user.id) || (user?.name && w.ctvName?.includes(user.name)));
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-black/85 backdrop-blur-md overflow-y-auto">

@@ -557,12 +557,12 @@ function AppContent() {
       matchesCategory = selectedCategory === 'all' || p.category === selectedCategory;
     }
 
-    const matchesPlatform = selectedPlatform === 'all' || p.platform.toLowerCase() === selectedPlatform.toLowerCase();
+    const matchesPlatform = selectedPlatform === 'all' || (p.platform || '').toLowerCase() === (selectedPlatform || '').toLowerCase();
     const matchesSearch = 
-      p.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      p.subtitle.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      p.platform.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      (p.tags && p.tags.some(t => t.toLowerCase().includes(searchTerm.toLowerCase())));
+      (p.title || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
+      (p.subtitle || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
+      (p.platform || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
+      (p.tags && p.tags.some(t => (t || '').toLowerCase().includes(searchTerm.toLowerCase())));
     
     const matchesPurchaseType = 
       purchaseTypeFilter === 'all' ||

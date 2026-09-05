@@ -115,9 +115,9 @@ export const AdminBankingTopupsTab: React.FC<AdminBankingTopupsTabProps> = ({
   };
 
   const filteredInvoices = invoices.filter(inv => {
-    const matchSearch = inv.txCode.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      inv.userName.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      inv.id.toLowerCase().includes(searchTerm.toLowerCase());
+    const matchSearch = (inv.txCode || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
+      (inv.userName || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
+      (inv.id || '').toLowerCase().includes(searchTerm.toLowerCase());
     const matchStatus = statusFilter === 'all' || inv.status === statusFilter;
     const matchMethod = methodFilter === 'all' || inv.method === methodFilter;
     return matchSearch && matchStatus && matchMethod;

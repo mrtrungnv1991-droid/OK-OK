@@ -4,6 +4,36 @@
 import { ScannerProfileConfig } from './types';
 
 export const BUILT_IN_SCANNER_PROFILES: Record<string, ScannerProfileConfig> = {
+  G2UP_API_CONNECTOR: {
+    profileId: 'G2UP_API_CONNECTOR',
+    name: 'G2UP.NET Official API & Roblox Accounts Profile',
+    domainPattern: 'g2up.net',
+    loginUrl: 'https://g2up.net/client/login',
+    categoryListUrl: 'https://g2up.net/api/products.php',
+    categorySelector: '.category-item',
+    categoryNameSelector: '.name',
+    paginationStrategy: 'PAGE',
+    maxPagesSafetyLimit: 50,
+    nextPageSelector: '',
+    productCardSelector: '.product-card',
+    productIdExtractor: {
+      attribute: 'data-id',
+      regex: '([0-9]+)'
+    },
+    titleSelector: '.product-name',
+    priceSelector: '.price',
+    stockSelector: '.stock',
+    statusSelector: '.status',
+    detailUrlSelector: 'a',
+    fallbackSelectors: {
+      price: ['.price'],
+      stock: ['.stock'],
+      title: ['.title']
+    },
+    jsonLdEnabled: false,
+    politenessDelayMs: 400
+  },
+
   MUAKey_STANDARD: {
     profileId: 'MUAKey_STANDARD',
     name: 'Muakey.com Official Grid Profile',
