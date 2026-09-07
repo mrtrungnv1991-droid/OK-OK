@@ -4,6 +4,7 @@ import { LedgerService } from './ledgerService';
 import { InventoryService } from './inventoryService';
 import { AuditService } from './auditService';
 import { SupplierManagerService } from './supplierHub/services/SupplierManagerService';
+import { cyborgPipelineService } from './sourceConnector/cyborgPipelineService';
 import { detectDeliveryBranch, parseDeliveredOutput, DeliveryBranch } from './supplierHub/utils/deliveryBranchDetector';
 
 export class OrderService {
@@ -25,6 +26,13 @@ export class OrderService {
 
     if (!product) {
       return { success: false, error: 'Không tìm thấy sản phẩm trong hệ thống' };
+    }
+
+    if ((product.stockAvailable !== undefined && product.stockAvailable <= 0) || product.status === 'OUT_OF_STOCK' || product.isAvailable === false) {
+      return {
+        success: false,
+        error: `Sản phẩm "${product.title}" hiện tại đã hết hàng tại shop API nguồn. Vui lòng chọn sản phẩm khác hoặc quay lại sau!`
+      };
     }
 
     const unitPrice = product.retailPrice;
@@ -66,6 +74,63 @@ export class OrderService {
       console.warn('[OrderService] Supplier dispatch exception:', err);
     }
 
+    // A2. Check if product is from Cyborg Pipeline / G2UP Direct Connector (Real live API)
+    if (!deliveredKey) {
+      try {
+        let g2upRawId: string | null = null;
+        const pTitle = (product.title || '').toLowerCase();
+        
+        if (productId === 'prod-g2up-priv-server' || productId === 'prod-roblox-priv-server') {
+          g2upRawId = '1937';
+        } else if (productId === 'prod-g2up-godhuman' || productId === 'prod-roblox-godhuman') {
+          g2upRawId = '1752';
+        } else if (productId === 'prod-g2up-anime-exp' || productId === 'prod-roblox-fullgear-v4') {
+          g2upRawId = '1940';
+        } else if (productId.startsWith('prod_g2up_')) {
+          g2upRawId = productId.replace('prod_g2up_', '');
+        } else if (productId.startsWith('prod-g2up-')) {
+          g2upRawId = productId.replace('prod-g2up-', '');
+        } else if ((product as any)?.source_info?.sourceProductId) {
+          g2upRawId = String((product as any).source_info.sourceProductId).replace('g2up-', '');
+        } else if (pTitle.includes('private server') || pTitle.includes('vip server') || pTitle.includes('blox fruits')) {
+          g2upRawId = '1937';
+        } else if (pTitle.includes('godhuman')) {
+          g2upRawId = '1752';
+        }
+
+        if (g2upRawId) {
+          console.log(`[OrderService] Found G2UP source product #${g2upRawId} for ${productId} ("${product.title}"). Purchasing directly via G2UP Live API...`);
+          const connector = cyborgPipelineService.getConnector();
+          const purchaseRes = await connector.purchase(g2upRawId, quantity);
+
+          if (purchaseRes.success && purchaseRes.data?.key) {
+            deliveredKey = purchaseRes.data.key;
+            supplierOrderInfo = {
+              supplierId: 'acc_g2up_net',
+              supplierName: 'G2UP.NET Official Live API',
+              externalOrderId: purchaseRes.data.purchaseId,
+              status: purchaseRes.data.status,
+              rawResponse: purchaseRes.data
+            };
+            console.log(`[OrderService] G2UP Live purchase SUCCESS! Key/Link delivered:`, deliveredKey);
+          } else {
+            const errMsg = purchaseRes.error?.message || 'G2UP.NET từ chối giao dịch hoặc số dư không đủ';
+            console.error(`[OrderService] G2UP Live API purchase FAILED:`, errMsg);
+            return {
+              success: false,
+              error: `G2UP API: ${errMsg}`
+            };
+          }
+        }
+      } catch (err: any) {
+        console.error('[OrderService] Cyborg/G2UP connector dispatch error:', err);
+        return {
+          success: false,
+          error: `Lỗi kết nối G2UP: ${err.message || 'Không thể kết nối máy chủ nhà cung cấp'}`
+        };
+      }
+    }
+
     // B. If not a supplier product or fallback, check local inventory vault
     let reservedItem: any = null;
     if (!deliveredKey) {
@@ -77,11 +142,20 @@ export class OrderService {
     }
 
     // Determine branch
-    const branch: DeliveryBranch = (product as any).deliveryBranch || detectDeliveryBranch({
+    let branch: DeliveryBranch = (product as any).deliveryBranch || detectDeliveryBranch({
       title: product.title,
       description: product.description,
       category: product.category
     });
+
+    if (deliveredKey) {
+      const trimmed = deliveredKey.trim();
+      if (trimmed.startsWith('http://') || trimmed.startsWith('https://')) {
+        branch = 'LINK';
+      } else if (trimmed.includes(':') && !trimmed.includes('http')) {
+        branch = 'ACCOUNT';
+      }
+    }
 
     // C. Default generated key or account credential if vault is empty
     if (!deliveredKey) {

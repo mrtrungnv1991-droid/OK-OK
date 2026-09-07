@@ -50,5 +50,9 @@ export const adminApi = {
 
   updateSystemConfig: async (config: any): Promise<ApiResponse<{ config: any }>> => {
     return api.put<{ config: any }>('/admin/system-config', config);
+  },
+
+  testCard24h: async (credentials?: { partnerId?: string; partnerKey?: string }): Promise<ApiResponse<any>> => {
+    return api.post<any>('/admin/test-card24h', credentials || {});
   }
 };

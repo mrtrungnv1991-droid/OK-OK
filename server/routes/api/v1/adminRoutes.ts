@@ -1,4 +1,5 @@
 import { Router } from 'express';
+import crypto from 'crypto';
 import { db } from '../../../db/store';
 import { requireAuth, requireRole, AuthenticatedRequest } from '../../../middleware/authMiddleware';
 import { AuditService } from '../../../services/auditService';
@@ -115,4 +116,48 @@ adminRouter.put('/system-config', (req: AuthenticatedRequest, res) => {
     success: true,
     config: db.systemConfig
   });
+});
+
+// POST /api/v1/admin/test-card24h - Live test ping to Card24h API
+adminRouter.post('/test-card24h', async (req: AuthenticatedRequest, res) => {
+  const partnerId = req.body?.partnerId || db.systemConfig?.telcoPartnerId || '16654919157';
+  const partnerKey = req.body?.partnerKey || db.systemConfig?.telcoPartnerKey || 'bc3299820230bb1ed2b2b729cac744e3';
+
+  if (!partnerId || !partnerKey) {
+    return res.status(400).json({
+      success: false,
+      error: 'Vui lòng cung cấp Partner ID và Partner Key của Card24h'
+    });
+  }
+
+  try {
+    const testPin = '00000000000000';
+    const testSerial = '10000000000';
+    const testRequestId = `PING_${Date.now()}`;
+    const sign = crypto.createHash('md5').update(`${partnerKey}${testPin}${testSerial}`).digest('hex');
+    const testUrl = `https://card24h.com/chargingws/v2?sign=${sign}&telco=VIETTEL&code=${testPin}&serial=${testSerial}&amount=10000&request_id=${testRequestId}&partner_id=${partnerId}&command=charging`;
+
+    const start = Date.now();
+    const response = await fetch(testUrl);
+    const latency = Date.now() - start;
+    const data: any = await response.json();
+
+    res.json({
+      success: true,
+      reachable: true,
+      partnerId,
+      latencyMs: latency,
+      card24hStatus: data.status,
+      card24hMessage: data.message,
+      note: data.status === 3 && data.message === 'charging.invalid_card_code'
+        ? 'Kết nối Card24h API hoàn toàn thành công! (Máy chủ Card24h đã nhận và xác thực Partner ID & Key)'
+        : (data.message || 'Phản hồi từ Card24h'),
+      raw: data
+    });
+  } catch (err: any) {
+    res.status(502).json({
+      success: false,
+      error: `Không thể kết nối đến máy chủ Card24h: ${err.message || 'Lỗi mạng'}`
+    });
+  }
 });

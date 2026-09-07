@@ -1,4 +1,5 @@
 import { Router } from 'express';
+import crypto from 'crypto';
 import { db } from '../../../db/store';
 import { requireAuth, requireRole, AuthenticatedRequest } from '../../../middleware/authMiddleware';
 import { LedgerService } from '../../../services/ledgerService';
@@ -45,18 +46,131 @@ walletRouter.post('/deposit', requireAuth, async (req: AuthenticatedRequest, res
   });
 });
 
-// POST /api/v1/wallet/telco-card - Instant Telco Scratch Card (Thẻ Cào)
+// GET /api/v1/wallet/telco-cards - Get user's submitted scratch cards history
+walletRouter.get('/telco-cards', requireAuth, (req: AuthenticatedRequest, res) => {
+  const userCards: any[] = [];
+  for (const card of db.telcoCards.values()) {
+    if (card.userId === req.user!.id) {
+      userCards.push(card);
+    }
+  }
+  userCards.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+  res.json({ success: true, cards: userCards });
+});
+
+// POST /api/v1/wallet/telco-card - Instant Telco Scratch Card (Thẻ Cào) via Card24h API
 walletRouter.post('/telco-card', requireAuth, async (req: AuthenticatedRequest, res) => {
   const { telco, declaredAmount, pin, serial } = req.body;
   const numAmount = Number(declaredAmount);
 
-  if (!telco || !pin || !serial || isNaN(numAmount)) {
-    return res.status(400).json({ success: false, error: 'Thông tin thẻ không hợp lệ' });
+  if (!telco || !pin || !serial || isNaN(numAmount) || numAmount <= 0) {
+    return res.status(400).json({ success: false, error: 'Thông tin thẻ không hợp lệ (vui lòng nhập đủ loại thẻ, mệnh giá, mã pin và số seri)' });
   }
 
-  // Calculate received amount after telco discount fee (~15-20%)
-  const receivedAmount = Math.round(numAmount * 0.82);
+  // Card24h API credentials
+  const partnerId = db.systemConfig?.telcoPartnerId || process.env.CARD24H_PARTNER_ID || '16654919157';
+  const partnerKey = db.systemConfig?.telcoPartnerKey || process.env.CARD24H_PARTNER_KEY || 'bc3299820230bb1ed2b2b729cac744e3';
+  const provider = db.systemConfig?.telcoProvider || 'card24h';
 
+  // Normalize telco for Card24h
+  let normalizedTelco = String(telco).toUpperCase().trim();
+  if (normalizedTelco === 'VIETNAMOBILE') normalizedTelco = 'VNMOBI';
+
+  const cleanPin = String(pin).trim();
+  const cleanSerial = String(serial).trim();
+  const requestId = `CP_${req.user!.id.replace(/[^a-zA-Z0-9]/g, '')}_${Date.now()}`;
+  const sign = crypto.createHash('md5').update(`${partnerKey}${cleanPin}${cleanSerial}`).digest('hex');
+
+  // If using Card24h gateway
+  if (provider === 'card24h' && partnerId && partnerKey) {
+    try {
+      const card24hUrl = `https://card24h.com/chargingws/v2?sign=${sign}&telco=${normalizedTelco}&code=${encodeURIComponent(cleanPin)}&serial=${encodeURIComponent(cleanSerial)}&amount=${numAmount}&request_id=${requestId}&partner_id=${partnerId}&command=charging`;
+      
+      console.log(`[CARD24H_SUBMIT] User ${req.user!.id} submitting card: ${normalizedTelco} ${numAmount} - RequestId: ${requestId}`);
+      
+      const card24hRes = await fetch(card24hUrl);
+      const data: any = await card24hRes.json();
+
+      console.log(`[CARD24H_RESPONSE]`, data);
+
+      // Card24h status:
+      // 99: Đã gửi thẻ lên hệ thống thành công (chờ gạch thẻ và gọi callback)
+      // 1: Thẻ hợp lệ đã duyệt thành công
+      // 2: Thẻ sai mệnh giá
+      // 3: Thẻ lỗi (sai mã nạp, sai seri, thẻ đã sử dụng)
+      if (data.status === 99 || data.status === 1) {
+        const receivedAmount = data.amount ? Number(data.amount) : Math.round(numAmount * 0.82);
+
+        db.telcoCards.set(requestId, {
+          id: requestId,
+          requestId,
+          userId: req.user!.id,
+          telco: normalizedTelco,
+          pin: cleanPin,
+          serial: cleanSerial,
+          declaredAmount: numAmount,
+          receivedAmount,
+          status: data.status === 1 ? 'SUCCESS' : 'PENDING',
+          card24hTransId: data.trans_id,
+          message: data.message || (data.status === 99 ? 'Thẻ đang chờ gạch tự động' : 'Thẻ hợp lệ'),
+          createdAt: new Date().toISOString()
+        });
+
+        if (data.status === 1) {
+          const result = await LedgerService.executeTransaction({
+            userId: req.user!.id,
+            type: 'DEPOSIT',
+            amount: receivedAmount,
+            description: `Gạch thẻ cào ${normalizedTelco} ${numAmount.toLocaleString()}đ qua Card24h (Thực nhận +${receivedAmount.toLocaleString()}đ)`,
+            referenceId: requestId,
+            ipAddress: req.ip
+          });
+
+          return res.json({
+            success: true,
+            status: 'SUCCESS',
+            message: 'Thẻ cào hợp lệ! Đã cộng tiền vào ví thành công.',
+            receivedAmount,
+            newBalance: req.user!.walletBalance,
+            transaction: result.transaction
+          });
+        }
+
+        return res.json({
+          success: true,
+          status: 'PENDING',
+          message: 'Đã gửi thẻ lên hệ thống Card24h thành công! Thẻ đang được gạch tự động (10-30s), tiền sẽ tự cộng vào ví của bạn.',
+          requestId,
+          receivedAmount,
+          newBalance: req.user!.walletBalance
+        });
+      } else {
+        // Card24h returned error status (e.g. status === 3)
+        let friendlyError = data.message || 'Thẻ cào không hợp lệ hoặc đã qua sử dụng';
+        if (data.message === 'charging.invalid_card_code') {
+          friendlyError = 'Mã nạp (PIN) hoặc số seri thẻ không đúng. Vui lòng kiểm tra lại.';
+        } else if (data.message === 'charging.card_used') {
+          friendlyError = 'Thẻ cào này đã được sử dụng trước đó.';
+        }
+
+        return res.status(400).json({
+          success: false,
+          error: friendlyError,
+          rawMessage: data.message,
+          card24hStatus: data.status
+        });
+      }
+    } catch (apiErr: any) {
+      console.error('[CARD24H_FETCH_ERROR]', apiErr);
+      return res.status(502).json({
+        success: false,
+        error: `Không thể kết nối đến máy chủ Card24h: ${apiErr.message || 'Lỗi mạng'}`
+      });
+    }
+  }
+
+  // Fallback / mock mode if not configured
+  const receivedAmount = Math.round(numAmount * 0.82);
   const result = await LedgerService.executeTransaction({
     userId: req.user!.id,
     type: 'DEPOSIT',

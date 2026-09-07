@@ -52,7 +52,6 @@ import { AdminProductsTab } from './admin/AdminProductsTab';
 import { AdminMembersTab } from './admin/AdminMembersTab';
 import { AdminSupportHubTab } from './admin/AdminSupportHubTab';
 import { AdminSuppliersTab } from './admin/AdminSuppliersTab';
-import { AdminSourceAutomationTab } from './admin/AdminSourceAutomationTab';
 import { AdminDatabaseSchemaTab } from './admin/AdminDatabaseSchemaTab';
 import { AdminCategoriesTab } from './admin/AdminCategoriesTab';
 import { AdminManualOrdersTab } from './admin/AdminManualOrdersTab';
@@ -67,7 +66,6 @@ import { AdminHistoryLogsTab } from './admin/AdminHistoryLogsTab';
 import { AdminCTVResellerTab } from './admin/AdminCTVResellerTab';
 import { AdminGiftUpExchangeTab } from './admin/AdminGiftUpExchangeTab';
 import { AdminSettingsTab } from './admin/AdminSettingsTab';
-import { AdminAuditSecurityTab } from './admin/AdminAuditSecurityTab';
 import { AdminHeroLayoutTab } from './admin/AdminHeroLayoutTab';
 import { AdminOrderReliabilityTab } from './admin/AdminOrderReliabilityTab';
 import { AdminPaymentSystemTab } from './admin/AdminPaymentSystemTab';
@@ -228,15 +226,13 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({
     { id: 'games', label: t('nav.game_topup') + ' & Sửa Giá Bulk', icon: Gamepad2, badge: `${games.length} Games` },
     { id: 'hero_layout', label: 'Hero Layout & Banner', icon: Layout, badge: 'UI' },
     { id: 'roles', label: 'Roles & Sub-Admin', icon: ShieldCheck },
-    { id: 'security_ip', label: 'Security Firewall & IP WAF', icon: ShieldAlert },
+    { id: 'security_ip', label: 'Tường Lửa WAF, IP & Bảo Mật (Security Suite)', icon: ShieldAlert },
     { id: 'automation_cron', label: 'Cron Jobs & Auto Sync', icon: Clock },
     { id: 'logs', label: 'System Logs', icon: FileText },
-    { id: 'source_automation', label: 'Nguồn Mua & Telegram (Phương Án B)', icon: Bot, badge: 'Zero-Drop' },
     { id: 'order_reliability', label: 'Đơn Hàng Đáng Tin Cậy & Key Vault', icon: CheckCircle2, badge: 'Anti-Duplicate' },
     { id: 'affiliate', label: 'Tài Liệu API Cho Đại Lý (Reseller API)', icon: Share2 },
     { id: 'giftup_admin', label: 'GiftUp Cards', icon: Gift },
     { id: 'settings', label: t('nav.admin_panel') + ' Settings', icon: Settings },
-    { id: 'audit_security', label: 'Anti-DDoS & Security Audit', icon: ShieldAlert },
     { id: 'database_schema', label: 'Database SQL Schema (64 Tables)', icon: Database, badge: '64' }
   ];
 
@@ -452,7 +448,11 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({
             )}
 
             {activeTab === 'source_automation' && (
-              <AdminSourceAutomationTab currency={currency} />
+              <AdminSuppliersTab
+                suppliers={suppliers}
+                currency={currency}
+                onUpdateSupplierBalance={onUpdateSupplierBalance}
+              />
             )}
 
             {activeTab === 'order_reliability' && (
@@ -478,7 +478,7 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({
             )}
 
             {activeTab === 'audit_security' && (
-              <AdminAuditSecurityTab
+              <AdminSecurityIpTab
                 systemConfig={systemConfig}
                 onUpdateSystemConfig={onUpdateSystemConfig}
               />

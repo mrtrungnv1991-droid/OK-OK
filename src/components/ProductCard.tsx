@@ -38,6 +38,10 @@ export const ProductCard: React.FC<ProductCardProps> = ({
   const { t } = useTranslation();
   const { addToCart } = useCart();
   const [justAdded, setJustAdded] = useState(false);
+  const isOutOfStock = (product.stockAvailable !== undefined && product.stockAvailable <= 0) || 
+                       product.status === 'OUT_OF_STOCK' || 
+                       product.isAvailable === false ||
+                       (product.tags && product.tags.includes('OUT_OF_STOCK'));
   const activePool = (product.activePools && product.activePools.length > 0)
     ? (product.activePools.find(p => p.status === 'filling') || product.activePools[0])
     : undefined;
@@ -106,17 +110,34 @@ export const ProductCard: React.FC<ProductCardProps> = ({
         <div className="absolute inset-0 bg-gradient-to-t from-[#0e121b] via-[#0e121b]/30 to-transparent pointer-events-none"></div>
 
         {/* Top Badges */}
-        <div className="absolute top-1.5 sm:top-2.5 left-1.5 sm:left-2.5 right-1.5 sm:right-2.5 flex items-center justify-between gap-1">
+        <div className="absolute top-1.5 sm:top-2.5 left-1.5 sm:left-2.5 right-1.5 sm:right-2.5 flex items-center justify-between gap-1 z-10">
           {/* Platform Tag */}
           <span className="px-1.5 sm:px-2.5 py-0.5 rounded text-[9px] sm:text-[11px] font-mono font-bold uppercase tracking-wider bg-black/80 backdrop-blur-md text-cyan-300 border border-cyan-500/40">
             {product.platform}
           </span>
 
-          {/* Savings Badge */}
-          <span className="px-1.5 sm:px-2 py-0.5 rounded text-[9px] sm:text-[10px] font-mono font-black uppercase tracking-wider bg-rose-600 text-white shadow-[0_0_10px_rgba(225,29,72,0.5)]">
-            -{savingsPercent}%
-          </span>
+          {/* Out of Stock vs Savings Badge */}
+          {isOutOfStock ? (
+            <span className="px-1.5 sm:px-2 py-0.5 rounded text-[9px] sm:text-[10px] font-mono font-black uppercase tracking-wider bg-rose-600/90 text-white shadow-[0_0_12px_rgba(225,29,72,0.6)] border border-rose-400/40 flex items-center gap-1">
+              <span className="w-1.5 h-1.5 rounded-full bg-white animate-ping" />
+              HẾT HÀNG
+            </span>
+          ) : (
+            <span className="px-1.5 sm:px-2 py-0.5 rounded text-[9px] sm:text-[10px] font-mono font-black uppercase tracking-wider bg-rose-600 text-white shadow-[0_0_10px_rgba(225,29,72,0.5)]">
+              -{savingsPercent}%
+            </span>
+          )}
         </div>
+
+        {/* Sold Out Dark Overlay */}
+        {isOutOfStock && (
+          <div className="absolute inset-0 bg-black/65 backdrop-blur-[1px] flex flex-col items-center justify-center p-2 text-center z-1">
+            <span className="px-2 py-1 rounded bg-rose-950/90 border border-rose-500 text-rose-300 font-mono font-black text-[10px] sm:text-xs tracking-wider shadow-lg">
+              SHOP API ĐÃ BÁN HẾT
+            </span>
+            <span className="text-[9px] font-mono text-slate-300 mt-1">Đang chờ nhà cung cấp nạp kho</span>
+          </div>
+        )}
 
         {/* Delivery Type Badge on bottom image */}
         <div className="absolute bottom-1.5 left-1.5 sm:left-2.5 flex items-center gap-1 text-[8px] sm:text-[10px] font-mono text-slate-300 bg-black/80 px-1.5 py-0.5 rounded backdrop-blur-sm border border-white/10">
@@ -224,37 +245,59 @@ export const ProductCard: React.FC<ProductCardProps> = ({
         </div>
 
         {/* Action Buttons */}
-        <div className="flex items-center gap-1 sm:gap-1.5 pt-0.5">
-          {/* Group Buy Button (Main) */}
-          <button
-            onClick={handleJoinClick}
-            className="flex-1 flex items-center justify-center gap-1 py-1.5 sm:py-2 px-1.5 rounded-lg bg-cyan-500 hover:bg-cyan-400 text-black font-mono font-black text-[10px] sm:text-xs uppercase tracking-tight transition-all shadow-[0_0_10px_rgba(6,182,212,0.3)] active:scale-95 cursor-pointer"
-          >
-            <span>{t('products.join_pool')}</span>
-            <ArrowRight className="w-3 h-3 hidden sm:inline" />
-          </button>
+        {isOutOfStock ? (
+          <div className="flex items-center gap-1 sm:gap-1.5 pt-0.5">
+            <button
+              type="button"
+              disabled
+              className="flex-1 flex items-center justify-center gap-1.5 py-2 px-2 rounded-lg bg-rose-950/70 border border-rose-600/60 text-rose-300 font-mono font-black text-[10px] sm:text-xs uppercase tracking-tight cursor-not-allowed opacity-90 shadow-[0_0_12px_rgba(244,63,94,0.25)]"
+              title={product.outOfStockReason || 'Sản phẩm đã bán hết tại shop API nguồn'}
+            >
+              <span className="w-1.5 h-1.5 rounded-full bg-rose-500 animate-ping" />
+              <span>HẾT HÀNG TRÊN KHO API</span>
+            </button>
+            <button
+              type="button"
+              onClick={handleInstantBuyClick}
+              className="py-2 px-2.5 rounded-lg border border-slate-700 bg-slate-900 text-slate-400 hover:text-white font-mono text-[10px] sm:text-xs transition-colors cursor-pointer"
+              title="Xem thông tin chi tiết"
+            >
+              Chi tiết
+            </button>
+          </div>
+        ) : (
+          <div className="flex items-center gap-1 sm:gap-1.5 pt-0.5">
+            {/* Group Buy Button (Main) */}
+            <button
+              onClick={handleJoinClick}
+              className="flex-1 flex items-center justify-center gap-1 py-1.5 sm:py-2 px-1.5 rounded-lg bg-cyan-500 hover:bg-cyan-400 text-black font-mono font-black text-[10px] sm:text-xs uppercase tracking-tight transition-all shadow-[0_0_10px_rgba(6,182,212,0.3)] active:scale-95 cursor-pointer"
+            >
+              <span>{t('products.join_pool')}</span>
+              <ArrowRight className="w-3 h-3 hidden sm:inline" />
+            </button>
 
-          {/* Instant Buy Retail Button */}
-          <button
-            onClick={handleInstantBuyClick}
-            className="flex-1 flex items-center justify-center gap-0.5 py-1.5 sm:py-2 px-1 rounded-lg bg-slate-900 hover:bg-slate-800 text-slate-300 hover:text-white font-mono text-[9px] sm:text-xs border border-slate-700 transition-all active:scale-95 cursor-pointer truncate"
-          >
-            <span>{t('products.instant_buy')}</span>
-          </button>
+            {/* Instant Buy Retail Button */}
+            <button
+              onClick={handleInstantBuyClick}
+              className="flex-1 flex items-center justify-center gap-0.5 py-1.5 sm:py-2 px-1 rounded-lg bg-slate-900 hover:bg-slate-800 text-slate-300 hover:text-white font-mono text-[9px] sm:text-xs border border-slate-700 transition-all active:scale-95 cursor-pointer truncate"
+            >
+              <span>{t('products.instant_buy')}</span>
+            </button>
 
-          {/* Add to Cart Quick Button */}
-          <button
-            onClick={handleAddToCart}
-            className={`p-1.5 sm:p-2 rounded-lg border transition-all active:scale-95 cursor-pointer shrink-0 flex items-center justify-center ${
-              justAdded
-                ? 'bg-emerald-500 text-black border-emerald-400'
-                : 'bg-slate-900/90 hover:bg-slate-800 text-cyan-400 hover:text-cyan-300 border-slate-700 hover:border-cyan-500/50'
-            }`}
-            title={t('products.add_to_cart')}
-          >
-            {justAdded ? <Check className="w-3.5 h-3.5" /> : <ShoppingCart className="w-3.5 h-3.5" />}
-          </button>
-        </div>
+            {/* Add to Cart Quick Button */}
+            <button
+              onClick={handleAddToCart}
+              className={`p-1.5 sm:p-2 rounded-lg border transition-all active:scale-95 cursor-pointer shrink-0 flex items-center justify-center ${
+                justAdded
+                  ? 'bg-emerald-500 text-black border-emerald-400'
+                  : 'bg-slate-900/90 hover:bg-slate-800 text-cyan-400 hover:text-cyan-300 border-slate-700 hover:border-cyan-500/50'
+              }`}
+              title={t('products.add_to_cart')}
+            >
+              {justAdded ? <Check className="w-3.5 h-3.5" /> : <ShoppingCart className="w-3.5 h-3.5" />}
+            </button>
+          </div>
+        )}
       </div>
     </div>
   );

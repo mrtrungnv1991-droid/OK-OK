@@ -192,6 +192,23 @@ function AppContent() {
     return () => unsub();
   }, []);
 
+  // Direct Product Link Listener (Supports ?product=..., ?productId=..., ?id=...)
+  useEffect(() => {
+    if (!products || products.length === 0) return;
+    try {
+      const urlParams = new URLSearchParams(window.location.search);
+      const targetId = urlParams.get('product') || urlParams.get('productId') || urlParams.get('id');
+      if (targetId) {
+        const matched = products.find(p => p.id === targetId || (p as any).slug === targetId);
+        if (matched) {
+          openModal('instantBuy', { selectedProduct: matched });
+        }
+      }
+    } catch {
+      // Ignore in restricted environments
+    }
+  }, [products]);
+
   const triggerConfetti = (count = 75, spread = 65) => {
     try {
       confetti({ particleCount: count, spread, origin: { y: 0.5 } });
@@ -254,26 +271,37 @@ function AppContent() {
     );
   };
 
-  // Telco Card Submit Handler
-  const handleCardSubmit = (submission: TelcoCardSubmission) => {
-    submitTelcoCard({
+  // Telco Card Submit Handler (Card24h Integration)
+  const handleCardSubmit = async (submission: TelcoCardSubmission) => {
+    const res = await submitTelcoCard({
       telco: submission.telco,
       declaredAmount: submission.declaredAmount,
       pin: submission.pin,
       serial: submission.serial
     });
 
-    triggerConfetti(60, 60);
+    if (res.success) {
+      triggerConfetti(60, 60);
 
-    showToast(
-      `Đã nạp thẻ ${submission.telco} ${formatCurrency(submission.declaredAmount, currentUser.currency)} -> Nhận +${formatCurrency(submission.receivedAmount, currentUser.currency)} vào ví!`,
-      'success',
-      {
-        title: '⚡ GẠCH THẺ THÀNH CÔNG // CỘNG TIỀN VÍ NGAY',
-        duration: 5000,
-        action: { label: 'Mở Ví Tiền →', onClick: () => openModal('wallet') }
-      }
-    );
+      showToast(
+        res.message || `Đã nạp thẻ ${submission.telco} ${formatCurrency(submission.declaredAmount, currentUser.currency)} -> Nhận +${formatCurrency(res.receivedAmount || submission.receivedAmount, currentUser.currency)} vào ví!`,
+        'success',
+        {
+          title: res.status === 'pending' ? '⚡ CARD24H ĐANG XỬ LÝ GẠCH THẺ' : '⚡ GẠCH THẺ THÀNH CÔNG // CỘNG TIỀN VÍ NGAY',
+          duration: 5000,
+          action: { label: 'Mở Ví Tiền →', onClick: () => openModal('wallet') }
+        }
+      );
+    } else {
+      showToast(
+        res.error || 'Thẻ cào không hợp lệ hoặc đã sử dụng. Vui lòng kiểm tra lại!',
+        'error',
+        {
+          title: '❌ THẺ CÀO KHÔNG HỢP LỆ',
+          duration: 6000
+        }
+      );
+    }
   };
 
   // Lucky Wheel Spin

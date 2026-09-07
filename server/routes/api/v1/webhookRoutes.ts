@@ -280,6 +280,173 @@ webhookRouter.post('/telco', async (req: Request, res: Response) => {
   }
 });
 
+// ==============================================================================
+// CARD24H.COM AUTO-CHARGING WEBHOOK CALLBACK
+// GET /api/v1/webhooks/card24h & POST /api/v1/webhooks/card24h
+// Parameters from Card24h:
+// request_id, status, message, declared_value, value, amount, code, serial, telco, trans_id, callback_sign
+// Sign check: callback_sign == md5(partner_key + code + serial)
+// ==============================================================================
+export async function handleCard24hCallback(req: Request, res: Response) {
+  try {
+    const params = { ...req.query, ...req.body };
+    const {
+      status,
+      message,
+      request_id,
+      declared_value,
+      value,
+      amount,
+      code,
+      serial,
+      telco,
+      trans_id,
+      callback_sign
+    } = params;
+
+    console.log('[CARD24H_WEBHOOK_RECEIVED]', {
+      request_id,
+      status,
+      amount,
+      declared_value,
+      telco,
+      trans_id
+    });
+
+    if (!request_id || !callback_sign) {
+      return res.status(400).send('missing_parameters');
+    }
+
+    const partnerKey = db.systemConfig?.telcoPartnerKey || process.env.CARD24H_PARTNER_KEY || 'bc3299820230bb1ed2b2b729cac744e3';
+    const cleanCode = String(code || '');
+    const cleanSerial = String(serial || '');
+    const expectedSign = crypto.createHash('md5').update(`${partnerKey}${cleanCode}${cleanSerial}`).digest('hex');
+
+    if (String(callback_sign).toLowerCase() !== expectedSign.toLowerCase()) {
+      console.warn('[CARD24H_CALLBACK_SIGN_MISMATCH]', {
+        expected: expectedSign,
+        actual: callback_sign
+      });
+      return res.status(401).send('callback_sign_error');
+    }
+
+    const strRequestId = String(request_id);
+
+    // Idempotency check
+    if (db.processedWebhooks.has(strRequestId)) {
+      return res.send('Thẻ hợp lệ');
+    }
+
+    // Resolve user
+    const cardSubmission = db.telcoCards.get(strRequestId);
+    let targetUserId = cardSubmission?.userId;
+
+    if (!targetUserId) {
+      const match = strRequestId.match(/^CP_([a-zA-Z0-9_-]+)_\d+$/);
+      if (match && db.users.has(match[1])) {
+        targetUserId = match[1];
+      }
+    }
+
+    const statusCode = Number(status);
+    const creditedAmount = Number(amount || 0);
+
+    if (statusCode === 1) {
+      // 1. Thẻ hợp lệ
+      if (targetUserId && creditedAmount > 0) {
+        await LedgerService.executeTransaction({
+          userId: targetUserId,
+          amount: creditedAmount,
+          type: 'DEPOSIT',
+          description: `Gạch thẻ ${telco || 'Card24h'} thành công (Mã: ${strRequestId} - Thực nhận +${creditedAmount.toLocaleString()}đ)`,
+          referenceId: strRequestId,
+          actorId: 'CARD24H_WEBHOOK',
+          actorName: 'Card24h.com Auto Charging'
+        });
+
+        notificationService.send(
+          targetUserId,
+          'TOPUP_COMPLETED',
+          '⚡ Gạch thẻ cào thành công!',
+          `Thẻ ${telco} mệnh giá ${(Number(declared_value) || 0).toLocaleString()}đ đã duyệt thành công. Bạn nhận được +${creditedAmount.toLocaleString()}đ vào ví!`,
+          { requestId: strRequestId, transId: trans_id, amount: creditedAmount }
+        );
+      }
+
+      if (cardSubmission) {
+        cardSubmission.status = 'SUCCESS';
+        cardSubmission.receivedAmount = creditedAmount;
+        cardSubmission.card24hTransId = trans_id;
+        cardSubmission.message = 'Thẻ hợp lệ - Đã cộng tiền vào ví';
+      }
+
+      db.processedWebhooks.set(strRequestId, {
+        amount: creditedAmount,
+        userId: targetUserId || 'unknown',
+        status: 'COMPLETED',
+        processedAt: new Date().toISOString(),
+        provider: 'CARD24H',
+        memo: `Mã nạp: ${cleanCode}, Seri: ${cleanSerial}, TransId: ${trans_id}`
+      });
+
+      return res.send('Thẻ hợp lệ');
+    } else if (statusCode === 2) {
+      // 2. Thẻ sai mệnh giá
+      if (targetUserId && creditedAmount > 0) {
+        await LedgerService.executeTransaction({
+          userId: targetUserId,
+          amount: creditedAmount,
+          type: 'DEPOSIT',
+          description: `Gạch thẻ ${telco} sai mệnh giá qua Card24h (Mệnh giá thực: ${(Number(value) || 0).toLocaleString()}đ - Thực nhận +${creditedAmount.toLocaleString()}đ)`,
+          referenceId: strRequestId,
+          actorId: 'CARD24H_WEBHOOK',
+          actorName: 'Card24h.com Auto Charging'
+        });
+
+        notificationService.send(
+          targetUserId,
+          'SYSTEM_ANNOUNCEMENT',
+          '⚠️ Thẻ cào sai mệnh giá',
+          `Thẻ ${telco} khai báo ${(Number(declared_value) || 0).toLocaleString()}đ nhưng mệnh giá thực là ${(Number(value) || 0).toLocaleString()}đ. Số tiền thực nhận: +${creditedAmount.toLocaleString()}đ`,
+          { requestId: strRequestId, transId: trans_id }
+        );
+      }
+
+      if (cardSubmission) {
+        cardSubmission.status = 'WRONG_AMOUNT';
+        cardSubmission.receivedAmount = creditedAmount;
+        cardSubmission.message = `Thẻ sai mệnh giá (Thực: ${value}đ)`;
+      }
+
+      return res.send('Thẻ sai mệnh giá');
+    } else {
+      // 3. Thẻ lỗi
+      if (cardSubmission) {
+        cardSubmission.status = 'FAILED';
+        cardSubmission.message = String(message || 'Thẻ lỗi / Không hợp lệ');
+      }
+
+      if (targetUserId) {
+        notificationService.send(
+          targetUserId,
+          'SECURITY_ALERT',
+          '❌ Gạch thẻ cào thất bại',
+          `Thẻ ${telco} (Seri: ${cleanSerial}) không hợp lệ: ${message || 'Thẻ đã sử dụng hoặc mã nạp sai'}`,
+          { requestId: strRequestId }
+        );
+      }
+
+      return res.send('Thẻ lỗi');
+    }
+  } catch (err: any) {
+    console.error('[CARD24H_CALLBACK_ERROR]', err);
+    res.status(500).send(`error: ${err?.message}`);
+  }
+}
+
+webhookRouter.get('/card24h', handleCard24hCallback);
+webhookRouter.post('/card24h', handleCard24hCallback);
+
 // GET /api/v1/webhooks/unmapped-deposits - Admin endpoint to inspect unmapped deposits
 webhookRouter.get('/unmapped-deposits', requireAuth, requireRole('ADMIN'), (req: AuthenticatedRequest, res: Response) => {
   res.json({

@@ -99,6 +99,10 @@ export class AccountSupplierConnector implements ISupplierConnector {
     if (providedApiKey) {
       this.activeApiKey = providedApiKey;
     }
+    if (!this.activeApiKey && (this.websiteUrl.toLowerCase().includes('g2up') || this.websiteUrl.toLowerCase().includes('cmsnt'))) {
+      this.activeApiKey = '885e5d18c3626f03b8356130b162c0af';
+    }
+    this.scanner.setAuth(this.activeApiKey);
 
     // STEP 1: Real Network Ping
     const t0 = Date.now();

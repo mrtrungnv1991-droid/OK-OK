@@ -19,8 +19,22 @@ export const walletApi = {
     declaredAmount: number;
     pin: string;
     serial: string;
-  }): Promise<ApiResponse<{ receivedAmount: number; newBalance: number; transaction: TransactionRecord }>> => {
-    return api.post<{ receivedAmount: number; newBalance: number; transaction: TransactionRecord }>('/wallet/telco-card', payload);
+  }): Promise<ApiResponse<{ 
+    receivedAmount: number; 
+    newBalance: number; 
+    status?: string;
+    requestId?: string;
+    message?: string;
+    transaction?: TransactionRecord 
+  }>> => {
+    return api.post<{ 
+      receivedAmount: number; 
+      newBalance: number; 
+      status?: string;
+      requestId?: string;
+      message?: string;
+      transaction?: TransactionRecord 
+    }>('/wallet/telco-card', payload);
   },
 
   requestWithdrawal: async (payload: {

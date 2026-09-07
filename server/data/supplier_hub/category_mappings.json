@@ -348,5 +348,355 @@
     "mode": "AUTO",
     "createdAt": "2026-09-04T11:33:00.203Z",
     "updatedAt": "2026-09-04T11:33:00.203Z"
+  },
+  {
+    "id": "catmap_sup_acc_web_source_beauty",
+    "supplierId": "sup_acc_web_source",
+    "supplierCategoryId": "beauty",
+    "supplierCategoryName": "Beauty",
+    "localCategoryId": "beauty",
+    "mode": "AUTO",
+    "createdAt": "2026-09-07T03:57:22.969Z",
+    "updatedAt": "2026-09-07T03:57:22.969Z"
+  },
+  {
+    "id": "catmap_sup_acc_web_source_fragrances",
+    "supplierId": "sup_acc_web_source",
+    "supplierCategoryId": "fragrances",
+    "supplierCategoryName": "Fragrances",
+    "localCategoryId": "fragrances",
+    "mode": "AUTO",
+    "createdAt": "2026-09-07T03:57:22.969Z",
+    "updatedAt": "2026-09-07T03:57:22.969Z"
+  },
+  {
+    "id": "catmap_sup_acc_web_source_furniture",
+    "supplierId": "sup_acc_web_source",
+    "supplierCategoryId": "furniture",
+    "supplierCategoryName": "Furniture",
+    "localCategoryId": "furniture",
+    "mode": "AUTO",
+    "createdAt": "2026-09-07T03:57:22.969Z",
+    "updatedAt": "2026-09-07T03:57:22.969Z"
+  },
+  {
+    "id": "catmap_sup_acc_web_source_groceries",
+    "supplierId": "sup_acc_web_source",
+    "supplierCategoryId": "groceries",
+    "supplierCategoryName": "Groceries",
+    "localCategoryId": "groceries",
+    "mode": "AUTO",
+    "createdAt": "2026-09-07T03:57:22.969Z",
+    "updatedAt": "2026-09-07T03:57:22.969Z"
+  },
+  {
+    "id": "catmap_sup_acc_web_source_home-decoration",
+    "supplierId": "sup_acc_web_source",
+    "supplierCategoryId": "home-decoration",
+    "supplierCategoryName": "Home Decoration",
+    "localCategoryId": "home-decoration",
+    "mode": "AUTO",
+    "createdAt": "2026-09-07T03:57:22.969Z",
+    "updatedAt": "2026-09-07T03:57:22.969Z"
+  },
+  {
+    "id": "catmap_sup_acc_web_source_kitchen-accessories",
+    "supplierId": "sup_acc_web_source",
+    "supplierCategoryId": "kitchen-accessories",
+    "supplierCategoryName": "Kitchen Accessories",
+    "localCategoryId": "kitchen-accessories",
+    "mode": "AUTO",
+    "createdAt": "2026-09-07T03:57:22.969Z",
+    "updatedAt": "2026-09-07T03:57:22.969Z"
+  },
+  {
+    "id": "catmap_sup_acc_web_source_laptops",
+    "supplierId": "sup_acc_web_source",
+    "supplierCategoryId": "laptops",
+    "supplierCategoryName": "Laptops",
+    "localCategoryId": "laptops",
+    "mode": "AUTO",
+    "createdAt": "2026-09-07T03:57:22.969Z",
+    "updatedAt": "2026-09-07T03:57:22.969Z"
+  },
+  {
+    "id": "catmap_sup_acc_web_source_mens-shirts",
+    "supplierId": "sup_acc_web_source",
+    "supplierCategoryId": "mens-shirts",
+    "supplierCategoryName": "Mens Shirts",
+    "localCategoryId": "mens-shirts",
+    "mode": "AUTO",
+    "createdAt": "2026-09-07T03:57:22.969Z",
+    "updatedAt": "2026-09-07T03:57:22.969Z"
+  },
+  {
+    "id": "catmap_sup_acc_web_source_mens-shoes",
+    "supplierId": "sup_acc_web_source",
+    "supplierCategoryId": "mens-shoes",
+    "supplierCategoryName": "Mens Shoes",
+    "localCategoryId": "mens-shoes",
+    "mode": "AUTO",
+    "createdAt": "2026-09-07T03:57:22.969Z",
+    "updatedAt": "2026-09-07T03:57:22.969Z"
+  },
+  {
+    "id": "catmap_sup_acc_web_source_mens-watches",
+    "supplierId": "sup_acc_web_source",
+    "supplierCategoryId": "mens-watches",
+    "supplierCategoryName": "Mens Watches",
+    "localCategoryId": "mens-watches",
+    "mode": "AUTO",
+    "createdAt": "2026-09-07T03:57:22.969Z",
+    "updatedAt": "2026-09-07T03:57:22.969Z"
+  },
+  {
+    "id": "catmap_sup_acc_web_source_mobile-accessories",
+    "supplierId": "sup_acc_web_source",
+    "supplierCategoryId": "mobile-accessories",
+    "supplierCategoryName": "Mobile Accessories",
+    "localCategoryId": "mobile-accessories",
+    "mode": "AUTO",
+    "createdAt": "2026-09-07T03:57:22.969Z",
+    "updatedAt": "2026-09-07T03:57:22.969Z"
+  },
+  {
+    "id": "catmap_sup_acc_web_source_motorcycle",
+    "supplierId": "sup_acc_web_source",
+    "supplierCategoryId": "motorcycle",
+    "supplierCategoryName": "Motorcycle",
+    "localCategoryId": "motorcycle",
+    "mode": "AUTO",
+    "createdAt": "2026-09-07T03:57:22.969Z",
+    "updatedAt": "2026-09-07T03:57:22.969Z"
+  },
+  {
+    "id": "catmap_sup_acc_web_source_skin-care",
+    "supplierId": "sup_acc_web_source",
+    "supplierCategoryId": "skin-care",
+    "supplierCategoryName": "Skin Care",
+    "localCategoryId": "skin-care",
+    "mode": "AUTO",
+    "createdAt": "2026-09-07T03:57:22.969Z",
+    "updatedAt": "2026-09-07T03:57:22.969Z"
+  },
+  {
+    "id": "catmap_sup_acc_web_source_smartphones",
+    "supplierId": "sup_acc_web_source",
+    "supplierCategoryId": "smartphones",
+    "supplierCategoryName": "Smartphones",
+    "localCategoryId": "smartphones",
+    "mode": "AUTO",
+    "createdAt": "2026-09-07T03:57:22.969Z",
+    "updatedAt": "2026-09-07T03:57:22.969Z"
+  },
+  {
+    "id": "catmap_sup_acc_web_source_sports-accessories",
+    "supplierId": "sup_acc_web_source",
+    "supplierCategoryId": "sports-accessories",
+    "supplierCategoryName": "Sports Accessories",
+    "localCategoryId": "sports-accessories",
+    "mode": "AUTO",
+    "createdAt": "2026-09-07T03:57:22.969Z",
+    "updatedAt": "2026-09-07T03:57:22.969Z"
+  },
+  {
+    "id": "catmap_sup_acc_web_source_sunglasses",
+    "supplierId": "sup_acc_web_source",
+    "supplierCategoryId": "sunglasses",
+    "supplierCategoryName": "Sunglasses",
+    "localCategoryId": "sunglasses",
+    "mode": "AUTO",
+    "createdAt": "2026-09-07T03:57:22.969Z",
+    "updatedAt": "2026-09-07T03:57:22.969Z"
+  },
+  {
+    "id": "catmap_sup_acc_web_source_tablets",
+    "supplierId": "sup_acc_web_source",
+    "supplierCategoryId": "tablets",
+    "supplierCategoryName": "Tablets",
+    "localCategoryId": "tablets",
+    "mode": "AUTO",
+    "createdAt": "2026-09-07T03:57:22.969Z",
+    "updatedAt": "2026-09-07T03:57:22.969Z"
+  },
+  {
+    "id": "catmap_sup_acc_web_source_tops",
+    "supplierId": "sup_acc_web_source",
+    "supplierCategoryId": "tops",
+    "supplierCategoryName": "Tops",
+    "localCategoryId": "tops",
+    "mode": "AUTO",
+    "createdAt": "2026-09-07T03:57:22.969Z",
+    "updatedAt": "2026-09-07T03:57:22.969Z"
+  },
+  {
+    "id": "catmap_sup_acc_web_source_vehicle",
+    "supplierId": "sup_acc_web_source",
+    "supplierCategoryId": "vehicle",
+    "supplierCategoryName": "Vehicle",
+    "localCategoryId": "vehicle",
+    "mode": "AUTO",
+    "createdAt": "2026-09-07T03:57:22.969Z",
+    "updatedAt": "2026-09-07T03:57:22.969Z"
+  },
+  {
+    "id": "catmap_sup_acc_web_source_womens-bags",
+    "supplierId": "sup_acc_web_source",
+    "supplierCategoryId": "womens-bags",
+    "supplierCategoryName": "Womens Bags",
+    "localCategoryId": "womens-bags",
+    "mode": "AUTO",
+    "createdAt": "2026-09-07T03:57:22.969Z",
+    "updatedAt": "2026-09-07T03:57:22.969Z"
+  },
+  {
+    "id": "catmap_sup_acc_web_source_womens-dresses",
+    "supplierId": "sup_acc_web_source",
+    "supplierCategoryId": "womens-dresses",
+    "supplierCategoryName": "Womens Dresses",
+    "localCategoryId": "womens-dresses",
+    "mode": "AUTO",
+    "createdAt": "2026-09-07T03:57:22.969Z",
+    "updatedAt": "2026-09-07T03:57:22.969Z"
+  },
+  {
+    "id": "catmap_sup_acc_web_source_womens-jewellery",
+    "supplierId": "sup_acc_web_source",
+    "supplierCategoryId": "womens-jewellery",
+    "supplierCategoryName": "Womens Jewellery",
+    "localCategoryId": "womens-jewellery",
+    "mode": "AUTO",
+    "createdAt": "2026-09-07T03:57:22.969Z",
+    "updatedAt": "2026-09-07T03:57:22.969Z"
+  },
+  {
+    "id": "catmap_sup_acc_web_source_womens-shoes",
+    "supplierId": "sup_acc_web_source",
+    "supplierCategoryId": "womens-shoes",
+    "supplierCategoryName": "Womens Shoes",
+    "localCategoryId": "womens-shoes",
+    "mode": "AUTO",
+    "createdAt": "2026-09-07T03:57:22.969Z",
+    "updatedAt": "2026-09-07T03:57:22.969Z"
+  },
+  {
+    "id": "catmap_sup_acc_web_source_womens-watches",
+    "supplierId": "sup_acc_web_source",
+    "supplierCategoryId": "womens-watches",
+    "supplierCategoryName": "Womens Watches",
+    "localCategoryId": "womens-watches",
+    "mode": "AUTO",
+    "createdAt": "2026-09-07T03:57:22.969Z",
+    "updatedAt": "2026-09-07T03:57:22.969Z"
+  },
+  {
+    "id": "catmap_sup_g2up_net_api_default",
+    "supplierId": "sup_g2up_net_api",
+    "supplierCategoryId": "default",
+    "supplierCategoryName": "Mặc Định / General",
+    "localCategoryId": "default",
+    "mode": "AUTO",
+    "createdAt": "2026-09-07T03:59:39.157Z",
+    "updatedAt": "2026-09-07T03:59:39.157Z"
+  },
+  {
+    "id": "catmap_sup_g2up_net_api_8",
+    "supplierId": "sup_g2up_net_api",
+    "supplierCategoryId": "8",
+    "supplierCategoryName": "BLOX FRUITS (10 day warranty)",
+    "localCategoryId": "8",
+    "mode": "AUTO",
+    "createdAt": "2026-09-07T04:27:24.035Z",
+    "updatedAt": "2026-09-07T04:27:24.035Z"
+  },
+  {
+    "id": "catmap_sup_g2up_net_api_11",
+    "supplierId": "sup_g2up_net_api",
+    "supplierCategoryId": "11",
+    "supplierCategoryName": "BLOX FRUITS FULLGEAR (10-day warranty)",
+    "localCategoryId": "11",
+    "mode": "AUTO",
+    "createdAt": "2026-09-07T04:27:24.036Z",
+    "updatedAt": "2026-09-07T04:27:24.036Z"
+  },
+  {
+    "id": "catmap_sup_g2up_net_api_98",
+    "supplierId": "sup_g2up_net_api",
+    "supplierCategoryId": "98",
+    "supplierCategoryName": "Wizard Alchemy Race",
+    "localCategoryId": "98",
+    "mode": "AUTO",
+    "createdAt": "2026-09-07T04:27:24.036Z",
+    "updatedAt": "2026-09-07T04:27:24.036Z"
+  },
+  {
+    "id": "catmap_sup_g2up_net_api_102",
+    "supplierId": "sup_g2up_net_api",
+    "supplierCategoryId": "102",
+    "supplierCategoryName": "GOD(warrantly sec 10day)",
+    "localCategoryId": "102",
+    "mode": "AUTO",
+    "createdAt": "2026-09-07T04:27:24.036Z",
+    "updatedAt": "2026-09-07T04:27:24.036Z"
+  },
+  {
+    "id": "catmap_sup_g2up_net_api_103",
+    "supplierId": "sup_g2up_net_api",
+    "supplierCategoryId": "103",
+    "supplierCategoryName": "GOD MYTHICAL (warrantly sec 10day)",
+    "localCategoryId": "103",
+    "mode": "AUTO",
+    "createdAt": "2026-09-07T04:27:24.036Z",
+    "updatedAt": "2026-09-07T04:27:24.036Z"
+  },
+  {
+    "id": "catmap_sup_g2up_net_api_106",
+    "supplierId": "sup_g2up_net_api",
+    "supplierCategoryId": "106",
+    "supplierCategoryName": "Gear (warrantly sec 10day)",
+    "localCategoryId": "106",
+    "mode": "AUTO",
+    "createdAt": "2026-09-07T04:27:24.036Z",
+    "updatedAt": "2026-09-07T04:27:24.036Z"
+  },
+  {
+    "id": "catmap_sup_g2up_net_api_130",
+    "supplierId": "sup_g2up_net_api",
+    "supplierCategoryId": "130",
+    "supplierCategoryName": "ACC PET GAG",
+    "localCategoryId": "130",
+    "mode": "AUTO",
+    "createdAt": "2026-09-07T04:27:24.036Z",
+    "updatedAt": "2026-09-07T04:27:24.036Z"
+  },
+  {
+    "id": "catmap_sup_g2up_net_api_132",
+    "supplierId": "sup_g2up_net_api",
+    "supplierCategoryId": "132",
+    "supplierCategoryName": "CLONE GAG1",
+    "localCategoryId": "132",
+    "mode": "AUTO",
+    "createdAt": "2026-09-07T04:27:24.036Z",
+    "updatedAt": "2026-09-07T04:27:24.036Z"
+  },
+  {
+    "id": "catmap_sup_g2up_net_api_134",
+    "supplierId": "sup_g2up_net_api",
+    "supplierCategoryId": "134",
+    "supplierCategoryName": "Roblox private server",
+    "localCategoryId": "134",
+    "mode": "AUTO",
+    "createdAt": "2026-09-07T04:27:24.036Z",
+    "updatedAt": "2026-09-07T04:27:24.036Z"
+  },
+  {
+    "id": "catmap_sup_g2up_net_api_136",
+    "supplierId": "sup_g2up_net_api",
+    "supplierCategoryId": "136",
+    "supplierCategoryName": "Anime Expeditions GEM",
+    "localCategoryId": "136",
+    "mode": "AUTO",
+    "createdAt": "2026-09-07T04:27:24.036Z",
+    "updatedAt": "2026-09-07T04:27:24.036Z"
   }
 ]

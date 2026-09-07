@@ -74,9 +74,15 @@ const DEFAULT_SYSTEM_CONFIG: SystemConfiguration = {
   bankName: 'MBBank',
   bankAccountNo: '0388999999',
   bankAccountName: 'CYBERPOOL CORP',
+  bankBin: '970422',
+  bankQrCustomImage: '',
+  qrDisplayMode: 'vietqr_auto',
   vietQrApiToken: 'CYBER_API_TOKEN',
-  telcoPartnerId: 'CYBER_PARTNER',
-  telcoPartnerKey: 'CYBER_KEY',
+  telcoProvider: 'card24h',
+  telcoPartnerId: '16654919157',
+  telcoPartnerKey: 'bc3299820230bb1ed2b2b729cac744e3',
+  telcoWalletId: '0059134947',
+  telcoCallbackUrl: '/api/v1/webhooks/card24h',
   cryptoUsdtAddress: 'TXu9...cyber88',
   momoPhone: '0388999999',
   momoName: 'CYBERPOOL'
@@ -87,7 +93,15 @@ const AdminContext = createContext<AdminContextType | undefined>(undefined);
 export const AdminProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
   const [members, setMembers] = useState<MemberUser[]>(INITIAL_MEMBERS);
   const [suppliers, setSuppliers] = useState<SupplierApiConfig[]>(INITIAL_SUPPLIERS);
-  const [systemConfig, setSystemConfig] = useState<SystemConfiguration>(DEFAULT_SYSTEM_CONFIG);
+  const [systemConfig, setSystemConfig] = useState<SystemConfiguration>(() => {
+    try {
+      const saved = localStorage.getItem('CYBERPOOL_SYSTEM_CONFIG');
+      if (saved) {
+        return { ...DEFAULT_SYSTEM_CONFIG, ...JSON.parse(saved) };
+      }
+    } catch {}
+    return DEFAULT_SYSTEM_CONFIG;
+  });
   const [vouchers, setVouchers] = useState<VoucherCoupon[]>(INITIAL_VOUCHERS);
   const [stats, setStats] = useState<AdminStats | null>(null);
   const [auditLogs, setAuditLogs] = useState<AdminAuditLog[]>([]);
@@ -96,9 +110,10 @@ export const AdminProvider: React.FC<{ children: ReactNode }> = ({ children }) =
   const fetchAdminData = useCallback(async () => {
     setIsLoading(true);
     try {
-      const [dashRes, logsRes] = await Promise.all([
+      const [dashRes, logsRes, cfgRes] = await Promise.all([
         adminApi.getDashboardStats(),
-        adminApi.getAuditLogs(50)
+        adminApi.getAuditLogs(50),
+        adminApi.getSystemConfig().catch(() => ({ success: false, data: null }))
       ]);
 
       if (dashRes.success && dashRes.data?.stats) {
@@ -107,6 +122,16 @@ export const AdminProvider: React.FC<{ children: ReactNode }> = ({ children }) =
 
       if (logsRes.success && logsRes.data?.logs) {
         setAuditLogs(logsRes.data.logs);
+      }
+
+      if (cfgRes.success && (cfgRes as any).data?.config) {
+        setSystemConfig(prev => {
+          const updated = { ...prev, ...(cfgRes as any).data.config };
+          try {
+            localStorage.setItem('CYBERPOOL_SYSTEM_CONFIG', JSON.stringify(updated));
+          } catch {}
+          return updated;
+        });
       }
     } catch {
       // server sync fallback
@@ -156,7 +181,13 @@ export const AdminProvider: React.FC<{ children: ReactNode }> = ({ children }) =
   };
 
   const updateSystemConfig = async (newConfig: Partial<SystemConfiguration>) => {
-    setSystemConfig(prev => ({ ...prev, ...newConfig }));
+    setSystemConfig(prev => {
+      const merged = { ...prev, ...newConfig };
+      try {
+        localStorage.setItem('CYBERPOOL_SYSTEM_CONFIG', JSON.stringify(merged));
+      } catch {}
+      return merged;
+    });
     try {
       await adminApi.updateSystemConfig(newConfig);
     } catch {}

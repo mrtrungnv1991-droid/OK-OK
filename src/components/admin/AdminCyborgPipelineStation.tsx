@@ -436,87 +436,35 @@ export const AdminCyborgPipelineStation: React.FC<AdminCyborgPipelineStationProp
         </div>
       </div>
 
-      {/* SAFETY GUARD: LIVE SOURCE BUY API VS SAFE MODE */}
-      <div className={`p-5 rounded-2xl border transition-all ${
-        safetySettings.safeMode 
-          ? 'bg-gradient-to-r from-emerald-950/50 via-slate-900/90 to-slate-950 border-emerald-500/50 shadow-[0_0_25px_rgba(16,185,129,0.15)]'
-          : 'bg-gradient-to-r from-amber-950/60 via-red-950/40 to-slate-950 border-red-500/60 shadow-[0_0_30px_rgba(239,68,68,0.2)]'
-      }`}>
-        <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
-          <div className="flex items-start gap-3.5">
-            <div className={`p-3 rounded-xl shrink-0 mt-0.5 border ${
-              safetySettings.safeMode 
-                ? 'bg-emerald-950 text-emerald-400 border-emerald-500/40' 
-                : 'bg-rose-950 text-rose-400 border-rose-500/50 animate-pulse'
-            }`}>
-              {safetySettings.safeMode ? (
-                <ShieldCheck className="w-6 h-6" />
-              ) : (
-                <ShieldAlert className="w-6 h-6" />
-              )}
+      {/* DIRECT LIVE G2UP API STATUS (CONTROL REMOVED - ALWAYS LIVE) */}
+      <div className="p-5 rounded-2xl border bg-gradient-to-r from-emerald-950/60 via-slate-900 to-slate-950 border-emerald-500/40 shadow-[0_0_20px_rgba(16,185,129,0.12)]">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+          <div className="flex items-center gap-3.5">
+            <div className="p-3 rounded-xl bg-emerald-950/80 text-emerald-400 border border-emerald-500/40">
+              <ShieldCheck className="w-6 h-6" />
             </div>
-
-            <div className="space-y-1">
-              <div className="flex flex-wrap items-center gap-2">
-                <span className="text-xs font-mono font-extrabold uppercase px-2.5 py-0.5 rounded-full bg-black/40 border border-slate-700 text-slate-300">
-                  KIỂM SOÁT API MUA HÀNG NGUỒN G2UP
+            <div>
+              <div className="flex items-center gap-2">
+                <span className="text-xs font-mono font-extrabold uppercase px-2.5 py-0.5 rounded-full bg-emerald-500/20 text-emerald-300 border border-emerald-500/50 flex items-center gap-1.5">
+                  <span className="w-2 h-2 rounded-full bg-emerald-400 animate-ping" />
+                  API ĐÃ ĐẤU NỐI THẬT 100% (LIVE G2UP API)
                 </span>
-                {safetySettings.safeMode ? (
-                  <span className="px-3 py-0.5 rounded-full text-xs font-black bg-emerald-500/20 text-emerald-300 border border-emerald-500/50 flex items-center gap-1.5">
-                    <Lock className="w-3.5 h-3.5" />
-                    CHẾ ĐỘ AN TOÀN (SAFE MODE) — ĐÃ KHÓA API MUA HÀNG G2UP
-                  </span>
-                ) : (
-                  <span className="px-3 py-0.5 rounded-full text-xs font-black bg-rose-500/20 text-rose-300 border border-rose-500/50 flex items-center gap-1.5">
-                    <Unlock className="w-3.5 h-3.5" />
-                    LIVE MODE — ĐANG MỞ API BUY_PRODUCT G2UP (CẨN THẬN)
-                  </span>
-                )}
+                <span className="text-xs font-mono text-slate-400">
+                  Tài khoản: <strong className="text-white">cyborg</strong>
+                </span>
               </div>
-
-              <h4 className="text-sm sm:text-base font-bold text-white">
-                {safetySettings.safeMode 
-                  ? 'Bảo Vệ Số Dư G2UP: Không Tự Động Trừ Tiền Ví Nguồn' 
-                  : 'Đang Bật Gọi Trực Tiếp API G2UP Mua Hàng Thật (Sẽ Trừ Tiền Ví Nguồn)'}
+              <h4 className="text-sm sm:text-base font-bold text-white mt-1">
+                Tất cả đơn hàng G2UP được đặt mua trực tiếp qua API thật và bàn giao ngay lập tức
               </h4>
-
-              <p className="text-xs text-slate-300 max-w-3xl leading-relaxed">
-                {safetySettings.safeMode ? (
-                  <>
-                    <strong className="text-emerald-400">Trạng thái an toàn:</strong> Toàn bộ sản phẩm đã sao chép từ G2UP về web khi khách hàng đặt mua sẽ được bàn giao thông tin tự động thông qua <strong>Kho Key Vault</strong> của hệ thống CyberPool. <strong className="text-white">Tuyệt đối không gọi API G2UP mua hàng và không trừ tiền tài khoản G2UP.NET</strong>.
-                  </>
-                ) : (
-                  <>
-                    <strong className="text-rose-400">Cảnh báo:</strong> Khi có đơn hàng, hệ thống sẽ thực hiện lệnh <code className="text-rose-300 bg-black/40 px-1 py-0.5 rounded">buy_product</code> sang server G2UP và <strong className="text-white">trừ tiền thật trong số dư ví đối tác</strong>. Hãy chắc chắn kiểm soát lượng đặt hàng.
-                  </>
-                )}
+              <p className="text-xs text-slate-300 mt-0.5">
+                Hệ thống gọi trực tiếp API mua hàng thật của G2UP.NET, trừ tiền thật và bàn giao Link Private Server / Tài khoản thật cho khách.
               </p>
             </div>
           </div>
-
-          {/* Toggle Safety Button */}
-          <div className="shrink-0 flex items-center gap-3">
-            {safetySettings.safeMode ? (
-              <button
-                type="button"
-                onClick={() => handleToggleSafety(true)}
-                disabled={isTogglingSafety}
-                className="px-4 py-2.5 rounded-xl bg-slate-900 hover:bg-rose-950/80 text-rose-300 hover:text-rose-200 border border-rose-500/40 text-xs font-bold flex items-center gap-2 cursor-pointer transition-all disabled:opacity-50"
-              >
-                <Unlock className="w-4 h-4" />
-                <span>{isTogglingSafety ? 'Đang cập nhật...' : 'Bật API Mua Hàng Thật'}</span>
-              </button>
-            ) : (
-              <button
-                type="button"
-                onClick={() => handleToggleSafety(false)}
-                disabled={isTogglingSafety}
-                className="px-5 py-2.5 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-black text-xs font-extrabold shadow-lg shadow-emerald-500/25 flex items-center gap-2 cursor-pointer transition-all disabled:opacity-50"
-              >
-                <ShieldCheck className="w-4 h-4" />
-                <span>{isTogglingSafety ? 'Đang bật Safe Mode...' : 'KÍCH HOẠT CHẾ ĐỘ AN TOÀN (KHUYẾN NGHỊ)'}</span>
-              </button>
-            )}
+          <div className="shrink-0 flex items-center gap-2">
+            <span className="px-3.5 py-1.5 rounded-xl bg-emerald-500/10 border border-emerald-500/30 text-xs font-bold text-emerald-300">
+              Chế độ: Đấu nối trực tiếp (Live API)
+            </span>
           </div>
         </div>
       </div>

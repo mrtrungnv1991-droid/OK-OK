@@ -328,16 +328,17 @@ export interface UserProfile {
 
 export interface TelcoCardSubmission {
   id: string;
-  telco: 'VIETTEL' | 'VINAPHONE' | 'MOBIFONE' | 'ZING' | 'GARENA' | 'GATE';
+  telco: 'VIETTEL' | 'VINAPHONE' | 'MOBIFONE' | 'VIETNAMOBILE' | 'ZING' | 'GARENA' | 'GATE';
   declaredAmount: number;
   actualAmount?: number;
   receivedAmount: number;
   feePercent: number;
   pin: string;
   serial: string;
-  status: 'processing' | 'success' | 'wrong_amount' | 'invalid_card';
+  status: 'processing' | 'pending' | 'success' | 'wrong_amount' | 'invalid_card' | 'failed';
   createdAt: string;
   txId: string;
+  message?: string;
 }
 
 export interface WheelPrize {
@@ -738,6 +739,9 @@ export interface SystemConfig {
   bankName: string;
   bankAccountNo: string;
   bankAccountName: string;
+  bankBin?: string;
+  bankQrCustomImage?: string;
+  qrDisplayMode?: 'vietqr_auto' | 'custom_image';
   vietQrApiToken: string;
   sepayApiToken?: string;
   web2mApiToken?: string;
@@ -746,10 +750,11 @@ export interface SystemConfig {
   acbApiPassword?: string;
   bankCronInterval?: number;
   
-  // Telco Card Charging Gateways (TheSieuRe, Doithe1s, Pay247, Autothe)
-  telcoProvider?: 'thesieure' | 'doithe1s' | 'pay247' | 'autothe';
+  // Telco Card Charging Gateways (Card24h, TheSieuRe, Doithe1s, Pay247, Autothe)
+  telcoProvider?: 'card24h' | 'thesieure' | 'doithe1s' | 'pay247' | 'autothe';
   telcoPartnerId: string;
   telcoPartnerKey: string;
+  telcoWalletId?: string;
   telcoCallbackUrl?: string;
   telcoFeeViettel?: number;
   telcoFeeVinaphone?: number;

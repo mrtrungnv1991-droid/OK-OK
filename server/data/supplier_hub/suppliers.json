@@ -1,13 +1,13 @@
 [
   {
-    "id": "sup_api_live_dummyjson",
-    "name": "Global Verified Products Gateway (DummyJSON Live)",
-    "websiteUrl": "https://dummyjson.com",
+    "id": "sup_g2up_net_api",
+    "name": "G2UP.NET (Roblox & Game Accounts Gateway)",
+    "websiteUrl": "https://g2up.net",
     "connectionType": "API",
-    "providerType": "DUMMYJSON_DEMO",
+    "providerType": "G2UP_CMSNT",
     "status": "ACTIVE",
     "connectionStatus": "CONNECTED",
-    "balance": 0,
+    "balance": 61000,
     "currency": "VND",
     "capabilities": {
       "balance": true,
@@ -16,175 +16,6 @@
       "create_order": true,
       "order_status": true,
       "cancel_order": true
-    },
-    "priceConfig": {
-      "markupType": "PERCENT",
-      "markupValue": 20,
-      "autoUpdatePrice": true,
-      "manualPriceOverride": false,
-      "roundingUnit": 1000,
-      "roundingMode": "ROUND_UP"
-    },
-    "autoSyncEnabled": true,
-    "syncIntervalMinutes": 60,
-    "stats": {
-      "totalProducts": 120,
-      "mappedProducts": 120,
-      "totalOrders": 0,
-      "totalRevenue": 0,
-      "totalCost": 0,
-      "totalProfit": 0
-    },
-    "createdAt": "2026-09-04T10:57:10.318Z",
-    "updatedAt": "2026-09-04T10:57:21.669Z",
-    "lastDiagnostics": {
-      "network": "PASS",
-      "authentication": "PASS",
-      "account": "SKIPPED",
-      "session": "PASS",
-      "balance": "PASS",
-      "categories": "PASS",
-      "products": "PASS",
-      "overallStatus": "CONNECTED",
-      "steps": [
-        {
-          "step": "Network Connectivity",
-          "status": "PASS",
-          "message": "HTTP 200 OK (198ms)",
-          "durationMs": 198
-        },
-        {
-          "step": "API Authentication",
-          "status": "PASS",
-          "message": "API Key được chấp nhận bởi máy chủ API nguồn",
-          "durationMs": 0
-        },
-        {
-          "step": "API Wallet Balance",
-          "status": "PASS",
-          "message": "Số dư ví API: 0 VND",
-          "durationMs": 5
-        },
-        {
-          "step": "Categories Discovery",
-          "status": "PASS",
-          "message": "Đã phát hiện 24 danh mục qua API",
-          "durationMs": 1255
-        },
-        {
-          "step": "Products Discovery",
-          "status": "PASS",
-          "message": "Quét thành công 120 sản phẩm thực tế từ API",
-          "durationMs": 2732
-        }
-      ],
-      "checkedAt": "2026-09-04T10:57:21.669Z"
-    },
-    "lastConnectedAt": "2026-09-04T10:57:21.669Z",
-    "lastBalanceCheckAt": "2026-09-04T10:57:21.669Z",
-    "lastSyncAt": "2026-09-04T10:57:34.269Z"
-  },
-  {
-    "id": "sup_acc_web_source",
-    "name": "Website Nguồn Tài Khoản & Bản Quyền (Direct Web Account)",
-    "websiteUrl": "https://dummyjson.com",
-    "connectionType": "ACCOUNT",
-    "providerType": "GENERIC_HTML_SCRAPER",
-    "status": "ACTIVE",
-    "connectionStatus": "CONNECTED",
-    "balance": 0,
-    "currency": "VND",
-    "capabilities": {
-      "balance": true,
-      "product_sync": true,
-      "category_sync": true,
-      "create_order": true,
-      "order_status": true,
-      "cancel_order": false
-    },
-    "priceConfig": {
-      "markupType": "FIXED",
-      "markupValue": 25000,
-      "autoUpdatePrice": true,
-      "manualPriceOverride": false,
-      "roundingUnit": 1000,
-      "roundingMode": "ROUND_NEAREST"
-    },
-    "autoSyncEnabled": true,
-    "syncIntervalMinutes": 30,
-    "stats": {
-      "totalProducts": 0,
-      "mappedProducts": 0,
-      "totalOrders": 0,
-      "totalRevenue": 0,
-      "totalCost": 0,
-      "totalProfit": 0
-    },
-    "createdAt": "2026-09-04T10:57:10.318Z",
-    "updatedAt": "2026-09-04T10:57:27.808Z",
-    "lastDiagnostics": {
-      "network": "PASS",
-      "authentication": "PASS",
-      "account": "PASS",
-      "session": "PASS",
-      "balance": "PASS",
-      "categories": "PASS",
-      "products": "PASS",
-      "overallStatus": "CONNECTED",
-      "steps": [
-        {
-          "step": "Network Connectivity",
-          "status": "PASS",
-          "message": "HTTP 200 OK (OK)",
-          "durationMs": 272
-        },
-        {
-          "step": "Authentication",
-          "status": "PASS",
-          "message": "Xác thực tài khoản [master_supplier_agent] thành công",
-          "durationMs": 1176
-        },
-        {
-          "step": "Account Balance",
-          "status": "PASS",
-          "message": "Số dư ví tài khoản: 0 VND",
-          "durationMs": 0
-        },
-        {
-          "step": "Category Discovery",
-          "status": "PASS",
-          "message": "Tìm thấy 24 danh mục khả dụng",
-          "durationMs": 410
-        },
-        {
-          "step": "Product Discovery",
-          "status": "PASS",
-          "message": "Quét thử nghiệm phát hiện 90 sản phẩm thật",
-          "durationMs": 1485
-        }
-      ],
-      "checkedAt": "2026-09-04T10:57:27.808Z"
-    },
-    "lastConnectedAt": "2026-09-04T10:57:27.808Z",
-    "lastBalanceCheckAt": "2026-09-04T10:57:27.808Z"
-  },
-  {
-    "id": "sup_1788520864626_ojzb",
-    "name": "TrungNguyen",
-    "websiteUrl": "https://g2up.net/",
-    "connectionType": "ACCOUNT",
-    "providerType": "G2UP_CMSNT",
-    "status": "ACTIVE",
-    "connectionStatus": "CONNECTED",
-    "balance": 100000,
-    "currency": "VND",
-    "capabilities": {
-      "balance": true,
-      "product_sync": true,
-      "category_sync": true,
-      "create_order": true,
-      "order_status": true,
-      "cancel_order": false
     },
     "priceConfig": {
       "markupType": "PERCENT",
@@ -204,12 +35,12 @@
       "totalCost": 0,
       "totalProfit": 0
     },
-    "createdAt": "2026-09-04T11:21:04.626Z",
-    "updatedAt": "2026-09-04T11:33:47.331Z",
+    "createdAt": "2026-09-04T10:57:10.318Z",
+    "updatedAt": "2026-09-07T04:28:24.057Z",
     "lastDiagnostics": {
       "network": "PASS",
       "authentication": "PASS",
-      "account": "PASS",
+      "account": "SKIPPED",
       "session": "PASS",
       "balance": "PASS",
       "categories": "PASS",
@@ -219,43 +50,38 @@
         {
           "step": "Network Connectivity",
           "status": "PASS",
-          "message": "HTTP 200 OK (OK)",
-          "durationMs": 1529
+          "message": "HTTP 200 OK (468ms)",
+          "durationMs": 468
         },
         {
-          "step": "Authentication",
+          "step": "API Authentication",
           "status": "PASS",
-          "message": "Xác thực tài khoản [cyborg] thành công (Đăng nhập thành công!)",
-          "durationMs": 802
+          "message": "API Key được chấp nhận bởi máy chủ API nguồn",
+          "durationMs": 0
         },
         {
-          "step": "API Gateway & Key Discovery",
+          "step": "API Wallet Balance",
           "status": "PASS",
-          "message": "Đã kết nối API Gateway với API Key: 885e5d...c0af (Truy xuất trực tiếp REST API thời gian thực)"
+          "message": "Số dư ví API: 61.000 VND",
+          "durationMs": 333
         },
         {
-          "step": "Account Balance",
+          "step": "Categories Discovery",
           "status": "PASS",
-          "message": "Số dư ví khả dụng: 100.000 VND",
-          "durationMs": 339
+          "message": "Đã phát hiện 1 danh mục qua API",
+          "durationMs": 352
         },
         {
-          "step": "Category Discovery",
+          "step": "Products Discovery",
           "status": "PASS",
-          "message": "Tìm thấy 10 danh mục khả dụng từ nhà cung cấp",
-          "durationMs": 340
-        },
-        {
-          "step": "Product Discovery",
-          "status": "PASS",
-          "message": "Quét phát hiện 120 sản phẩm thật từ hệ thống nguồn",
-          "durationMs": 340
+          "message": "Quét thành công 120 sản phẩm thực tế từ API",
+          "durationMs": 343
         }
       ],
-      "checkedAt": "2026-09-04T11:33:47.331Z"
+      "checkedAt": "2026-09-07T04:28:24.057Z"
     },
-    "lastConnectedAt": "2026-09-04T11:33:47.331Z",
-    "lastBalanceCheckAt": "2026-09-04T11:33:47.331Z",
-    "lastSyncAt": "2026-09-04T11:33:48.015Z"
+    "lastConnectedAt": "2026-09-07T04:28:24.057Z",
+    "lastBalanceCheckAt": "2026-09-07T04:28:24.057Z",
+    "lastSyncAt": "2026-09-07T04:28:18.568Z"
   }
 ]

@@ -25,11 +25,13 @@ import {
   User,
   Link as LinkIcon,
   Gift,
-  Check
+  Check,
+  Trash2
 } from 'lucide-react';
 import { CurrencyCode } from '../../types';
 import { formatCurrency } from '../../utils/formatters';
 import { WebDeliveryOutput } from '../WebDeliveryOutput';
+import { AdminCronMonitor } from './AdminCronMonitor';
 
 interface AdminSuppliersTabProps {
   suppliers?: any[];
@@ -184,6 +186,34 @@ export const AdminSuppliersTab: React.FC<AdminSuppliersTabProps> = ({
 
   const [testingId, setTestingId] = useState<string | null>(null);
   const [syncingId, setSyncingId] = useState<string | null>(null);
+  const [supplierToDelete, setSupplierToDelete] = useState<SupplierItem | null>(null);
+  const [isDeleting, setIsDeleting] = useState(false);
+
+  const handleConfirmDelete = async () => {
+    if (!supplierToDelete) return;
+    setIsDeleting(true);
+    try {
+      const res = await fetch(`/api/v1/supplier-hub/suppliers/${supplierToDelete.id}`, {
+        method: 'DELETE'
+      });
+      const data = await res.json();
+      if (data.success) {
+        setSuppliersList(prev => prev.filter(s => s.id !== supplierToDelete.id));
+        setActionNotice({
+          type: 'success',
+          text: `Đã xóa thành công đối tác "${supplierToDelete.name}" và toàn bộ mapping liên quan.`
+        });
+        setSupplierToDelete(null);
+        await fetchDbVerification();
+      } else {
+        setActionNotice({ type: 'error', text: data.message || 'Xóa đối tác thất bại' });
+      }
+    } catch (err: any) {
+      setActionNotice({ type: 'error', text: `Lỗi khi xóa đối tác: ${err.message}` });
+    } finally {
+      setIsDeleting(false);
+    }
+  };
 
   // New Supplier Form State
   const [newType, setNewType] = useState<'ACCOUNT' | 'API' | 'CUSTOM'>('ACCOUNT');
@@ -570,6 +600,9 @@ export const AdminSuppliersTab: React.FC<AdminSuppliersTabProps> = ({
 
   return (
     <div className="space-y-6">
+      {/* Background Cron Daemon Realtime Monitor & Stock Sync Hub */}
+      <AdminCronMonitor />
+
       {/* Top Banner / KPIs */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
         <div className="p-4 rounded-xl bg-slate-900/60 border border-slate-800 flex items-center justify-between">
@@ -911,6 +944,15 @@ export const AdminSuppliersTab: React.FC<AdminSuppliersTabProps> = ({
                   >
                     <Sliders className="w-3.5 h-3.5" />
                     <span>Bảng Giá & Mapping</span>
+                  </button>
+
+                  <button
+                    onClick={() => setSupplierToDelete(supplier)}
+                    className="px-2.5 py-1.5 rounded-lg bg-red-950/40 hover:bg-red-900/60 text-red-400 hover:text-red-300 text-xs font-semibold flex items-center gap-1 cursor-pointer border border-red-500/30 transition-all"
+                    title="Xóa đối tác nhà cung cấp này"
+                  >
+                    <Trash2 className="w-3.5 h-3.5" />
+                    <span>Xóa</span>
                   </button>
                 </div>
               </div>
@@ -1491,8 +1533,21 @@ export const AdminSuppliersTab: React.FC<AdminSuppliersTabProps> = ({
                                     </div>
                                   )}
                                   <div>
-                                    <div className="font-semibold text-white truncate max-w-[170px]">{mapping.localTitle || mapping.supplierProductId}</div>
-                                    <div className="text-[10px] text-slate-400">{mapping.localCategory || 'software'}</div>
+                                    <div className="font-semibold text-white truncate max-w-[170px] flex items-center gap-1.5">
+                                      <span>{mapping.localTitle || mapping.supplierProductId}</span>
+                                      {(mapping.status as string === 'OUT_OF_STOCK' || (mapping.stockAvailable !== undefined && mapping.stockAvailable <= 0)) && (
+                                        <span className="px-1.5 py-0.2 rounded text-[9px] font-mono font-bold bg-rose-950 border border-rose-500/70 text-rose-300 shrink-0">
+                                          HẾT HÀNG
+                                        </span>
+                                      )}
+                                    </div>
+                                    <div className="text-[10px] text-slate-400 flex items-center gap-2">
+                                      <span>{mapping.localCategory || 'software'}</span>
+                                      <span>•</span>
+                                      <span className={(mapping.stockAvailable !== undefined && mapping.stockAvailable <= 0) ? 'text-rose-400 font-bold' : 'text-emerald-400'}>
+                                        Kho: {mapping.stockAvailable ?? 0}
+                                      </span>
+                                    </div>
                                   </div>
                                 </div>
                               </td>
@@ -1826,6 +1881,55 @@ export const AdminSuppliersTab: React.FC<AdminSuppliersTabProps> = ({
                 className="px-4 py-2 rounded-xl bg-cyan-500 hover:bg-cyan-400 text-black text-xs font-bold cursor-pointer"
               >
                 Đóng
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* MODAL 6: CONFIRM DELETE SUPPLIER */}
+      {supplierToDelete && (
+        <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4">
+          <div className="w-full max-w-md bg-slate-900 border border-red-500/40 rounded-2xl p-6 space-y-4 text-white shadow-2xl">
+            <div className="flex items-center gap-3 border-b border-slate-800 pb-3">
+              <div className="p-2 rounded-xl bg-red-500/20 text-red-400 border border-red-500/30">
+                <Trash2 className="w-5 h-5" />
+              </div>
+              <div>
+                <h3 className="text-base font-bold text-white">Xác Nhận Xóa Đối Tác</h3>
+                <p className="text-xs text-slate-400">Hành động này không thể hoàn tác</p>
+              </div>
+            </div>
+
+            <div className="p-3 bg-slate-950 rounded-xl border border-slate-800 space-y-2 text-xs">
+              <div className="text-slate-300">
+                Bạn có chắc chắn muốn xóa đối tác: <strong className="text-white">{supplierToDelete.name}</strong>?
+              </div>
+              <div className="text-slate-400">
+                Website: <span className="font-mono text-cyan-300">{supplierToDelete.websiteUrl}</span>
+              </div>
+              <div className="text-amber-400 bg-amber-950/40 border border-amber-500/30 p-2 rounded-lg text-[11px] leading-relaxed">
+                ⚠️ Cảnh báo: Việc xóa đối tác sẽ đồng thời xóa bỏ toàn bộ thông tin tài khoản / API Key và các liên kết sản phẩm (product mapping) đã gán cho đối tác này.
+              </div>
+            </div>
+
+            <div className="flex items-center justify-end gap-3 pt-2">
+              <button
+                type="button"
+                onClick={() => setSupplierToDelete(null)}
+                disabled={isDeleting}
+                className="px-4 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs font-semibold cursor-pointer transition-colors"
+              >
+                Hủy Bỏ
+              </button>
+              <button
+                type="button"
+                onClick={handleConfirmDelete}
+                disabled={isDeleting}
+                className="px-4 py-2 rounded-xl bg-red-600 hover:bg-red-500 text-white text-xs font-bold flex items-center gap-2 cursor-pointer shadow-lg shadow-red-600/30 transition-all"
+              >
+                <Trash2 className="w-4 h-4" />
+                <span>{isDeleting ? 'Đang Xóa...' : 'Xác Nhận Xóa Vĩnh Viễn'}</span>
               </button>
             </div>
           </div>

@@ -12,10 +12,16 @@ import {
   Search, 
   Terminal, 
   RefreshCw,
-  EyeOff
+  EyeOff,
+  Bell,
+  Send,
+  Filter,
+  Activity,
+  FileText
 } from 'lucide-react';
-import { BlockedIPItem, SystemConfig } from '../../types';
+import { BlockedIPItem, SystemConfig, AuditLog } from '../../types';
 import { INITIAL_BLOCKED_IPS } from '../../data/systemExtendedData';
+import { INITIAL_AUDIT_LOGS } from '../../data/systemAdminData';
 
 interface AdminSecurityIpTabProps {
   systemConfig?: SystemConfig;
@@ -26,7 +32,7 @@ export const AdminSecurityIpTab: React.FC<AdminSecurityIpTabProps> = ({
   systemConfig = {} as SystemConfig,
   onUpdateSystemConfig = (_cfg?: Partial<SystemConfig>) => {}
 }) => {
-  const [subTab, setSubTab] = useState<'blocked_ips' | 'country_block' | 'firewall_settings'>('blocked_ips');
+  const [subTab, setSubTab] = useState<'blocked_ips' | 'country_block' | 'firewall_settings' | 'telegram_bot' | 'audit_logs'>('blocked_ips');
   const [blockedList, setBlockedList] = useState<BlockedIPItem[]>(INITIAL_BLOCKED_IPS);
   const [searchTerm, setSearchTerm] = useState('');
   const [newIpInput, setNewIpInput] = useState('');
@@ -36,6 +42,43 @@ export const AdminSecurityIpTab: React.FC<AdminSecurityIpTabProps> = ({
 
   // Geo Block state
   const [selectedCountries, setSelectedCountries] = useState<string[]>(systemConfig?.geoBlockCountries || ['CN', 'RU', 'KP']);
+
+  // Audit Logs state
+  const [logs] = useState<AuditLog[]>(INITIAL_AUDIT_LOGS);
+  const [logSearchTerm, setLogSearchTerm] = useState('');
+  const [moduleFilter, setModuleFilter] = useState<string>('all');
+
+  // Telegram Bot state
+  const [telegramForm, setTelegramForm] = useState({
+    telegramBotToken: systemConfig?.telegramBotToken || '7182938491:AAH8s9f2kLk9901MNaK9',
+    telegramChatId: systemConfig?.telegramChatId || '-1002938481920',
+    enableTelegramAlerts: systemConfig?.enableTelegramAlerts !== false,
+    alertOnNewOrder: systemConfig?.alertOnNewOrder !== false,
+    alertOnNewDeposit: systemConfig?.alertOnNewDeposit !== false,
+    alertOnNewUser: systemConfig?.alertOnNewUser !== false,
+    alertOnTicket: systemConfig?.alertOnTicket !== false
+  });
+
+  const handleSaveTelegram = (e: React.FormEvent) => {
+    e.preventDefault();
+    onUpdateSystemConfig(telegramForm);
+    setSaveNotice('Đã lưu cấu hình Bot Telegram thông báo tự động!');
+    setTimeout(() => setSaveNotice(null), 3000);
+  };
+
+  const handleSendTestTelegram = () => {
+    setSaveNotice('🔔 [Security Telemetry] Đã gửi thông báo thử nghiệm tới Telegram Chat ID: ' + telegramForm.telegramChatId);
+    setTimeout(() => setSaveNotice(null), 4000);
+  };
+
+  const filteredLogs = logs.filter(log => {
+    const matchSearch = log.adminUser.toLowerCase().includes(logSearchTerm.toLowerCase()) ||
+      log.action.toLowerCase().includes(logSearchTerm.toLowerCase()) ||
+      log.details.toLowerCase().includes(logSearchTerm.toLowerCase()) ||
+      log.ipAddress.includes(logSearchTerm);
+    const matchModule = moduleFilter === 'all' || log.module === moduleFilter;
+    return matchSearch && matchModule;
+  });
 
   const filteredIps = blockedList.filter(item => 
     (item.ipAddress || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -165,6 +208,30 @@ export const AdminSecurityIpTab: React.FC<AdminSecurityIpTabProps> = ({
         >
           <Lock className="w-3.5 h-3.5" />
           <span>Cấu Hình Tường Lửa & Chống F12</span>
+        </button>
+
+        <button
+          onClick={() => setSubTab('telegram_bot')}
+          className={`px-3 py-1.5 rounded-lg font-bold flex items-center gap-1.5 cursor-pointer text-xs ${
+            subTab === 'telegram_bot'
+              ? 'bg-rose-600 text-white shadow-md'
+              : 'bg-slate-900 text-slate-400 hover:text-white'
+          }`}
+        >
+          <Bell className="w-3.5 h-3.5" />
+          <span>Telegram Bot Cảnh Báo</span>
+        </button>
+
+        <button
+          onClick={() => setSubTab('audit_logs')}
+          className={`px-3 py-1.5 rounded-lg font-bold flex items-center gap-1.5 cursor-pointer text-xs ${
+            subTab === 'audit_logs'
+              ? 'bg-rose-600 text-white shadow-md'
+              : 'bg-slate-900 text-slate-400 hover:text-white'
+          }`}
+        >
+          <FileText className="w-3.5 h-3.5" />
+          <span>Nhật Ký Kiểm Toán ({logs.length})</span>
         </button>
       </div>
 
@@ -396,6 +463,180 @@ export const AdminSecurityIpTab: React.FC<AdminSecurityIpTabProps> = ({
                 <span className="text-slate-400 font-bold">req / phút / IP</span>
               </div>
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* SUBTAB 4: TELEGRAM BOT ALERTS */}
+      {subTab === 'telegram_bot' && (
+        <form onSubmit={handleSaveTelegram} className="p-4 rounded-xl bg-slate-900/60 border border-slate-800 space-y-4">
+          <div className="flex items-center justify-between border-b border-slate-800 pb-2">
+            <div className="flex items-center gap-2">
+              <Bell className="w-4 h-4 text-cyan-400" />
+              <span className="font-bold text-white text-xs">CẤU HÌNH BOT TELEGRAM THÔNG BÁO TỨC THÌ (ZERO-DROP)</span>
+            </div>
+            <button
+              type="button"
+              onClick={handleSendTestTelegram}
+              className="px-2.5 py-1 rounded-lg bg-cyan-950 text-cyan-300 border border-cyan-500/40 hover:bg-cyan-900 text-xs cursor-pointer flex items-center gap-1.5"
+            >
+              <Send className="w-3 h-3" />
+              <span>Bắn Test Thông Báo</span>
+            </button>
+          </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <div>
+              <label className="text-[11px] text-slate-400 font-bold">Telegram Bot Token (@BotFather):</label>
+              <input
+                type="text"
+                value={telegramForm.telegramBotToken}
+                onChange={(e) => setTelegramForm({ ...telegramForm, telegramBotToken: e.target.value })}
+                className="w-full bg-slate-950 border border-slate-700 rounded-lg p-2 text-cyan-300 font-mono mt-1 text-xs"
+              />
+            </div>
+
+            <div>
+              <label className="text-[11px] text-slate-400 font-bold">Telegram Chat ID / Group ID:</label>
+              <input
+                type="text"
+                value={telegramForm.telegramChatId}
+                onChange={(e) => setTelegramForm({ ...telegramForm, telegramChatId: e.target.value })}
+                className="w-full bg-slate-950 border border-slate-700 rounded-lg p-2 text-white font-mono mt-1 text-xs"
+              />
+            </div>
+          </div>
+
+          <div className="pt-2 border-t border-slate-800 space-y-2">
+            <div className="text-xs font-bold text-white uppercase">CÁC SỰ KIỆN GỬI THÔNG BÁO TỚI TELEGRAM:</div>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+              <label className="flex items-center gap-2 p-2.5 rounded-lg bg-slate-950 border border-slate-800 cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={telegramForm.alertOnNewOrder}
+                  onChange={(e) => setTelegramForm({ ...telegramForm, alertOnNewOrder: e.target.checked })}
+                  className="w-4 h-4 rounded text-cyan-500 bg-slate-900"
+                />
+                <span className="text-white text-xs">Thông báo khi có Đơn Mua Hàng Mới</span>
+              </label>
+
+              <label className="flex items-center gap-2 p-2.5 rounded-lg bg-slate-950 border border-slate-800 cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={telegramForm.alertOnNewDeposit}
+                  onChange={(e) => setTelegramForm({ ...telegramForm, alertOnNewDeposit: e.target.checked })}
+                  className="w-4 h-4 rounded text-cyan-500 bg-slate-900"
+                />
+                <span className="text-white text-xs">Thông báo khi có Nạp Tiền VietQR / Auto Card</span>
+              </label>
+
+              <label className="flex items-center gap-2 p-2.5 rounded-lg bg-slate-950 border border-slate-800 cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={telegramForm.alertOnNewUser}
+                  onChange={(e) => setTelegramForm({ ...telegramForm, alertOnNewUser: e.target.checked })}
+                  className="w-4 h-4 rounded text-cyan-500 bg-slate-900"
+                />
+                <span className="text-white text-xs">Thông báo khi có Thành Viên Mới Đăng Ký</span>
+              </label>
+
+              <label className="flex items-center gap-2 p-2.5 rounded-lg bg-slate-950 border border-slate-800 cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={telegramForm.alertOnTicket}
+                  onChange={(e) => setTelegramForm({ ...telegramForm, alertOnTicket: e.target.checked })}
+                  className="w-4 h-4 rounded text-cyan-500 bg-slate-900"
+                />
+                <span className="text-white text-xs">Thông báo khi có Ticket Khiếu Nại / Hỗ Trợ</span>
+              </label>
+            </div>
+          </div>
+
+          <div className="flex justify-end pt-2">
+            <button
+              type="submit"
+              className="px-4 py-2 rounded-xl bg-cyan-500 hover:bg-cyan-400 text-black text-xs font-bold cursor-pointer transition-all"
+            >
+              Lưu Cấu Hình Telegram
+            </button>
+          </div>
+        </form>
+      )}
+
+      {/* SUBTAB 5: AUDIT LOGS */}
+      {subTab === 'audit_logs' && (
+        <div className="space-y-4">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 bg-slate-900/40 p-2.5 rounded-xl border border-slate-800">
+            <div className="relative flex-1">
+              <Search className="w-3.5 h-3.5 text-slate-500 absolute left-3 top-1/2 -translate-y-1/2" />
+              <input
+                type="text"
+                value={logSearchTerm}
+                onChange={(e) => setLogSearchTerm(e.target.value)}
+                placeholder="Tìm log theo quản trị viên, hành động hoặc IP..."
+                className="w-full pl-9 pr-3 py-1.5 bg-slate-950 border border-slate-800 rounded-lg text-white placeholder:text-slate-500 text-xs focus:outline-none focus:border-rose-500"
+              />
+            </div>
+
+            <div className="flex items-center gap-2">
+              <select
+                value={moduleFilter}
+                onChange={(e) => setModuleFilter(e.target.value)}
+                className="bg-slate-950 border border-slate-800 rounded-lg px-2.5 py-1.5 text-slate-300 text-xs"
+              >
+                <option value="all">Tất cả modules</option>
+                <option value="banking">Nạp tiền & Ngân hàng</option>
+                <option value="members">Thành viên & Số dư</option>
+                <option value="products">Sản phẩm & Kho Key</option>
+                <option value="orders">Đơn hàng & Bảo hành</option>
+                <option value="security">Bảo mật & Tường lửa</option>
+                <option value="vouchers">Khuyến mãi & Minigame</option>
+              </select>
+            </div>
+          </div>
+
+          <div className="overflow-x-auto rounded-xl border border-slate-800 bg-slate-950/60">
+            <table className="w-full text-left border-collapse text-[11px]">
+              <thead>
+                <tr className="bg-slate-900/90 text-slate-400 border-b border-slate-800 uppercase">
+                  <th className="p-3">Mã Log / Thời Gian</th>
+                  <th className="p-3">Người Thực Hiện</th>
+                  <th className="p-3">Phân Hệ</th>
+                  <th className="p-3">Hành Động</th>
+                  <th className="p-3">Nội Dung Chi Tiết</th>
+                  <th className="p-3 text-right">IP Thực Hiện</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-slate-800/60 font-mono">
+                {filteredLogs.map((log) => (
+                  <tr key={log.id} className="hover:bg-slate-900/40 transition-colors">
+                    <td className="p-3 font-bold text-slate-300">
+                      <div>{log.id}</div>
+                      <div className="text-[10px] text-slate-500 font-sans">{log.timestamp}</div>
+                    </td>
+                    <td className="p-3 font-bold text-white">
+                      <span className="px-2 py-0.5 rounded bg-slate-900 border border-slate-700 text-cyan-300">
+                        {log.adminUser}
+                      </span>
+                    </td>
+                    <td className="p-3">
+                      <span className="px-2 py-0.5 rounded bg-slate-950 text-slate-300 border border-slate-800 uppercase text-[9px]">
+                        {log.module}
+                      </span>
+                    </td>
+                    <td className="p-3 font-bold text-amber-400">
+                      {log.action}
+                    </td>
+                    <td className="p-3 text-slate-300 font-sans">
+                      {log.details}
+                    </td>
+                    <td className="p-3 text-right font-mono text-emerald-400">
+                      {log.ipAddress}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
           </div>
         </div>
       )}

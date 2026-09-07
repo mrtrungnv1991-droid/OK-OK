@@ -239,12 +239,18 @@ export const CartModal: React.FC<CartModalProps> = ({
                 {cartItems.map((item) => {
                   const { product, quantity, selected, itemType } = item;
                   const itemSubtotal = product.retailPrice * quantity;
+                  const isItemOutOfStock = (product.stockAvailable !== undefined && product.stockAvailable <= 0) ||
+                                           (product as any).status === 'OUT_OF_STOCK' ||
+                                           (product as any).isAvailable === false ||
+                                           (product.tags && product.tags.includes('OUT_OF_STOCK'));
 
                   return (
                     <div
                       key={product.id}
                       className={`p-3.5 sm:p-4 rounded-xl border transition-all ${
-                        selected
+                        isItemOutOfStock
+                          ? 'bg-rose-950/20 border-rose-500/40 opacity-85'
+                          : selected
                           ? 'bg-[#0e1424]/90 border-cyan-500/40 shadow-[0_4px_20px_rgba(6,182,212,0.08)]'
                           : 'bg-slate-900/40 border-slate-800/80 opacity-75'
                       }`}
@@ -254,9 +260,10 @@ export const CartModal: React.FC<CartModalProps> = ({
                         <div className="pt-2 shrink-0">
                           <input
                             type="checkbox"
-                            checked={selected}
+                            checked={selected && !isItemOutOfStock}
+                            disabled={isItemOutOfStock}
                             onChange={() => toggleSelect(product.id)}
-                            className="w-4 h-4 rounded border-slate-700 bg-slate-800 text-cyan-500 focus:ring-cyan-400 focus:ring-offset-0 cursor-pointer"
+                            className="w-4 h-4 rounded border-slate-700 bg-slate-800 text-cyan-500 focus:ring-cyan-400 focus:ring-offset-0 cursor-pointer disabled:cursor-not-allowed"
                           />
                         </div>
 
@@ -276,9 +283,15 @@ export const CartModal: React.FC<CartModalProps> = ({
                         <div className="flex-1 min-w-0">
                           <div className="flex flex-wrap items-center gap-1.5 mb-1">
                             {getItemTypeBadge(itemType, product.platform)}
-                            <span className="text-[10px] font-mono text-emerald-400 bg-emerald-950/60 px-1.5 py-0.2 rounded border border-emerald-500/30">
-                              ⚡ Sẵn {product.stockAvailable || 15} key kho
-                            </span>
+                            {isItemOutOfStock ? (
+                              <span className="text-[10px] font-mono text-rose-400 bg-rose-950/80 px-1.5 py-0.2 rounded border border-rose-500/50 font-bold">
+                                ⚠️ Shop API đã bán hết (0 key)
+                              </span>
+                            ) : (
+                              <span className="text-[10px] font-mono text-emerald-400 bg-emerald-950/60 px-1.5 py-0.2 rounded border border-emerald-500/30">
+                                ⚡ Sẵn {product.stockAvailable ?? 10} key kho
+                              </span>
+                            )}
                           </div>
 
                           <h4 className="text-xs sm:text-sm font-bold font-mono text-white line-clamp-1">

@@ -16,7 +16,8 @@ import {
   ExternalLink,
   Zap,
   Info,
-  Sparkles
+  Sparkles,
+  Image as ImageIcon
 } from 'lucide-react';
 import { UserProfile, TransactionRecord, TelcoCardSubmission, SystemConfig } from '../types';
 import { formatCurrency } from '../utils/formatters';
@@ -54,9 +55,22 @@ export const DepositHubModal: React.FC<DepositHubModalProps> = ({
   const [binanceTxInput, setBinanceTxInput] = useState('');
   const [ltcCustomInput, setLtcCustomInput] = useState<string>('');
 
+  const bankBin = systemConfig?.bankBin || '970422';
+  const customQrImage = systemConfig?.bankQrCustomImage || '';
+  const initialQrMode = systemConfig?.qrDisplayMode || (customQrImage ? 'custom_image' : 'vietqr_auto');
+  const [activeQrView, setActiveQrView] = useState<'vietqr_auto' | 'custom_image'>(initialQrMode);
+
+  useEffect(() => {
+    if (systemConfig?.qrDisplayMode) {
+      setActiveQrView(systemConfig.qrDisplayMode);
+    } else if (systemConfig?.bankQrCustomImage) {
+      setActiveQrView('custom_image');
+    }
+  }, [systemConfig?.qrDisplayMode, systemConfig?.bankQrCustomImage]);
+
   const transferCode = `CYBER ${user.id.replace('user-', '').toUpperCase()}`;
   const bankAccount = {
-    bankName: systemConfig?.bankName || 'MB BANK',
+    bankName: systemConfig?.bankName || 'MBBank - Ngân Hàng Quân Đội',
     bankCode: 'MB',
     accountNumber: systemConfig?.bankAccountNo || '0988889999',
     accountHolder: systemConfig?.bankAccountName || 'CYBERPOOL ESCROW GATEWAY'
@@ -90,8 +104,9 @@ export const DepositHubModal: React.FC<DepositHubModalProps> = ({
   // Calculated LTC amount
   const calculatedLtcAmount = (depositAmount / ltcAccount.rate).toFixed(6);
 
-  // VietQR Dynamic URL (QuickLink compatible)
-  const vietQrUrl = `https://api.vietqr.io/image/970422-${bankAccount.accountNumber}-compact2.jpg?amount=${depositAmount}&addInfo=${encodeURIComponent(transferCode)}&accountName=${encodeURIComponent(bankAccount.accountHolder)}`;
+  // VietQR Dynamic URL (QuickLink compatible with custom Bank BIN)
+  const dynamicVietQrUrl = `https://api.vietqr.io/image/${bankBin}-${bankAccount.accountNumber}-compact2.jpg?amount=${depositAmount}&addInfo=${encodeURIComponent(transferCode)}&accountName=${encodeURIComponent(bankAccount.accountHolder)}`;
+  const displayQrUrl = activeQrView === 'custom_image' && customQrImage ? customQrImage : dynamicVietQrUrl;
 
   // LTC QR Code URL
   const ltcQrUrl = `https://api.qrserver.com/v1/create-qr-code/?size=250x250&data=${encodeURIComponent(
@@ -285,19 +300,49 @@ export const DepositHubModal: React.FC<DepositHubModalProps> = ({
             <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
               {/* Left Column: QR Code Visual */}
               <div className="lg:col-span-5 flex flex-col items-center bg-slate-900/60 p-4 rounded-2xl border border-slate-800 space-y-3 text-center">
+                {/* Switcher if shop uploaded custom QR */}
+                {customQrImage && (
+                  <div className="w-full flex items-center justify-center p-1 bg-slate-950 rounded-xl border border-slate-800 text-xs">
+                    <button
+                      type="button"
+                      onClick={() => setActiveQrView('vietqr_auto')}
+                      className={`flex-1 py-1 px-2 rounded-lg font-semibold transition-all flex items-center justify-center gap-1 cursor-pointer ${
+                        activeQrView === 'vietqr_auto'
+                          ? 'bg-cyan-500 text-black shadow'
+                          : 'text-slate-400 hover:text-white'
+                      }`}
+                    >
+                      <QrCode className="w-3.5 h-3.5" />
+                      <span>VietQR Tự Động</span>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setActiveQrView('custom_image')}
+                      className={`flex-1 py-1 px-2 rounded-lg font-semibold transition-all flex items-center justify-center gap-1 cursor-pointer ${
+                        activeQrView === 'custom_image'
+                          ? 'bg-purple-500 text-white shadow'
+                          : 'text-slate-400 hover:text-white'
+                      }`}
+                    >
+                      <ImageIcon className="w-3.5 h-3.5" />
+                      <span>QR Gốc Của Shop</span>
+                    </button>
+                  </div>
+                )}
+
                 <div className="p-2.5 rounded-xl bg-white shadow-xl relative group">
                   <img
-                    src={vietQrUrl}
-                    alt="VietQR MBBank"
+                    src={displayQrUrl}
+                    alt={activeQrView === 'custom_image' ? 'Shop Custom QR' : `VietQR ${bankAccount.bankName}`}
                     className="w-56 h-56 object-contain rounded-lg"
                     onError={(e) => {
                       e.currentTarget.src = `https://api.qrserver.com/v1/create-qr-code/?size=250x250&data=${encodeURIComponent(
-                        `STK:${bankAccount.accountNumber}|NH:${bankAccount.bankCode}|TIEN:${depositAmount}|ND:${transferCode}`
+                        `STK:${bankAccount.accountNumber}|NH:${bankBin}|TIEN:${depositAmount}|ND:${transferCode}`
                       )}`;
                     }}
                   />
                   <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 flex items-center justify-center transition-opacity rounded-lg text-white font-bold text-xs">
-                    Scan Mobile Banking App
+                    Quét Bằng App Ngân Hàng / Ví Điện Tử
                   </div>
                 </div>
 
@@ -306,8 +351,16 @@ export const DepositHubModal: React.FC<DepositHubModalProps> = ({
                   <span>{t('common.status')}: {formatCountdown(countdownSeconds)}</span>
                 </div>
 
-                <p className="text-[11px] text-slate-400 leading-relaxed">
-                  {t('wallet.bank_transfer')}
+                <p className="text-[11px] text-slate-300 leading-relaxed bg-slate-950/60 p-2 rounded-lg border border-slate-800/80 w-full text-left">
+                  {activeQrView === 'custom_image' ? (
+                    <span>
+                      ⚠️ <strong>Lưu ý:</strong> Đang dùng mã QR cá nhân của Shop. Sau khi quét, vui lòng nhập chính xác số tiền <strong className="text-cyan-400">{formatCurrency(depositAmount, user.currency)}</strong> và nội dung <strong className="text-amber-300">{transferCode}</strong> để được cộng tiền tự động.
+                    </span>
+                  ) : (
+                    <span>
+                      ✨ <strong>VietQR 24/7:</strong> Quét bằng bất kỳ ứng dụng ngân hàng nào (MB, VCB, Techcombank, Momo...), hệ thống tự động điền sẵn số tiền và mã giao dịch.
+                    </span>
+                  )}
                 </p>
               </div>
 

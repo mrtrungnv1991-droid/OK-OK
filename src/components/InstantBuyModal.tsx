@@ -53,6 +53,10 @@ export const InstantBuyModal: React.FC<InstantBuyModalProps> = ({
   const { t } = useTranslation();
   const { showToast } = useUI();
   const [quantity, setQuantity] = useState<number>(1);
+  const isOutOfStock = (product.stockAvailable !== undefined && product.stockAvailable <= 0) ||
+                       product.status === 'OUT_OF_STOCK' ||
+                       product.isAvailable === false ||
+                       (product.tags && product.tags.includes('OUT_OF_STOCK'));
   const [voucherCode, setVoucherCode] = useState<string>('');
   const [appliedVoucher, setAppliedVoucher] = useState<{ code: string; discountPercent: number } | null>(null);
   const [voucherError, setVoucherError] = useState<string | null>(null);
@@ -137,6 +141,13 @@ Thank you for trading on CyberPool Escrow Network!
   };
 
   const handleExecutePurchase = async (method: 'wallet' | 'vietqr' | 'telco') => {
+    if (isOutOfStock) {
+      showToast('Sản phẩm này hiện đã bán hết tại shop API nguồn. Không thể thanh toán!', 'error', {
+        title: 'HẾT HÀNG'
+      });
+      return;
+    }
+
     if (method === 'wallet' && !hasEnoughBalance) {
       onOpenWallet();
       return;
@@ -175,7 +186,7 @@ Thank you for trading on CyberPool Escrow Network!
           createdAt: new Date(realOrder.createdAt).toLocaleString('vi-VN'),
           deliveryBranch: orderAny.deliveryBranch || product.deliveryBranch,
           deliveredKey: orderAny.deliveredData?.keys?.[0] || res.data.deliveredKey || 'DELIVERED',
-          pinCode: orderAny.deliveredData?.giftCardInfo?.pinCode || '8821',
+          pinCode: orderAny.deliveredData?.giftCardInfo?.pinCode,
           deliveredData: orderAny.deliveredData,
           giftUpCard: orderAny.deliveredData?.giftUpCard ? {
             cardNumber: orderAny.deliveredData.giftUpCard.cardNumber,
@@ -346,10 +357,31 @@ Thank you for trading on CyberPool Escrow Network!
                   <div className="text-[11px] font-mono text-slate-400 flex items-center gap-2 pt-1">
                     <span>{product.seller?.name || product.source_info?.supplierName || 'Cyber Verified Store'}</span>
                     <span>•</span>
-                    <span className="text-emerald-400">{product.stockAvailable || 15} keys</span>
+                    {isOutOfStock ? (
+                      <span className="text-rose-400 font-bold flex items-center gap-1">
+                        <span className="w-1.5 h-1.5 rounded-full bg-rose-500 animate-ping" />
+                        Đã hết hàng (0 key khả dụng trên kho API)
+                      </span>
+                    ) : (
+                      <span className="text-emerald-400">{product.stockAvailable ?? 15} keys</span>
+                    )}
                   </div>
                 </div>
               </div>
+
+              {/* High Visibility Out Of Stock Banner */}
+              {isOutOfStock && (
+                <div className="p-4 rounded-xl bg-rose-950/70 border border-rose-500/80 text-rose-200 text-xs font-mono space-y-1.5 shadow-[0_0_20px_rgba(244,63,94,0.25)]">
+                  <div className="flex items-center gap-2 font-black text-rose-300 text-sm">
+                    <AlertCircle className="w-5 h-5 text-rose-400 shrink-0" />
+                    <span>SẢN PHẨM NÀY ĐÃ BÁN HẾT TRÊN SHOP API NGUỒN</span>
+                  </div>
+                  <p className="text-slate-300 text-[11px] leading-relaxed">
+                    Hệ thống Cron vừa đồng bộ với kho hàng nhà cung cấp: Số lượng sản phẩm này hiện tại đã hết (0 keys). 
+                    Đường link sản phẩm vẫn giữ nguyên để bạn theo dõi thông tin, nhưng cổng thanh toán đã tạm khóa an toàn để tránh thất thoát số dư của bạn.
+                  </p>
+                </div>
+              )}
 
               {/* Quantity Selector & Bulk Discount Pod */}
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
@@ -538,10 +570,19 @@ Thank you for trading on CyberPool Escrow Network!
                 <button
                   type="button"
                   onClick={() => handleExecutePurchase(paymentMethod)}
-                  disabled={isProcessing || (paymentMethod === 'wallet' && !hasEnoughBalance)}
-                  className="w-full py-3.5 px-6 rounded-xl bg-gradient-to-r from-cyan-500 via-cyan-400 to-blue-500 hover:from-cyan-400 hover:to-blue-400 text-black font-mono font-black text-sm uppercase tracking-wider transition-all shadow-[0_0_30px_rgba(6,182,212,0.45)] active:scale-98 disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer flex items-center justify-center gap-2"
+                  disabled={isOutOfStock || isProcessing || (paymentMethod === 'wallet' && !hasEnoughBalance)}
+                  className={`w-full py-3.5 px-6 rounded-xl font-mono font-black text-sm uppercase tracking-wider transition-all active:scale-98 disabled:opacity-60 disabled:cursor-not-allowed cursor-pointer flex items-center justify-center gap-2 ${
+                    isOutOfStock 
+                      ? 'bg-rose-950/80 border border-rose-600/70 text-rose-300 shadow-[0_0_20px_rgba(244,63,94,0.3)] cursor-not-allowed'
+                      : 'bg-gradient-to-r from-cyan-500 via-cyan-400 to-blue-500 hover:from-cyan-400 hover:to-blue-400 text-black shadow-[0_0_30px_rgba(6,182,212,0.45)]'
+                  }`}
                 >
-                  {isProcessing ? (
+                  {isOutOfStock ? (
+                    <>
+                      <AlertCircle className="w-4 h-4 text-rose-400" />
+                      <span>SẢN PHẨM ĐÃ HẾT HÀNG TRÊN KHO API</span>
+                    </>
+                  ) : isProcessing ? (
                     <>
                       <div className="w-4 h-4 border-2 border-black border-t-transparent rounded-full animate-spin" />
                       <span>{t('checkout.processing_payment')}</span>

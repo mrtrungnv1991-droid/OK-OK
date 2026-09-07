@@ -28,6 +28,7 @@ const TELCO_LIST = [
   { id: 'VIETTEL', name: 'Viettel', fee: 16, logo: '🔴' },
   { id: 'VINAPHONE', name: 'Vinaphone', fee: 15, logo: '🔵' },
   { id: 'MOBIFONE', name: 'Mobifone', fee: 17, logo: '🟡' },
+  { id: 'VIETNAMOBILE', name: 'Vietnamobile', fee: 18, logo: '🟠' },
   { id: 'GARENA', name: 'Garena', fee: 15, logo: '🔴' },
   { id: 'ZING', name: 'Zing / VNG', fee: 18, logo: '🟢' },
   { id: 'GATE', name: 'FPT Gate', fee: 20, logo: '🟠' },
@@ -58,7 +59,7 @@ export const TelcoCardModal: React.FC<TelcoCardModalProps> = ({
   const feePercent = currentTelcoInfo.fee;
   const receivedAmount = selectedAmount * (1 - feePercent / 100);
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!serial.trim() || !pin.trim()) {
       return;
@@ -80,13 +81,14 @@ export const TelcoCardModal: React.FC<TelcoCardModalProps> = ({
       txId: `TX-CARD-${Math.floor(100000 + Math.random() * 900000)}`
     };
 
-    setTimeout(() => {
-      onCardSubmit({ ...submission, status: 'success' });
-      setIsSubmitting(false);
+    try {
+      await onCardSubmit(submission);
       setSerial('');
       setPin('');
       setActiveTab('history');
-    }, 2000);
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   return (

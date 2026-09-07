@@ -31,6 +31,7 @@ class DatabaseStore {
   public categories: any[] = [];
   public tickets: any[] = [];
   public systemConfig: any = {};
+  public telcoCards: Map<string, any> = new Map();
   public processedWebhooks: Map<string, { amount: number; userId: string; status: string; processedAt: string; provider: string; memo?: string }> = new Map();
   public pendingUnmappedDeposits: Array<{ id: string; provider: string; transactionId: string; amount: number; memo: string; rawPayload: any; receivedAt: string; status: 'PENDING_REVIEW' | 'RESOLVED' | 'REJECTED' }> = [];
 
@@ -195,7 +196,13 @@ class DatabaseStore {
       minWithdrawalAmount: 100000,
       escrowTimeoutHours: 48,
       antiDDoSMode: 'advanced_waf',
-      maintenanceMode: false
+      maintenanceMode: false,
+      // Card24h API configuration
+      telcoProvider: 'card24h',
+      telcoPartnerId: process.env.CARD24H_PARTNER_ID || '16654919157',
+      telcoPartnerKey: process.env.CARD24H_PARTNER_KEY || 'bc3299820230bb1ed2b2b729cac744e3',
+      telcoWalletId: '0059134947',
+      telcoCallbackUrl: '/api/v1/webhooks/card24h'
     };
   }
 

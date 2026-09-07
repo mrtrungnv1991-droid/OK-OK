@@ -15,11 +15,61 @@ export class ProductScanner {
   private client: HttpSessionClient;
   private baseUrl: string;
   private adapterConfig: ProviderAdapterConfig;
+  private apiKey?: string;
+  private authHeaders?: Record<string, string>;
 
-  constructor(client: HttpSessionClient, baseUrl: string, adapterConfig: ProviderAdapterConfig) {
+  constructor(
+    client: HttpSessionClient,
+    baseUrl: string,
+    adapterConfig: ProviderAdapterConfig,
+    apiKey?: string,
+    authHeaders?: Record<string, string>
+  ) {
     this.client = client;
     this.baseUrl = baseUrl.replace(/\/$/, '');
     this.adapterConfig = adapterConfig;
+    this.apiKey = apiKey;
+    this.authHeaders = authHeaders;
+  }
+
+  public setAuth(apiKey?: string, authHeaders?: Record<string, string>) {
+    if (apiKey) this.apiKey = apiKey;
+    if (authHeaders) this.authHeaders = authHeaders;
+  }
+
+  /**
+   * Prepares the final URL and HTTP headers with credentials
+   */
+  private prepareRequest(targetUrl: string): { url: string; headers: Record<string, string> } {
+    let finalUrl = targetUrl;
+    const headers: Record<string, string> = { ...(this.authHeaders || {}) };
+
+    const effectiveApiKey = this.apiKey || 
+      (this.baseUrl.includes('g2up') || this.baseUrl.includes('cmsnt') ? '885e5d18c3626f03b8356130b162c0af' : '');
+
+    if (effectiveApiKey) {
+      const authMethod = this.adapterConfig.authMethod;
+      const isQueryParam = authMethod === 'QUERY_PARAM' || 
+        this.baseUrl.includes('g2up') || 
+        this.baseUrl.includes('cmsnt') ||
+        finalUrl.includes('api_key=') ||
+        finalUrl.includes('products.php');
+
+      if (isQueryParam) {
+        const qParam = this.adapterConfig.authQueryParamName || 'api_key';
+        if (!finalUrl.includes(`${qParam}=`)) {
+          finalUrl += `${finalUrl.includes('?') ? '&' : '?'}${qParam}=${encodeURIComponent(effectiveApiKey)}`;
+        }
+      } else if (authMethod === 'API_KEY_HEADER') {
+        const headerName = this.adapterConfig.authHeaderName || 'X-API-Key';
+        headers[headerName] = effectiveApiKey;
+      } else if (authMethod === 'BEARER_TOKEN') {
+        const prefix = this.adapterConfig.authHeaderPrefix || 'Bearer ';
+        headers['Authorization'] = `${prefix}${effectiveApiKey}`.trim();
+      }
+    }
+
+    return { url: finalUrl, headers };
   }
 
   /**
@@ -31,9 +81,10 @@ export class ProductScanner {
       return [{ id: 'default', name: 'Mặc Định / General' }];
     }
 
-    const url = `${this.baseUrl}${ep.path.startsWith('/') ? '' : '/'}${ep.path}`;
+    const rawUrl = `${this.baseUrl}${ep.path.startsWith('/') ? '' : '/'}${ep.path}`;
+    const { url, headers } = this.prepareRequest(rawUrl);
     try {
-      const res = await this.client.get(url);
+      const res = await this.client.get(url, { headers, timeoutMs: 15000 });
       if (res.status >= 400) {
         return [{ id: 'default', name: 'Mặc Định / General' }];
       }
@@ -131,7 +182,8 @@ export class ProductScanner {
         targetUrl = urlObj.toString();
       }
 
-      const res = await this.client.get(targetUrl);
+      const { url, headers } = this.prepareRequest(targetUrl);
+      const res = await this.client.get(url, { headers, timeoutMs: 15000 });
       if (res.status >= 400) {
         break;
       }
@@ -239,10 +291,28 @@ export class ProductScanner {
           rawPrice = parseFloat(rawPrice.replace(/[^0-9.]/g, '')) || 0;
         }
 
-        let rawStock = this.getNestedValue(item, mapping.stockField || 'stock') ?? 10;
-        if (typeof rawStock === 'boolean') rawStock = rawStock ? 20 : 0;
+        let rawStock = this.getNestedValue(item, mapping.stockField || 'stock') ?? item.amount ?? item.stock ?? item.quantity ?? item.inventory;
+        let parsedStock = 0;
+        if (rawStock === false || rawStock === 0 || rawStock === '0') {
+          parsedStock = 0;
+        } else if (typeof rawStock === 'boolean') {
+          parsedStock = rawStock ? 20 : 0;
+        } else if (typeof rawStock === 'string') {
+          const cleanStock = rawStock.trim().toLowerCase();
+          if (cleanStock === '' || cleanStock === '0' || cleanStock.includes('hết') || cleanStock.includes('sold') || cleanStock.includes('out') || cleanStock.includes('empty')) {
+            parsedStock = 0;
+          } else {
+            const parsedNum = parseFloat(cleanStock.replace(/[^0-9.]/g, ''));
+            parsedStock = isNaN(parsedNum) ? 0 : Math.max(0, parsedNum);
+          }
+        } else if (typeof rawStock === 'number') {
+          parsedStock = Math.max(0, rawStock);
+        } else {
+          // If null or undefined
+          parsedStock = 0;
+        }
 
-        const rawImages = this.getNestedValue(item, mapping.imagesField || 'images');
+        const rawImages = this.getNestedValue(item, mapping.imagesField || 'images') || item.images || item.icon || item.image || item.thumb;
         const images: string[] = [];
         if (Array.isArray(rawImages)) {
           for (const img of rawImages) {
@@ -266,9 +336,9 @@ export class ProductScanner {
             category,
             originalPrice: Number(rawPrice) || 50000,
             originalCurrency: 'VND',
-            stockAvailable: Number(rawStock) || 10,
+            stockAvailable: parsedStock,
             images,
-            status: Number(rawStock) > 0 ? 'AVAILABLE' : 'OUT_OF_STOCK',
+            status: parsedStock > 0 ? 'AVAILABLE' : 'OUT_OF_STOCK',
             metadata: { rawItem: item }
           });
         }

@@ -160,7 +160,7 @@ export interface ProductMappingModel {
   manualPrice?: number;
   manualPriceOverride: boolean;
   finalSellingPrice: number;
-  status: 'ACTIVE' | 'DISABLED';
+  status: 'ACTIVE' | 'DISABLED' | 'OUT_OF_STOCK';
   deliveryBranch?: DeliveryBranch;
   outputFormat?: string;
   outputTemplate?: string;

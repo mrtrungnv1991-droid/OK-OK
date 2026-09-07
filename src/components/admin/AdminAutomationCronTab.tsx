@@ -17,6 +17,7 @@ import {
 } from 'lucide-react';
 import { CronJobItem, CronExecutionLog } from '../../types';
 import { INITIAL_CRON_JOBS, INITIAL_CRON_LOGS } from '../../data/systemExtendedData';
+import { AdminCronMonitor } from './AdminCronMonitor';
 
 export const AdminAutomationCronTab: React.FC = () => {
   const [cronJobs, setCronJobs] = useState<CronJobItem[]>(INITIAL_CRON_JOBS);
@@ -121,6 +122,9 @@ export const AdminAutomationCronTab: React.FC = () => {
           <span>{saveNotice}</span>
         </div>
       )}
+
+      {/* Real-time Background Cron Monitor */}
+      <AdminCronMonitor />
 
       {/* Cron Jobs Grid */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-3">

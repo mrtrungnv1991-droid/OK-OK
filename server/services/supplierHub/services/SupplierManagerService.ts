@@ -56,6 +56,27 @@ export class SupplierManagerService {
     // If no suppliers exist yet in persistent storage, initialize with verifiable active templates
     if (this.suppliers.size === 0) {
       this.seedDefaultSuppliers();
+    } else {
+      // Deduplicate G2UP if both account and API variants coexist
+      if (this.suppliers.has('sup_1788520864626_ojzb')) {
+        const oldAcc = this.suppliers.get('sup_1788520864626_ojzb');
+        const g2upApi = this.suppliers.get('sup_g2up_net_api');
+        if (g2upApi && oldAcc) {
+          // Merge stats
+          g2upApi.stats.totalProducts = Math.max(g2upApi.stats.totalProducts, oldAcc.stats.totalProducts);
+          g2upApi.stats.mappedProducts = Math.max(g2upApi.stats.mappedProducts, oldAcc.stats.mappedProducts);
+          // Migrate any product mappings pointing to old ID
+          for (const mapping of this.productMappings.values()) {
+            if (mapping.supplierId === 'sup_1788520864626_ojzb') {
+              mapping.supplierId = 'sup_g2up_net_api';
+            }
+          }
+        }
+        // Remove the duplicate account entry
+        this.suppliers.delete('sup_1788520864626_ojzb');
+        this.credentials.delete('sup_1788520864626_ojzb');
+        this.persistAll();
+      }
     }
   }
 
@@ -167,6 +188,20 @@ export class SupplierManagerService {
     PersistentSupplierStorage.persistSyncedLocalProducts();
   }
 
+  public static reloadFromDisk() {
+    this.suppliers = PersistentSupplierStorage.loadSuppliers();
+    this.credentials = PersistentSupplierStorage.loadCredentials();
+    this.productMappings = PersistentSupplierStorage.loadProductMappings();
+    this.categoryMappings = PersistentSupplierStorage.loadCategoryMappings();
+    this.syncJobs = PersistentSupplierStorage.loadSyncJobs();
+    this.supplierOrders = PersistentSupplierStorage.loadSupplierOrders();
+
+    this.localToMapping.clear();
+    for (const mapping of this.productMappings.values()) {
+      this.localToMapping.set(mapping.localProductId, mapping);
+    }
+  }
+
   // --- CRUD Operations ---
   public static getAllSuppliers(): SupplierModel[] {
     return Array.from(this.suppliers.values());
@@ -260,11 +295,20 @@ export class SupplierManagerService {
   }
 
   public static deleteSupplier(id: string): boolean {
-    this.suppliers.delete(id);
+    const existed = this.suppliers.delete(id);
     this.credentials.delete(id);
     ProviderRegistry.invalidateConnector(id);
+
+    // Clean up mappings tied to this supplier
+    for (const [mappingId, mapping] of this.productMappings.entries()) {
+      if (mapping.supplierId === id) {
+        this.productMappings.delete(mappingId);
+        this.localToMapping.delete(mapping.localProductId);
+      }
+    }
+
     this.persistAll();
-    return true;
+    return existed;
   }
 
   // --- Real Connection & Balance Testing with Full Diagnostics ---
@@ -374,7 +418,13 @@ export class SupplierManagerService {
     PersistentSupplierStorage.saveSyncJobs(this.syncJobs);
 
     try {
+      const creds = this.credentials.get(supplierId) || {};
       const connector = ProviderRegistry.getConnector(supplier);
+      try {
+        await connector.connect(creds);
+      } catch (cErr) {
+        console.warn('[SupplierManagerService] connector.connect warning in sync:', cErr);
+      }
 
       // STEP 1: Scan Categories
       scanDiagnostics.push({ step: 'Connection & Health', status: 'PASS', message: `Kết nối máy chủ ${supplier.websiteUrl} sẵn sàng` });
@@ -469,6 +519,7 @@ export class SupplierManagerService {
           const outputFormat = mapping?.outputFormat || src.outputFormat || branchConfig.outputFormat;
           const outputTemplate = mapping?.outputTemplate || branchConfig.outputTemplate;
 
+          const isOutOfStock = (src.stockAvailable ?? 0) <= 0;
           const localProductData = {
             id: localProductId,
             title: src.title,
@@ -477,11 +528,14 @@ export class SupplierManagerService {
             retailPrice: finalRetailPrice,
             groupPrice: Math.round(finalRetailPrice * 0.85),
             originalPrice: Math.round(finalRetailPrice * 1.25),
-            stockAvailable: src.stockAvailable,
+            stockAvailable: isOutOfStock ? 0 : src.stockAvailable,
+            status: isOutOfStock ? 'OUT_OF_STOCK' : 'AVAILABLE',
+            isAvailable: !isOutOfStock,
+            outOfStockReason: isOutOfStock ? 'Sản phẩm đã bán hết tại shop API nguồn' : undefined,
             images: src.images,
             bannerImg: src.images && src.images.length > 0 ? src.images[0] : '',
             platform: 'CYBER-SOURCE',
-            tags: ['SOURCE_SYNCED', supplier.connectionType, detectedBranch],
+            tags: ['SOURCE_SYNCED', supplier.connectionType, detectedBranch, ...(isOutOfStock ? ['OUT_OF_STOCK'] : [])],
             deliveryBranch: detectedBranch,
             productType: branchConfig.productType,
             minSlots: 5,
@@ -513,7 +567,8 @@ export class SupplierManagerService {
               deliveryBranch: detectedBranch,
               outputFormat,
               outputTemplate,
-              lastSyncedAt: new Date().toISOString()
+              lastSyncedAt: new Date().toISOString(),
+              stockStatus: isOutOfStock ? 'OUT_OF_STOCK' : 'IN_STOCK'
             }
           };
 
@@ -537,7 +592,7 @@ export class SupplierManagerService {
               calculatedPrice: priceResult.calculatedPrice,
               manualPriceOverride: false,
               finalSellingPrice: finalRetailPrice,
-              status: 'ACTIVE',
+              status: isOutOfStock ? 'OUT_OF_STOCK' : 'ACTIVE',
               deliveryBranch: detectedBranch,
               outputFormat,
               outputTemplate,
@@ -550,6 +605,7 @@ export class SupplierManagerService {
           } else {
             mapping.supplierPrice = src.originalPrice;
             mapping.calculatedPrice = priceResult.calculatedPrice;
+            mapping.status = isOutOfStock ? 'OUT_OF_STOCK' : 'ACTIVE';
             if (!mapping.manualPriceOverride) {
               mapping.finalSellingPrice = finalRetailPrice;
             }
@@ -565,6 +621,39 @@ export class SupplierManagerService {
         } catch (itemErr: any) {
           job.totalFailed++;
         }
+      }
+
+      // STEP 3.5: Reconcile Delisted/Missing Products from Shop API (Sold Out or Removed)
+      const returnedSourceIds = new Set(sourceProducts.map(p => String(p.sourceProductId)));
+      let missingDelistedCount = 0;
+      for (const map of this.productMappings.values()) {
+        if (map.supplierId === supplierId && !returnedSourceIds.has(String(map.supplierProductId))) {
+          missingDelistedCount++;
+          map.status = 'OUT_OF_STOCK';
+          map.updatedAt = new Date().toISOString();
+
+          const existingIdx = db.products.findIndex(p => p.id === map.localProductId);
+          if (existingIdx >= 0) {
+            db.products[existingIdx] = {
+              ...db.products[existingIdx],
+              stockAvailable: 0,
+              status: 'OUT_OF_STOCK',
+              isAvailable: false,
+              outOfStockReason: 'Sản phẩm đã bán hết hoặc đã bị gỡ khỏi shop API nguồn',
+              tags: Array.from(new Set([...(db.products[existingIdx].tags || []), 'OUT_OF_STOCK'])),
+              lastSyncedAt: new Date().toISOString()
+            };
+            job.totalUpdated++;
+          }
+        }
+      }
+
+      if (missingDelistedCount > 0) {
+        scanDiagnostics.push({
+          step: 'Sold-Out Auto Detection',
+          status: 'PASS',
+          message: `Phát hiện ${missingDelistedCount} sản phẩm đã bán hết hoặc gỡ bỏ khỏi shop API, đã tự động đánh dấu HẾT HÀNG`
+        });
       }
 
       scanDiagnostics.push({ 
@@ -637,7 +726,13 @@ export class SupplierManagerService {
     this.idempotencyLocks.add(idempotencyKey);
 
     try {
+      const creds = this.credentials.get(mapping.supplierId) || {};
       const connector = ProviderRegistry.getConnector(supplier);
+      try {
+        await connector.connect(creds);
+      } catch (cErr) {
+        console.warn('[SupplierManagerService] connector.connect warning in executePurchase:', cErr);
+      }
       const orderRes = await connector.createOrder({
         idempotencyKey,
         localOrderId,

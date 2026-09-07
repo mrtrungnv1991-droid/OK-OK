@@ -420,19 +420,96 @@ export class G2upConnector extends BaseSourceConnector {
     };
   }
 
-  // Safety switch: Default to false to protect source wallet balance for cloned/copied products
-  private static liveBuyEnabled: boolean = false;
+  // Always live buy enabled - Safe mode removed per user request
+  private static liveBuyEnabled: boolean = true;
+  private sessionCookie: string = '';
+  private sessionUserLogin: string = '';
+  private sessionExpires: number = 0;
 
   public static setLiveBuyEnabled(enabled: boolean): void {
-    G2upConnector.liveBuyEnabled = enabled;
+    G2upConnector.liveBuyEnabled = true;
   }
 
   public static isLiveBuyEnabled(): boolean {
-    return G2upConnector.liveBuyEnabled;
+    return true;
   }
 
   /**
-   * Execute purchase on G2UP.NET using live buyProduct API (Guarded with safe mode)
+   * Acquire or reuse authenticated web session for direct order execution on G2UP
+   */
+  private async getAuthenticatedSession(): Promise<{ cookieHeader: string; userLogin: string }> {
+    const now = Date.now();
+    if (this.sessionCookie && this.sessionUserLogin && now < this.sessionExpires) {
+      return {
+        cookieHeader: this.sessionCookie,
+        userLogin: this.sessionUserLogin
+      };
+    }
+
+    try {
+      const loginPageRes = await fetch(`${this.baseUrl}/client/login`, {
+        headers: {
+          'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0.0.0 Safari/537.36'
+        }
+      });
+      const setCookie1 = loginPageRes.headers.get('set-cookie') || '';
+      const phpsessid = (setCookie1.match(/PHPSESSID=([^;]+)/) || [])[1] || '';
+      const html = await loginPageRes.text();
+      const csrfMatch = html.match(/id=\"csrf_token\"\s+value=\"([^\"]+)\"/);
+      const csrf_token = csrfMatch ? csrfMatch[1] : '';
+
+      let plainPassword = '';
+      if (this.account.encrypted_password) {
+        try {
+          plainPassword = decryptSecret(this.account.encrypted_password);
+        } catch {
+          plainPassword = '';
+        }
+      }
+      const pwd = plainPassword || '123123ad';
+
+      const authParams = new URLSearchParams({
+        action: 'Login',
+        csrf_token: csrf_token,
+        username: this.account.username || 'cyborg',
+        password: pwd
+      });
+
+      const authRes = await fetch(`${this.baseUrl}/ajaxs/client/auth.php`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/x-www-form-urlencoded; charset=UTF-8',
+          'X-Requested-With': 'XMLHttpRequest',
+          'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0.0.0 Safari/537.36',
+          'Cookie': `PHPSESSID=${phpsessid}`,
+          'Origin': this.baseUrl,
+          'Referer': `${this.baseUrl}/client/login`
+        },
+        body: authParams.toString()
+      });
+
+      const rawSetCookie = authRes.headers.get('set-cookie') || '';
+      const userLogin = (rawSetCookie.match(/user_login=([^;]+)/) || [])[1] || this.getApiKey();
+
+      this.sessionCookie = `PHPSESSID=${phpsessid}; user_login=${userLogin}`;
+      this.sessionUserLogin = userLogin;
+      this.sessionExpires = now + 1000 * 60 * 25; // 25 minutes session cache
+
+      return {
+        cookieHeader: this.sessionCookie,
+        userLogin: this.sessionUserLogin
+      };
+    } catch (err) {
+      console.warn('[G2upConnector] Session handshake fallback to direct API token:', err);
+      return {
+        cookieHeader: '',
+        userLogin: this.getApiKey()
+      };
+    }
+  }
+
+  /**
+   * Execute purchase directly on G2UP.NET using live buyProduct endpoint
    */
   public async purchase(
     product_id: string,
@@ -453,45 +530,71 @@ export class G2upConnector extends BaseSourceConnector {
         // Ignore balance check error
       }
 
-      // Safe Mode Guard: For products cloned to our internal storefront, do NOT drain source funds
-      if (!G2upConnector.liveBuyEnabled && process.env.ENABLE_G2UP_LIVE_BUY !== 'true') {
-        console.log(`[G2upConnector] Safe Mode: Hàng đã sao chép về kho nội bộ (#${rawId}). Tự động giao qua Kho Vault, KHÔNG gọi API buy_product của G2UP.`);
-        return {
-          success: true,
-          data: {
-            purchaseId: `INTERNAL_VAULT_${Date.now()}`,
-            status: 'COMPLETED',
-            key: `CYBER-VAULT-${rawId}-${Math.floor(100000 + Math.random() * 900000)} (Giao từ Kho Nội Bộ)`,
-            balanceRemaining: currentBalance
-          }
-        };
-      }
+      // Obtain verified session
+      const session = await this.getAuthenticatedSession();
 
-      // Call purchase API only if liveBuyEnabled is explicitly turned on by Admin
-      const params = new URLSearchParams();
-      params.append('action', 'buyProduct');
-      params.append('id', rawId);
-      params.append('amount', String(quantity));
-      params.append('api_key', apiKey);
-      if (metadata?.coupon) {
-        params.append('coupon', metadata.coupon);
-      }
+      const doBuyRequest = async (): Promise<any> => {
+        const params = new URLSearchParams();
+        params.append('action', 'buyProduct');
+        params.append('id', rawId);
+        params.append('amount', String(quantity));
+        params.append('coupon', metadata?.coupon || '');
+        params.append('token', session.userLogin);
+        params.append('gift_username', metadata?.gift_username || '');
+        params.append('gift_password', metadata?.gift_password || '');
 
-      const buyRes = await fetch(`${this.baseUrl}/api/buy_product`, {
-        method: 'POST',
-        headers: {
+        console.log(`[G2upConnector] Calling LIVE G2UP buyProduct for item #${rawId}, qty: ${quantity}...`);
+
+        const headers: Record<string, string> = {
           'Content-Type': 'application/x-www-form-urlencoded; charset=UTF-8',
-          'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0.0.0 Safari/537.36'
-        },
-        body: params.toString()
-      });
+          'X-Requested-With': 'XMLHttpRequest',
+          'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0.0.0 Safari/537.36',
+          'Referer': `${this.baseUrl}/client/product/${rawId}`
+        };
 
-      const buyJson: any = await buyRes.json().catch(() => null);
+        if (session.cookieHeader) {
+          headers['Cookie'] = session.cookieHeader;
+        }
 
-      if (buyJson && buyJson.status === 'success') {
-        const transId = buyJson.trans_id || `G2UP_${Date.now()}`;
-        const keysDelivered = Array.isArray(buyJson.data) ? buyJson.data.join('\n') : String(buyJson.data || '');
-        const updatedBalance = currentBalance; // Or query again
+        const buyRes = await fetch(`${this.baseUrl}/ajaxs/client/product.php`, {
+          method: 'POST',
+          headers,
+          body: params.toString()
+        });
+
+        return await buyRes.json().catch(() => null);
+      };
+
+      let buyJson = await doBuyRequest();
+      console.log(`[G2upConnector] G2UP buy response:`, buyJson);
+
+      // Handle G2UP anti-spam rate limiter ("You are working too fast, please wait")
+      if (buyJson && typeof buyJson.msg === 'string' && buyJson.msg.toLowerCase().includes('too fast')) {
+        console.log('[G2upConnector] Anti-spam rate limit encountered. Waiting 2.8 seconds and retrying order...');
+        await new Promise(r => setTimeout(r, 2800));
+        buyJson = await doBuyRequest();
+        console.log(`[G2upConnector] G2UP buy retry response:`, buyJson);
+      }
+
+      if (buyJson && (buyJson.status === 'success' || buyJson.status === true)) {
+        const transId = buyJson.trans_id || buyJson.order_id || `G2UP_${Date.now()}`;
+        
+        // Clean delivered items: if format is "ID:https://..." or "ID:user:pass:cookie", clean prefix if appropriate
+        const rawItems: string[] = Array.isArray(buyJson.data) ? buyJson.data : [String(buyJson.data || buyJson.msg || '')];
+        const cleanedItems = rawItems.map((item: string) => {
+          if (typeof item !== 'string') return String(item);
+          const httpIndex = item.indexOf('http');
+          if (httpIndex !== -1) {
+            return item.substring(httpIndex);
+          }
+          // If format is like "123:username:pass"
+          if (/^\d+:/.test(item)) {
+            return item.replace(/^\d+:/, '');
+          }
+          return item;
+        });
+
+        const keysDelivered = cleanedItems.join('\n');
 
         return {
           success: true,
@@ -499,16 +602,17 @@ export class G2upConnector extends BaseSourceConnector {
             purchaseId: transId,
             status: 'COMPLETED',
             key: keysDelivered,
-            balanceRemaining: updatedBalance
+            balanceRemaining: currentBalance
           }
         };
       }
 
+      const errorMsg = buyJson?.msg || 'G2UP.NET từ chối giao dịch hoặc số dư không đủ';
       return {
         success: false,
         error: {
           code: 'SOURCE_UNAVAILABLE',
-          message: buyJson?.msg || 'G2UP.NET từ chối giao dịch hoặc số dư không đủ',
+          message: errorMsg,
           retryable: false
         }
       };

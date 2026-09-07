@@ -18,7 +18,7 @@ interface WalletContextType {
   fetchWalletData: () => Promise<void>;
   addTransaction: (tx: Omit<TransactionRecord, 'id' | 'createdAt'>) => TransactionRecord;
   depositMoney: (amount: number, methodTitle: string) => Promise<{ success: boolean; error?: string }>;
-  submitTelcoCard: (submission: { telco: TelcoCardSubmission['telco']; declaredAmount: number; pin: string; serial: string }) => Promise<{ success: boolean; error?: string; receivedAmount?: number }>;
+  submitTelcoCard: (submission: { telco: TelcoCardSubmission['telco']; declaredAmount: number; pin: string; serial: string }) => Promise<{ success: boolean; error?: string; receivedAmount?: number; status?: string; message?: string }>;
   createTopupInvoice: (invoice: Omit<TopupInvoice, 'id' | 'createdAt' | 'txCode' | 'status'>) => TopupInvoice;
   approveInvoice: (invoiceId: string) => void;
   rejectInvoice: (invoiceId: string, reason?: string) => void;
@@ -165,18 +165,19 @@ export const WalletProvider: React.FC<{ children: ReactNode }> = ({ children }) 
       const res = await walletApi.submitTelcoCard(submission);
       if (res.success && res.data) {
         const received = res.data.receivedAmount || Math.round(submission.declaredAmount * 0.82);
+        const cardStatus = (res.data.status === 'PENDING' ? 'pending' : 'success') as 'pending' | 'success';
         
         const cardRecord: TelcoCardSubmission = {
-          id: `card-${Date.now()}`,
+          id: res.data.requestId || `card-${Date.now()}`,
           telco: submission.telco,
           serial: submission.serial,
           pin: submission.pin,
           declaredAmount: submission.declaredAmount,
           receivedAmount: received,
           feePercent: 18,
-          status: 'success',
+          status: cardStatus,
           createdAt: 'Vừa xong',
-          txId: `TX-TELCO-${Date.now()}`
+          txId: res.data.transaction?.id || `TX-TELCO-${Date.now()}`
         };
         setTelcoCards(prev => [cardRecord, ...prev]);
 
@@ -184,7 +185,12 @@ export const WalletProvider: React.FC<{ children: ReactNode }> = ({ children }) 
           setTransactions(prev => [res.data!.transaction, ...prev]);
         }
         await refreshUserProfile();
-        return { success: true, receivedAmount: received };
+        return { 
+          success: true, 
+          receivedAmount: received,
+          status: cardStatus,
+          message: res.data.message
+        };
       }
       return { success: false, error: res.error || 'Thẻ không hợp lệ' };
     } catch (err: any) {
