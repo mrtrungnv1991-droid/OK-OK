@@ -112,7 +112,7 @@ interface AdminPanelModalProps {
   onUpdateSystemConfig: (newConfig: Partial<SystemConfiguration>) => void;
   onAddNewProduct: (newProduct: Partial<Product>) => void;
   onUpdateProduct?: (productId: string, updatedData: Partial<Product>) => void;
-  onDeleteProduct: (productId: string) => void;
+  onDeleteProduct: (productId: string) => Promise<boolean | void> | void;
   onUpdateProductStock: (productId: string, newStock: number) => void;
   onAdjustProductStock?: (productId: string, delta: number) => void;
   onToggleFlashSale: (productId: string, discountPercent?: number, isFlashSale?: boolean, flashSaleData?: Partial<Product>) => void;
@@ -131,6 +131,7 @@ interface AdminPanelModalProps {
   onUpdateGameTier?: (gameId: string, tierId: string, updatedTier: Partial<TopupTier>) => void;
   onDeleteGameTier?: (gameId: string, tierId: string) => void;
   onBulkAdjustGamePrices?: (gameId: string, percentDelta: number) => void;
+  onResetGames?: () => void;
   categories?: CategoryItem[];
   onAddCategory?: (category: Partial<CategoryItem>) => void;
   onUpdateCategory?: (categoryId: string, category: Partial<CategoryItem>) => void;
@@ -149,13 +150,13 @@ interface AdminPanelModalProps {
 export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({
   isOpen,
   onClose,
-  products,
-  games,
-  orders,
-  tickets,
-  suppliers,
-  members,
-  chatSessions,
+  products = [],
+  games = [],
+  orders = [],
+  tickets = [],
+  suppliers = [],
+  members = [],
+  chatSessions = [],
   currency,
   systemConfig,
   onUpdateSystemConfig,
@@ -180,6 +181,7 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({
   onUpdateGameTier,
   onDeleteGameTier,
   onBulkAdjustGamePrices,
+  onResetGames,
   categories,
   onAddCategory,
   onUpdateCategory,
@@ -211,7 +213,7 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({
     { id: 'suppliers', label: '🌐 Nhà Cung Cấp & Kết Nối Nguồn (Suppliers Hub)', icon: Server, badge: 'Unified' },
     { id: 'products', label: 'Sản Phẩm & Sửa Giá (Products)', icon: ShoppingBag, badge: products.length },
     { id: 'categories', label: t('nav.categories'), icon: Layers, badge: categories?.length },
-    { id: 'manual_fulfillment', label: t('nav.orders') + ' (Queue)', icon: Tag, badge: manualOrders?.filter(o => o.status === 'pending' || o.status === 'processing').length },
+    { id: 'manual_fulfillment', label: t('nav.orders') + ' (Queue)', icon: Tag, badge: manualOrders?.filter(o => o.status === 'pending_process' || o.status === 'processing').length },
     { id: 'vouchers', label: 'Vouchers & Coupons', icon: Tag, badge: vouchers?.length },
     { id: 'banking', label: t('nav.banking_topup'), icon: CreditCard, badge: topupInvoices?.filter(i => i.status === 'pending').length },
     { id: 'payment_system', label: 'Cổng Thanh Toán API (Payment Gateway)', icon: DollarSign, badge: 'v1.0' },
@@ -361,6 +363,10 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({
             {activeTab === 'vouchers' && (
               <AdminPromotionsTab
                 currency={currency}
+                systemConfig={systemConfig}
+                onUpdateSystemConfig={onUpdateSystemConfig}
+                products={products}
+                onToggleFlashSale={onToggleFlashSale}
               />
             )}
 
@@ -413,6 +419,7 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({
                 onUpdateGameTier={onUpdateGameTier}
                 onDeleteGameTier={onDeleteGameTier}
                 onBulkAdjustGamePrices={onBulkAdjustGamePrices}
+                onResetGames={onResetGames}
               />
             )}
 

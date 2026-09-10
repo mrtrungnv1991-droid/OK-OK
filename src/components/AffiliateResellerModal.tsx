@@ -24,7 +24,7 @@ import {
   Smartphone,
   Coins
 } from 'lucide-react';
-import { UserProfile, AffiliateTier, CTVWithdrawal } from '../types';
+import { UserProfile, AffiliateTier, CTVWithdrawal, CurrencyCode } from '../types';
 import { formatCurrency } from '../utils/formatters';
 import { useTranslation } from '../i18n';
 import { useUI } from '../contexts/UIContext';
@@ -33,8 +33,9 @@ interface AffiliateResellerModalProps {
   isOpen: boolean;
   onClose: () => void;
   user: UserProfile;
-  currency: 'VND' | 'USD';
+  currency: CurrencyCode;
   onWithdrawCommission: (amount: number) => void;
+  onRequestWithdrawal?: (req: any) => void;
   onRequestBankWithdrawal?: (req: {
     amount: number;
     bankName: string;
@@ -64,7 +65,6 @@ export const AffiliateResellerModal: React.FC<AffiliateResellerModalProps> = ({
 }) => {
   const { t } = useTranslation();
   const { showToast } = useUI();
-  if (!isOpen) return null;
 
   const [activeTab, setActiveTab] = useState<'overview' | 'withdraw_form' | 'withdraw_history' | 'api' | 'tiers'>('overview');
   const [copiedLink, setCopiedLink] = useState(false);
@@ -80,6 +80,8 @@ export const AffiliateResellerModal: React.FC<AffiliateResellerModalProps> = ({
   const [accountName, setAccountName] = useState(user?.name ? user.name.toUpperCase() : 'USER');
   const [paymentMethod, setPaymentMethod] = useState<'bank' | 'momo' | 'usdt'>('bank');
   const [toastNotice, setToastNotice] = useState<string | null>(null);
+
+  if (!isOpen) return null;
 
   const refCode = user.affiliateCode || `CYBER-${user.id.slice(0, 4).toUpperCase()}`;
   const referralLink = `https://cyberpool.gg/ref/${refCode}`;

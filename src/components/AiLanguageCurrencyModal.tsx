@@ -41,13 +41,12 @@ import {
 import { useTranslation } from '../i18n';
 
 interface AiLanguageCurrencyModalProps {
-
   isOpen: boolean;
   onClose: () => void;
   currentLanguage: LanguageCode;
   currentCurrency: CurrencyCode;
   onApply: (lang: LanguageCode, curr: CurrencyCode) => void;
-  walletBalanceVnd: number;
+  walletBalanceVnd?: number;
 }
 
 export const AiLanguageCurrencyModal: React.FC<AiLanguageCurrencyModalProps> = ({
@@ -56,7 +55,7 @@ export const AiLanguageCurrencyModal: React.FC<AiLanguageCurrencyModalProps> = (
   currentLanguage,
   currentCurrency,
   onApply,
-  walletBalanceVnd
+  walletBalanceVnd = 0
 }) => {
   const [selectedLang, setSelectedLang] = useState<LanguageCode>(currentLanguage);
   const [selectedCurr, setSelectedCurr] = useState<CurrencyCode>(currentCurrency);
@@ -354,7 +353,8 @@ export const AiLanguageCurrencyModal: React.FC<AiLanguageCurrencyModalProps> = (
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
                 {SUPPORTED_LANGUAGES.map((lang) => {
-                  const isSelected = selectedLang === lang.code || (selectedLang === 'en-US' && lang.code === 'en') || (selectedLang === 'zh-CN' && lang.code === 'zh') || (selectedLang === 'ja-JP' && lang.code === 'ja') || (selectedLang === 'ko-KR' && lang.code === 'ko') || (selectedLang === 'ru-RU' && lang.code === 'ru') || (selectedLang === 'fr-FR' && lang.code === 'fr') || (selectedLang === 'de-DE' && lang.code === 'de') || (selectedLang === 'es-ES' && lang.code === 'es');
+                  const selStr = selectedLang as string;
+                  const isSelected = selectedLang === lang.code || (selStr.startsWith(lang.code));
                   return (
                     <button
                       key={lang.code}

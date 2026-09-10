@@ -13,7 +13,7 @@ import {
   History,
   AlertCircle
 } from 'lucide-react';
-import { UserProfile, WheelPrize, WheelSpinRecord } from '../types';
+import { UserProfile, WheelPrize, WheelSpinRecord, CurrencyCode } from '../types';
 import { formatCurrency } from '../utils/formatters';
 import { useTranslation } from '../i18n';
 import { useUI } from '../contexts/UIContext';
@@ -22,6 +22,8 @@ interface LuckyWheelModalProps {
   isOpen: boolean;
   onClose: () => void;
   user: UserProfile;
+  currency?: CurrencyCode;
+  prizes?: WheelPrize[];
   onSpinSuccess: (cost: number, prize: WheelPrize) => void;
   onOpenWallet: () => void;
 }
@@ -112,12 +114,13 @@ export const LuckyWheelModal: React.FC<LuckyWheelModalProps> = ({
   isOpen,
   onClose,
   user,
+  currency = 'VND',
+  prizes,
   onSpinSuccess,
   onOpenWallet
 }) => {
   const { t } = useTranslation();
   const { showToast } = useUI();
-  if (!isOpen) return null;
 
   const [isSpinning, setIsSpinning] = useState(false);
   const [rotationDegrees, setRotationDegrees] = useState(0);
@@ -128,6 +131,8 @@ export const LuckyWheelModal: React.FC<LuckyWheelModalProps> = ({
     { id: 'w3', user: 'Viper_Cyber', prizeName: '1,080 Diamonds Free Fire', prizeType: 'game_diamonds', value: 120000, timestamp: '6m ago', txId: 'TX-SPIN-989' },
     { id: 'w4', user: 'MinhAnh_HN', prizeName: 'E-GiftUp Card 100,000', prizeType: 'giftup_card', value: 100000, timestamp: '8m ago', txId: 'TX-SPIN-988' }
   ]);
+
+  if (!isOpen) return null;
 
   const handleStartSpin = () => {
     if (user.walletBalance < SPIN_COST) {

@@ -28,7 +28,7 @@ interface AdminEscrowPoolsTabProps {
   products: Product[];
   orders: UserOrder[];
   currency: CurrencyCode;
-  onForceEscrowAction: (orderId: string, action: 'release' | 'refund') => void;
+  onForceEscrowAction: (orderId: string, action: 'release_to_seller' | 'refund_to_buyer' | 'release' | 'refund') => void;
   onUpdatePoolStatus?: (poolId: string, newStatus: GroupPool['status']) => void;
 }
 

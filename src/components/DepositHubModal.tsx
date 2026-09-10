@@ -17,17 +17,22 @@ import {
   Zap,
   Info,
   Sparkles,
+  AlertCircle,
   Image as ImageIcon
 } from 'lucide-react';
-import { UserProfile, TransactionRecord, TelcoCardSubmission, SystemConfig } from '../types';
+import { UserProfile, TransactionRecord, TelcoCardSubmission, SystemConfig, CurrencyCode } from '../types';
 import { formatCurrency } from '../utils/formatters';
 import { useTranslation } from '../i18n';
+import { walletApi } from '../api/wallet';
 
 interface DepositHubModalProps {
   isOpen: boolean;
   onClose: () => void;
   user: UserProfile;
-  onDepositSuccess: (amount: number, method: string, txCode: string) => void;
+  currency?: CurrencyCode;
+  initialAmount?: number;
+  initialMethod?: any;
+  onDepositSuccess: (amount: number, method: string, txCode?: string) => void;
   onOpenCardModal?: () => void;
   transactions?: TransactionRecord[];
   systemConfig?: SystemConfig;
@@ -39,13 +44,13 @@ export const DepositHubModal: React.FC<DepositHubModalProps> = ({
   isOpen,
   onClose,
   user,
+  currency = 'VND',
   onDepositSuccess,
   onOpenCardModal,
   transactions = [],
   systemConfig
 }) => {
   const { t } = useTranslation();
-  if (!isOpen) return null;
 
   const [activeChannel, setActiveChannel] = useState<'vietqr' | 'momo' | 'crypto' | 'ltc' | 'binance' | 'card' | 'history'>('vietqr');
   const [depositAmount, setDepositAmount] = useState<number>(200000);
@@ -54,6 +59,13 @@ export const DepositHubModal: React.FC<DepositHubModalProps> = ({
   const [countdownSeconds, setCountdownSeconds] = useState(900); // 15 mins
   const [binanceTxInput, setBinanceTxInput] = useState('');
   const [ltcCustomInput, setLtcCustomInput] = useState<string>('');
+  const [momoTransIdInput, setMomoTransIdInput] = useState('');
+  const [cryptoTxHashInput, setCryptoTxHashInput] = useState('');
+  const [cryptoNetwork, setCryptoNetwork] = useState<'TRC20' | 'BEP20'>('TRC20');
+  const [ltcTxHashInput, setLtcTxHashInput] = useState('');
+  const [verificationError, setVerificationError] = useState<string | null>(null);
+  const [verificationSuccess, setVerificationSuccess] = useState<string | null>(null);
+  const [verifiedExplorerUrl, setVerifiedExplorerUrl] = useState<string | null>(null);
 
   const bankBin = systemConfig?.bankBin || '970422';
   const customQrImage = systemConfig?.bankQrCustomImage || '';
@@ -137,40 +149,304 @@ export const DepositHubModal: React.FC<DepositHubModalProps> = ({
     return `${m.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')}`;
   };
 
-  // Simulate Instant Auto Banking Check
-  const handleVerifyBanking = () => {
+  // Clear feedback messages when switching tabs
+  useEffect(() => {
+    setVerificationError(null);
+    setVerificationSuccess(null);
+    setVerifiedExplorerUrl(null);
+  }, [activeChannel]);
+
+  // Real VietQR Auto Banking API Verification
+  const handleVerifyBanking = async () => {
     setIsVerifying(true);
-    setTimeout(() => {
+    setVerificationError(null);
+    setVerificationSuccess(null);
+    try {
+      const res = await walletApi.verifyVietQr({
+        transferCode,
+        amount: depositAmount
+      });
+      if (res.success && res.data?.verified) {
+        setVerificationSuccess(res.data.message || 'Xác minh giao dịch VietQR Napas 24/7 thành công!');
+        setTimeout(() => {
+          onDepositSuccess(res.data!.amount, 'VietQR Napas 24/7 Auto', res.data!.referenceId);
+          onClose();
+        }, 1500);
+      } else {
+        setVerificationError(res.error || res.data?.message || 'Không thể xác minh giao dịch ngân hàng. Vui lòng kiểm tra lại nội dung chuyển khoản.');
+      }
+    } catch (err: any) {
+      setVerificationError(err?.message || 'Lỗi mạng hoặc kết nối máy chủ');
+    } finally {
       setIsVerifying(false);
-      const fakeTx = `TX-QR-${Math.floor(100000 + Math.random() * 900000)}`;
-      onDepositSuccess(depositAmount, 'VietQR Auto', fakeTx);
-      onClose();
-    }, 1800);
+    }
   };
 
-  // Simulate Instant LTC Blockchain Check
-  const handleVerifyLTC = () => {
+  // Real MoMo E-Wallet API Verification
+  const handleVerifyMoMo = async () => {
+    const cleanTransId = momoTransIdInput.trim();
+    if (!cleanTransId) {
+      setVerificationError('Vui lòng nhập Mã giao dịch MoMo (Trans ID) từ ứng dụng MoMo của bạn.');
+      return;
+    }
     setIsVerifying(true);
-    setTimeout(() => {
+    setVerificationError(null);
+    setVerificationSuccess(null);
+    try {
+      const res = await walletApi.verifyMoMo({
+        transId: cleanTransId,
+        amount: depositAmount,
+        memo: transferCode
+      });
+      if (res.success && res.data?.verified) {
+        setVerificationSuccess(res.data.message);
+        setTimeout(() => {
+          onDepositSuccess(res.data!.amount, 'Ví MoMo Auto Gateway', res.data!.referenceId);
+          onClose();
+        }, 1500);
+      } else {
+        setVerificationError(res.error || res.data?.message || 'Không thể xác minh giao dịch MoMo. Vui lòng kiểm tra lại Trans ID.');
+      }
+    } catch (err: any) {
+      setVerificationError(err?.message || 'Lỗi kết nối máy chủ MoMo');
+    } finally {
       setIsVerifying(false);
-      const fakeTx = `LTC-${Math.random().toString(36).substring(2, 10).toUpperCase()}`;
-      onDepositSuccess(depositAmount, 'Litecoin (LTC Mainnet)', fakeTx);
-      onClose();
-    }, 2000);
+    }
   };
 
-  // Simulate Instant Binance Pay Webhook Check
-  const handleVerifyBinancePay = () => {
+  // Real Crypto USDT On-Chain Blockchain API Verification
+  const handleVerifyCryptoUsdt = async () => {
+    const cleanHash = cryptoTxHashInput.trim();
+    if (!cleanHash) {
+      setVerificationError('Vui lòng dán mã băm giao dịch (TxID / Transaction Hash) từ ví của bạn.');
+      return;
+    }
     setIsVerifying(true);
-    setTimeout(() => {
+    setVerificationError(null);
+    setVerificationSuccess(null);
+    setVerifiedExplorerUrl(null);
+    try {
+      const expectedUsdt = Number((depositAmount / usdtAccount.rate).toFixed(2));
+      const res = await walletApi.verifyCryptoUsdt({
+        txHash: cleanHash,
+        network: cryptoNetwork,
+        expectedUsdt,
+        memo: transferCode
+      });
+      if (res.success && res.data?.verified) {
+        setVerificationSuccess(res.data.message);
+        if (res.data.explorerUrl) {
+          setVerifiedExplorerUrl(res.data.explorerUrl);
+        }
+        setTimeout(() => {
+          onDepositSuccess(res.data!.amount, `Crypto USDT (${cryptoNetwork})`, res.data!.referenceId);
+          onClose();
+        }, 1800);
+      } else {
+        setVerificationError(res.error || res.data?.message || 'Không tìm thấy TxID trên blockchain hoặc chưa đủ block xác nhận.');
+      }
+    } catch (err: any) {
+      setVerificationError(err?.message || 'Lỗi kết nối node TronScan / BSC');
+    } finally {
       setIsVerifying(false);
-      const fakeTx = binanceTxInput.trim() ? `BPAY-${binanceTxInput.trim()}` : `BPAY-${Math.floor(100000000 + Math.random() * 900000000)}`;
-      onDepositSuccess(depositAmount, 'Binance Pay / UID', fakeTx);
-      onClose();
-    }, 1800);
+    }
+  };
+
+  // Real Litecoin LTC Core Mainnet Blockchain Verification
+  const handleVerifyLTC = async () => {
+    const cleanHash = (ltcTxHashInput || ltcCustomInput).trim();
+    if (!cleanHash) {
+      setVerificationError('Vui lòng dán mã băm giao dịch Litecoin (LTC TxID) từ ví của bạn.');
+      return;
+    }
+    setIsVerifying(true);
+    setVerificationError(null);
+    setVerificationSuccess(null);
+    setVerifiedExplorerUrl(null);
+    try {
+      const res = await walletApi.verifyCryptoLtc({
+        txHash: cleanHash,
+        expectedLtc: Number(calculatedLtcAmount),
+        memo: transferCode
+      });
+      if (res.success && res.data?.verified) {
+        setVerificationSuccess(res.data.message);
+        if (res.data.explorerUrl) {
+          setVerifiedExplorerUrl(res.data.explorerUrl);
+        }
+        setTimeout(() => {
+          onDepositSuccess(res.data!.amount, 'Litecoin (LTC Mainnet Core)', res.data!.referenceId);
+          onClose();
+        }, 1800);
+      } else {
+        setVerificationError(res.error || res.data?.message || 'Không tìm thấy giao dịch LTC trên Blockchain hoặc chưa có confirmations.');
+      }
+    } catch (err: any) {
+      setVerificationError(err?.message || 'Lỗi kết nối mạng lưới Litecoin');
+    } finally {
+      setIsVerifying(false);
+    }
+  };
+
+  // Real Binance Pay OpenAPI Verification
+  const handleVerifyBinancePay = async () => {
+    const cleanOrderId = binanceTxInput.trim();
+    if (!cleanOrderId) {
+      setVerificationError('Vui lòng nhập Mã giao dịch Binance Pay (Order ID / Prepay ID).');
+      return;
+    }
+    setIsVerifying(true);
+    setVerificationError(null);
+    setVerificationSuccess(null);
+    try {
+      const res = await walletApi.verifyBinancePay({
+        orderId: cleanOrderId,
+        amount: depositAmount,
+        memo: transferCode
+      });
+      if (res.success && res.data?.verified) {
+        setVerificationSuccess(res.data.message);
+        setTimeout(() => {
+          onDepositSuccess(res.data!.amount, 'Binance Pay Official API', res.data!.referenceId);
+          onClose();
+        }, 1500);
+      } else {
+        setVerificationError(res.error || res.data?.message || 'Binance Pay OpenAPI không tìm thấy hoặc chưa thanh toán đơn hàng này.');
+      }
+    } catch (err: any) {
+      setVerificationError(err?.message || 'Lỗi kết nối máy chủ Binance Pay');
+    } finally {
+      setIsVerifying(false);
+    }
+  };
+
+  const renderVerificationFeedback = () => {
+    if (!verificationError && !verificationSuccess) return null;
+    return (
+      <div className="space-y-2 my-2.5">
+        {verificationError && (
+          <div className="p-3 bg-red-950/70 border border-red-500/50 rounded-xl text-red-200 text-xs flex items-start gap-2.5 animate-fadeIn shadow-lg shadow-red-950/20">
+            <AlertCircle className="w-4 h-4 text-red-400 shrink-0 mt-0.5" />
+            <div className="flex-1 leading-relaxed">{verificationError}</div>
+          </div>
+        )}
+        {verificationSuccess && (
+          <div className="p-3.5 bg-emerald-950/80 border border-emerald-500/60 rounded-xl text-emerald-200 text-xs space-y-2 animate-fadeIn shadow-lg shadow-emerald-950/20">
+            <div className="flex items-start gap-2.5">
+              <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0 mt-0.5" />
+              <div className="flex-1 font-bold leading-relaxed">{verificationSuccess}</div>
+            </div>
+            {verifiedExplorerUrl && (
+              <div className="pt-1 border-t border-emerald-500/20">
+                <a
+                  href={verifiedExplorerUrl}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="inline-flex items-center gap-1.5 text-[11px] text-cyan-300 hover:text-cyan-200 underline font-mono"
+                >
+                  <span>Xem giao dịch trên Blockchain Explorer</span>
+                  <ExternalLink className="w-3 h-3" />
+                </a>
+              </div>
+            )}
+          </div>
+        )}
+      </div>
+    );
   };
 
   const depositTransactions = transactions.filter(t => t.type.startsWith('deposit'));
+
+  const modulesConfig = systemConfig?.depositModulesConfig;
+
+  const isModuleEnabled = (modId: 'vietqr' | 'momo' | 'crypto' | 'ltc' | 'binance' | 'telco'): boolean => {
+    if (!modulesConfig) return true;
+    return modulesConfig[modId]?.enabled ?? true;
+  };
+
+  const getMaintenanceMsg = (modId: 'vietqr' | 'momo' | 'crypto' | 'ltc' | 'binance' | 'telco'): string => {
+    const defaultMessages: Record<string, string> = {
+      vietqr: 'Cổng chuyển khoản / VietQR Napas 24/7 đang tạm bảo trì hệ thống.',
+      telco: 'Cổng đổi thẻ cào điện thoại Card24h đang tạm dừng để bảo trì API đối tác.',
+      momo: 'Cổng ví điện tử MoMo & ZaloPay đang tạm nâng cấp hạ tầng.',
+      crypto: 'Cổng nạp Crypto USDT (TRC20 / BEP20) đang bảo trì node blockchain.',
+      ltc: 'Cổng nạp Litecoin (LTC Core) đang đồng bộ khối blockchain.',
+      binance: 'Cổng Binance Pay tạm dừng kết nối API.'
+    };
+    return modulesConfig?.[modId]?.maintenanceMessage || defaultMessages[modId] || 'Cổng nạp này đang tạm bảo trì hệ thống. Quý khách vui lòng chọn cổng nạp khác.';
+  };
+
+  const renderChannelMaintenance = (channelKey: 'vietqr' | 'momo' | 'crypto' | 'ltc' | 'binance', channelTitle: string) => {
+    const msg = getMaintenanceMsg(channelKey);
+    const activeAlternates = (['vietqr', 'momo', 'crypto', 'ltc', 'binance'] as const).filter(
+      ch => ch !== channelKey && isModuleEnabled(ch)
+    );
+
+    return (
+      <div className="py-12 px-4 flex flex-col items-center justify-center max-w-lg mx-auto text-center space-y-4 font-sans">
+        <div className="w-16 h-16 rounded-2xl bg-amber-500/10 border border-amber-500/30 flex items-center justify-center text-amber-400 shadow-lg shadow-amber-500/10">
+          <AlertTriangle className="w-8 h-8 animate-bounce" />
+        </div>
+        <div className="space-y-2">
+          <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-amber-500/20 text-amber-300 border border-amber-500/40 text-xs font-bold uppercase tracking-wider">
+            <span className="w-2 h-2 rounded-full bg-amber-400 animate-pulse" />
+            <span>Cổng Nạp Tạm Dừng / Bảo Trì</span>
+          </div>
+          <h3 className="text-base font-bold text-white">
+            {channelTitle} Đang Tạm Khóa
+          </h3>
+          <p className="text-xs text-slate-300 bg-slate-900/90 p-3.5 rounded-xl border border-slate-800 text-left leading-relaxed">
+            {msg}
+          </p>
+        </div>
+
+        {activeAlternates.length > 0 && (
+          <div className="w-full pt-4 border-t border-slate-800/80 space-y-2.5">
+            <p className="text-xs text-slate-400">
+              Quý khách vui lòng chuyển sang cổng nạp thay thế đang hoạt động bình thường:
+            </p>
+            <div className="flex flex-wrap gap-2 justify-center">
+              {activeAlternates.map(alt => {
+                const names: Record<string, string> = {
+                  vietqr: 'VietQR Ngân Hàng',
+                  momo: 'Ví MoMo / ZaloPay',
+                  crypto: 'Crypto USDT',
+                  ltc: 'Litecoin (LTC)',
+                  binance: 'Binance Pay'
+                };
+                return (
+                  <button
+                    key={alt}
+                    type="button"
+                    onClick={() => setActiveChannel(alt)}
+                    className="px-3 py-1.5 rounded-lg bg-cyan-500/10 hover:bg-cyan-500/20 text-cyan-300 border border-cyan-500/30 text-xs font-bold transition-all cursor-pointer flex items-center gap-1.5"
+                  >
+                    <CheckCircle2 className="w-3.5 h-3.5 text-cyan-400" />
+                    <span>{names[alt]}</span>
+                  </button>
+                );
+              })}
+              {onOpenCardModal && isModuleEnabled('telco') && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    onClose();
+                    onOpenCardModal();
+                  }}
+                  className="px-3 py-1.5 rounded-lg bg-purple-500/10 hover:bg-purple-500/20 text-purple-300 border border-purple-500/30 text-xs font-bold transition-all cursor-pointer flex items-center gap-1.5"
+                >
+                  <CreditCard className="w-3.5 h-3.5 text-purple-400" />
+                  <span>Đổi Thẻ Cào Telco ↗</span>
+                </button>
+              )}
+            </div>
+          </div>
+        )}
+      </div>
+    );
+  };
+
+  if (!isOpen) return null;
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-black/90 backdrop-blur-md overflow-y-auto">
@@ -216,6 +492,11 @@ export const DepositHubModal: React.FC<DepositHubModalProps> = ({
           >
             <QrCode className="w-4 h-4 text-cyan-400" />
             <span>VietQR Pro</span>
+            {!isModuleEnabled('vietqr') && (
+              <span className="px-1.5 py-0.2 rounded bg-amber-500/20 text-amber-400 border border-amber-500/30 text-[9px] font-sans font-bold">
+                Bảo trì
+              </span>
+            )}
           </button>
 
           <button
@@ -228,6 +509,11 @@ export const DepositHubModal: React.FC<DepositHubModalProps> = ({
           >
             <Smartphone className="w-4 h-4 text-pink-400" />
             <span>MoMo / ZaloPay</span>
+            {!isModuleEnabled('momo') && (
+              <span className="px-1.5 py-0.2 rounded bg-amber-500/20 text-amber-400 border border-amber-500/30 text-[9px] font-sans font-bold">
+                Bảo trì
+              </span>
+            )}
           </button>
 
           <button
@@ -240,6 +526,11 @@ export const DepositHubModal: React.FC<DepositHubModalProps> = ({
           >
             <Coins className="w-4 h-4 text-emerald-400" />
             <span>USDT (TRC20 / BEP20)</span>
+            {!isModuleEnabled('crypto') && (
+              <span className="px-1.5 py-0.2 rounded bg-amber-500/20 text-amber-400 border border-amber-500/30 text-[9px] font-sans font-bold">
+                Bảo trì
+              </span>
+            )}
           </button>
 
           <button
@@ -252,6 +543,11 @@ export const DepositHubModal: React.FC<DepositHubModalProps> = ({
           >
             <Zap className="w-4 h-4 text-blue-400" />
             <span className="font-bold">Litecoin (LTC)</span>
+            {!isModuleEnabled('ltc') && (
+              <span className="px-1.5 py-0.2 rounded bg-amber-500/20 text-amber-400 border border-amber-500/30 text-[9px] font-sans font-bold">
+                Bảo trì
+              </span>
+            )}
           </button>
 
           <button
@@ -264,6 +560,11 @@ export const DepositHubModal: React.FC<DepositHubModalProps> = ({
           >
             <div className="w-3.5 h-3.5 rounded-full bg-amber-400 text-black font-black text-[9px] flex items-center justify-center">B</div>
             <span className="font-bold">Binance Pay</span>
+            {!isModuleEnabled('binance') && (
+              <span className="px-1.5 py-0.2 rounded bg-amber-500/20 text-amber-400 border border-amber-500/30 text-[9px] font-sans font-bold">
+                Bảo trì
+              </span>
+            )}
           </button>
 
           {onOpenCardModal && (
@@ -276,6 +577,11 @@ export const DepositHubModal: React.FC<DepositHubModalProps> = ({
             >
               <CreditCard className="w-4 h-4" />
               <span>{t('nav.telco_exchange')} ↗</span>
+              {!isModuleEnabled('telco') && (
+                <span className="px-1.5 py-0.2 rounded bg-amber-500/20 text-amber-400 border border-amber-500/30 text-[9px] font-sans font-bold">
+                  Bảo trì
+                </span>
+              )}
             </button>
           )}
 
@@ -297,6 +603,9 @@ export const DepositHubModal: React.FC<DepositHubModalProps> = ({
         {/* Modal Body */}
         <div className="p-4 sm:p-6 overflow-y-auto flex-1 font-mono text-xs">
           {activeChannel === 'vietqr' && (
+            !isModuleEnabled('vietqr') ? (
+              renderChannelMaintenance('vietqr', 'Cổng VietQR Ngân Hàng Napas 24/7')
+            ) : (
             <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
               {/* Left Column: QR Code Visual */}
               <div className="lg:col-span-5 flex flex-col items-center bg-slate-900/60 p-4 rounded-2xl border border-slate-800 space-y-3 text-center">
@@ -432,6 +741,8 @@ export const DepositHubModal: React.FC<DepositHubModalProps> = ({
                   </div>
                 </div>
 
+                {renderVerificationFeedback()}
+
                 {/* Instant Verification Trigger */}
                 <button
                   type="button"
@@ -442,112 +753,296 @@ export const DepositHubModal: React.FC<DepositHubModalProps> = ({
                   {isVerifying ? (
                     <>
                       <RefreshCw className="w-4 h-4 animate-spin" />
-                      <span>{t('common.loading')}</span>
+                      <span>Đang kiểm tra giao dịch Napas 24/7...</span>
                     </>
                   ) : (
                     <>
                       <Zap className="w-4 h-4" />
-                      <span>{t('common.confirm')}</span>
+                      <span>Xác Nhận & Kiểm Tra Giao Dịch Napas (API)</span>
                     </>
                   )}
                 </button>
               </div>
             </div>
+            )
           )}
 
           {activeChannel === 'momo' && (
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6 items-center">
-              <div className="flex flex-col items-center bg-slate-900/60 p-6 rounded-2xl border border-slate-800 space-y-3 text-center">
-                <div className="p-3 bg-pink-950/60 rounded-2xl border border-pink-500/40 text-pink-400">
-                  <Smartphone className="w-12 h-12" />
+            !isModuleEnabled('momo') ? (
+              renderChannelMaintenance('momo', 'Ví MoMo / ZaloPay')
+            ) : (
+            <div className="space-y-4">
+              {/* MoMo Amount Selector */}
+              <div className="p-4 rounded-xl bg-pink-950/30 border border-pink-500/30 space-y-2.5">
+                <div className="flex items-center justify-between">
+                  <span className="text-xs font-bold text-pink-300 uppercase">1. Chọn số tiền nạp MoMo:</span>
+                  <span className="text-sm font-black text-white">{formatCurrency(depositAmount, user.currency)}</span>
                 </div>
-                <div className="text-sm font-bold text-white">MOMO E-WALLET AUTO</div>
-                <div className="text-xs text-slate-400">MoMo Phone Transfer</div>
+                <div className="grid grid-cols-4 sm:grid-cols-7 gap-1.5">
+                  {DEPOSIT_PRESETS.map((amt) => (
+                    <button
+                      key={amt}
+                      type="button"
+                      onClick={() => setDepositAmount(amt)}
+                      className={`p-1.5 rounded-lg border text-center text-xs transition-all cursor-pointer ${
+                        depositAmount === amt
+                          ? 'bg-pink-600 text-white font-bold border-pink-400 shadow-md'
+                          : 'bg-slate-900/60 border-slate-800 text-slate-300 hover:border-slate-700'
+                      }`}
+                    >
+                      {formatCurrency(amt, user.currency)}
+                    </button>
+                  ))}
+                </div>
               </div>
 
-              <div className="space-y-3 bg-slate-900/80 p-5 rounded-2xl border border-slate-800">
-                <div className="flex justify-between items-center p-2 rounded bg-black/40">
-                  <span className="text-slate-400">Phone:</span>
-                  <div className="flex items-center gap-2">
-                    <strong className="text-pink-300 font-bold">{momoAccount.phone}</strong>
-                    <button
-                      onClick={() => handleCopy(momoAccount.phone, 'momo_phone')}
-                      className="px-2 py-0.5 rounded bg-slate-800 text-[10px] cursor-pointer"
-                    >
-                      {copiedField === 'momo_phone' ? t('common.copied') : t('common.copy')}
-                    </button>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6 items-center">
+                <div className="flex flex-col items-center bg-slate-900/60 p-6 rounded-2xl border border-pink-500/20 space-y-3 text-center">
+                  <div className="p-3.5 bg-pink-950/60 rounded-2xl border border-pink-500/40 text-pink-400 shadow-lg shadow-pink-500/10">
+                    <Smartphone className="w-12 h-12" />
                   </div>
+                  <div className="text-sm font-bold text-white uppercase tracking-wide">Mã Chuyển Tiền MoMo</div>
+                  <div className="text-xs text-slate-400">Quét hoặc chuyển qua SĐT MoMo bên cạnh</div>
                 </div>
 
-                <div className="flex justify-between items-center p-2 rounded bg-black/40">
-                  <span className="text-slate-400">Holder:</span>
-                  <strong className="text-white">{momoAccount.holder}</strong>
-                </div>
+                <div className="space-y-3 bg-slate-900/80 p-5 rounded-2xl border border-slate-800">
+                  <div className="flex justify-between items-center p-2 rounded bg-black/40">
+                    <span className="text-slate-400 text-xs">Số điện thoại:</span>
+                    <div className="flex items-center gap-2">
+                      <strong className="text-pink-300 font-mono font-bold text-sm">{momoAccount.phone}</strong>
+                      <button
+                        onClick={() => handleCopy(momoAccount.phone, 'momo_phone')}
+                        className="px-2.5 py-1 rounded bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs cursor-pointer"
+                      >
+                        {copiedField === 'momo_phone' ? t('common.copied') : t('common.copy')}
+                      </button>
+                    </div>
+                  </div>
 
-                <div className="flex justify-between items-center p-2 rounded bg-black/40">
-                  <span className="text-slate-400">Memo / Note:</span>
-                  <div className="flex items-center gap-2">
-                    <strong className="text-yellow-300 font-bold">{transferCode}</strong>
+                  <div className="flex justify-between items-center p-2 rounded bg-black/40">
+                    <span className="text-slate-400 text-xs">Chủ tài khoản:</span>
+                    <strong className="text-white text-xs">{momoAccount.holder}</strong>
+                  </div>
+
+                  <div className="p-2.5 rounded-lg bg-red-950/40 border border-red-500/40 flex items-center justify-between">
+                    <div>
+                      <div className="text-[10px] text-red-300 uppercase font-bold">Nội dung chuyển:</div>
+                      <div className="text-xs text-yellow-300 font-black tracking-wider mt-0.5">{transferCode}</div>
+                    </div>
                     <button
                       onClick={() => handleCopy(transferCode, 'momo_memo')}
-                      className="px-2 py-0.5 rounded bg-slate-800 text-[10px] cursor-pointer"
+                      className="px-2.5 py-1 rounded bg-yellow-500 hover:bg-yellow-400 text-black font-bold text-[11px] cursor-pointer"
                     >
-                      {copiedField === 'momo_memo' ? t('common.copied') : t('common.copy')}
+                      <Copy className="w-3 h-3" />
+                      <span>{copiedField === 'momo_memo' ? t('common.copied') : t('common.copy')}</span>
                     </button>
                   </div>
-                </div>
 
-                <button
-                  type="button"
-                  onClick={handleVerifyBanking}
-                  disabled={isVerifying}
-                  className="w-full py-3 rounded-xl bg-pink-600 hover:bg-pink-500 text-white font-bold text-xs uppercase flex items-center justify-center gap-2 mt-2 cursor-pointer"
-                >
-                  {isVerifying ? <RefreshCw className="w-4 h-4 animate-spin" /> : <Zap className="w-4 h-4" />}
-                  <span>{t('common.confirm')}</span>
-                </button>
+                  {/* MoMo Trans ID Input */}
+                  <div className="space-y-1 pt-1">
+                    <label className="text-[11px] text-slate-300 font-bold flex items-center justify-between">
+                      <span>MÃ GIAO DỊCH MOMO (TRANS ID):</span>
+                      <span className="text-[10px] text-pink-400 font-normal">Xem trong Lịch sử MoMo</span>
+                    </label>
+                    <input
+                      type="text"
+                      placeholder="Ví dụ: 43891028391 hoặc 4481920192"
+                      value={momoTransIdInput}
+                      onChange={(e) => setMomoTransIdInput(e.target.value)}
+                      className="w-full bg-slate-950 border border-slate-700 rounded-xl px-3 py-2 text-pink-300 font-mono text-xs focus:border-pink-500 outline-none"
+                    />
+                  </div>
+
+                  {renderVerificationFeedback()}
+
+                  <button
+                    type="button"
+                    onClick={handleVerifyMoMo}
+                    disabled={isVerifying}
+                    className="w-full py-3.5 rounded-xl bg-gradient-to-r from-pink-600 to-rose-500 hover:from-pink-500 hover:to-rose-400 text-white font-bold text-xs uppercase tracking-wider flex items-center justify-center gap-2 shadow-[0_0_20px_rgba(236,72,153,0.3)] disabled:opacity-50 transition-all cursor-pointer"
+                  >
+                    {isVerifying ? (
+                      <>
+                        <RefreshCw className="w-4 h-4 animate-spin" />
+                        <span>Đang truy vấn MoMo OpenAPI...</span>
+                      </>
+                    ) : (
+                      <>
+                        <Zap className="w-4 h-4" />
+                        <span>Xác Minh Giao Dịch MoMo (API Check)</span>
+                      </>
+                    )}
+                  </button>
+                </div>
               </div>
             </div>
+            )
           )}
 
           {activeChannel === 'crypto' && (
+            !isModuleEnabled('crypto') ? (
+              renderChannelMaintenance('crypto', 'Cổng Nạp Crypto USDT (TRC20 / BEP20)')
+            ) : (
             <div className="space-y-4">
-              <div className="p-4 rounded-xl bg-emerald-950/30 border border-emerald-500/30 text-emerald-300 flex items-center justify-between">
+              {/* Crypto Network & Rate Banner */}
+              <div className="p-4 rounded-xl bg-emerald-950/30 border border-emerald-500/30 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
                 <div>
-                  <div className="font-bold">USDT RATE:</div>
-                  <div className="text-lg font-black text-white mt-0.5">1 USDT = {formatCurrency(usdtAccount.rate, user.currency)}</div>
+                  <div className="font-bold text-xs text-emerald-300">TỶ GIÁ QUY ĐỔI USDT:</div>
+                  <div className="text-lg font-black text-white mt-0.5">
+                    1 USDT = {formatCurrency(usdtAccount.rate, user.currency)}
+                  </div>
+                  <div className="text-xs text-emerald-400 font-bold mt-1">
+                    Số tiền nạp: {formatCurrency(depositAmount, user.currency)} ≈ {(depositAmount / usdtAccount.rate).toFixed(2)} USDT
+                  </div>
                 </div>
-                <span className="px-2 py-1 rounded bg-emerald-950 text-emerald-400 border border-emerald-500/40 text-[10px] font-bold">
-                  TRC20 & BEP20 (AUTO)
-                </span>
-              </div>
 
-              <div className="p-5 rounded-2xl bg-slate-900/80 border border-slate-800 space-y-3">
-                <label className="text-xs font-bold text-slate-300">USDT WALLET ADDRESS (TRC20):</label>
-                <div className="flex items-center gap-2">
-                  <input
-                    type="text"
-                    readOnly
-                    value={usdtAccount.address}
-                    className="flex-1 bg-slate-950 border border-slate-800 rounded-xl p-3 text-cyan-300 font-bold text-xs"
-                  />
+                {/* Network Switcher */}
+                <div className="flex items-center gap-1.5 bg-black/40 p-1 rounded-xl border border-emerald-500/30">
                   <button
-                    onClick={() => handleCopy(usdtAccount.address, 'usdt_addr')}
-                    className="px-4 py-3 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-black font-bold text-xs flex items-center gap-1.5 cursor-pointer"
+                    type="button"
+                    onClick={() => setCryptoNetwork('TRC20')}
+                    className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${
+                      cryptoNetwork === 'TRC20'
+                        ? 'bg-emerald-500 text-black shadow-md'
+                        : 'text-slate-400 hover:text-white'
+                    }`}
                   >
-                    <Copy className="w-4 h-4" />
-                    <span>{copiedField === 'usdt_addr' ? t('common.copied') : t('common.copy')}</span>
+                    TRC20 (Tron)
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setCryptoNetwork('BEP20')}
+                    className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${
+                      cryptoNetwork === 'BEP20'
+                        ? 'bg-emerald-500 text-black shadow-md'
+                        : 'text-slate-400 hover:text-white'
+                    }`}
+                  >
+                    BEP20 (BSC)
                   </button>
                 </div>
-                <p className="text-[11px] text-slate-400">
-                  {t('wallet.crypto_usdt')}
-                </p>
+              </div>
+
+              {/* Amount presets picker */}
+              <div className="p-3 rounded-xl bg-slate-900/60 border border-slate-800 space-y-1.5">
+                <div className="text-xs text-slate-300 font-bold">1. Chọn mức nạp VND:</div>
+                <div className="grid grid-cols-4 sm:grid-cols-7 gap-1.5">
+                  {DEPOSIT_PRESETS.map((amt) => (
+                    <button
+                      key={amt}
+                      type="button"
+                      onClick={() => setDepositAmount(amt)}
+                      className={`p-1.5 rounded-lg border text-center text-xs transition-all cursor-pointer ${
+                        depositAmount === amt
+                          ? 'bg-emerald-500 text-black font-bold border-emerald-400 shadow-md'
+                          : 'bg-slate-900/60 border-slate-800 text-slate-300 hover:border-slate-700'
+                      }`}
+                    >
+                      {formatCurrency(amt, user.currency)}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
+                {/* Left: USDT QR Code */}
+                <div className="lg:col-span-5 flex flex-col items-center bg-slate-900/60 p-4 rounded-2xl border border-emerald-500/20 space-y-3 text-center">
+                  <div className="p-2.5 rounded-xl bg-white shadow-xl relative group">
+                    <img
+                      src={`https://api.qrserver.com/v1/create-qr-code/?size=250x250&data=${encodeURIComponent(usdtAccount.address)}`}
+                      alt="USDT QR Code"
+                      className="w-48 h-48 object-contain rounded-lg"
+                    />
+                    <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 flex flex-col items-center justify-center transition-opacity rounded-lg text-white font-bold text-xs p-2">
+                      <span>Mạng {cryptoNetwork}</span>
+                    </div>
+                  </div>
+                  <div className="text-xs text-emerald-400 font-bold bg-emerald-950/40 px-3 py-1 rounded-lg border border-emerald-500/30">
+                    Mạng: {cryptoNetwork} • Xác thực tự động On-Chain
+                  </div>
+                </div>
+
+                {/* Right: Address and TxID verification */}
+                <div className="lg:col-span-7 space-y-3 bg-slate-900/80 p-4 rounded-2xl border border-slate-800">
+                  <div className="space-y-1">
+                    <label className="text-xs font-bold text-slate-300">2. ĐỊA CHỈ VÍ USDT ({cryptoNetwork}):</label>
+                    <div className="flex items-center gap-2">
+                      <input
+                        type="text"
+                        readOnly
+                        value={usdtAccount.address}
+                        className="flex-1 bg-slate-950 border border-slate-800 rounded-xl p-2.5 text-cyan-300 font-mono font-bold text-xs"
+                      />
+                      <button
+                        onClick={() => handleCopy(usdtAccount.address, 'usdt_addr')}
+                        className="px-3.5 py-2.5 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-black font-bold text-xs flex items-center gap-1.5 cursor-pointer shrink-0"
+                      >
+                        <Copy className="w-3.5 h-3.5" />
+                        <span>{copiedField === 'usdt_addr' ? t('common.copied') : t('common.copy')}</span>
+                      </button>
+                    </div>
+                  </div>
+
+                  <div className="p-2.5 rounded-lg bg-red-950/40 border border-red-500/40 flex items-center justify-between">
+                    <div>
+                      <div className="text-[10px] text-red-300 uppercase font-bold">Nội dung chuyển / Memo:</div>
+                      <div className="text-xs text-yellow-300 font-black tracking-wider mt-0.5">{transferCode}</div>
+                    </div>
+                    <button
+                      onClick={() => handleCopy(transferCode, 'usdt_memo')}
+                      className="px-2.5 py-1 rounded bg-yellow-500 hover:bg-yellow-400 text-black font-bold text-[11px] cursor-pointer"
+                    >
+                      <Copy className="w-3 h-3" />
+                      <span>{copiedField === 'usdt_memo' ? t('common.copied') : t('common.copy')}</span>
+                    </button>
+                  </div>
+
+                  {/* TxID Input Field */}
+                  <div className="space-y-1 pt-1">
+                    <label className="text-[11px] text-slate-300 font-bold flex items-center justify-between">
+                      <span>3. MÃ BĂM GIAO DỊCH (TXID / HASH):</span>
+                      <span className="text-[10px] text-emerald-400 font-normal">Từ ví Trust/Binance/OKX</span>
+                    </label>
+                    <input
+                      type="text"
+                      placeholder="Dán mã băm TxID (Ví dụ: b3f2a18c09... 64 ký tự)"
+                      value={cryptoTxHashInput}
+                      onChange={(e) => setCryptoTxHashInput(e.target.value)}
+                      className="w-full bg-slate-950 border border-slate-700 rounded-xl px-3 py-2 text-cyan-300 font-mono text-xs focus:border-emerald-500 outline-none"
+                    />
+                  </div>
+
+                  {renderVerificationFeedback()}
+
+                  <button
+                    type="button"
+                    onClick={handleVerifyCryptoUsdt}
+                    disabled={isVerifying}
+                    className="w-full py-3.5 rounded-xl bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-400 hover:to-teal-400 text-black font-bold text-xs uppercase tracking-wider flex items-center justify-center gap-2 shadow-[0_0_20px_rgba(16,185,129,0.3)] disabled:opacity-50 transition-all cursor-pointer"
+                  >
+                    {isVerifying ? (
+                      <>
+                        <RefreshCw className="w-4 h-4 animate-spin" />
+                        <span>Đang quét khối TronScan / BSC...</span>
+                      </>
+                    ) : (
+                      <>
+                        <Zap className="w-4 h-4" />
+                        <span>Xác Minh On-Chain ({cryptoNetwork} API)</span>
+                      </>
+                    )}
+                  </button>
+                </div>
               </div>
             </div>
+            )
           )}
 
           {/* CHANNEL: LITECOIN (LTC) */}
           {activeChannel === 'ltc' && (
+            !isModuleEnabled('ltc') ? (
+              renderChannelMaintenance('ltc', 'Cổng Nạp Litecoin (LTC Core)')
+            ) : (
             <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
               {/* Left: LTC QR Code */}
               <div className="lg:col-span-5 flex flex-col items-center bg-slate-900/60 p-4 rounded-2xl border border-blue-500/30 space-y-3 text-center">
@@ -647,7 +1142,24 @@ export const DepositHubModal: React.FC<DepositHubModalProps> = ({
                       <span>{copiedField === 'ltc_memo' ? t('common.copied') : t('common.copy')}</span>
                     </button>
                   </div>
+
+                  {/* LTC TxID Hash Input */}
+                  <div className="space-y-1 pt-1">
+                    <label className="text-[11px] text-slate-300 font-bold flex items-center justify-between">
+                      <span>3. MÃ BĂM GIAO DỊCH (LTC TXID):</span>
+                      <span className="text-[10px] text-blue-400 font-normal">Blockchair / BlockCypher Node</span>
+                    </label>
+                    <input
+                      type="text"
+                      placeholder="Dán mã băm LTC TxID (Ví dụ: 8a4c1f9d2...)"
+                      value={ltcTxHashInput}
+                      onChange={(e) => setLtcTxHashInput(e.target.value)}
+                      className="w-full bg-slate-950 border border-slate-700 rounded-xl px-3 py-2 text-blue-300 font-mono text-xs focus:border-blue-500 outline-none"
+                    />
+                  </div>
                 </div>
+
+                {renderVerificationFeedback()}
 
                 {/* Instant Verification Trigger */}
                 <button
@@ -659,21 +1171,25 @@ export const DepositHubModal: React.FC<DepositHubModalProps> = ({
                   {isVerifying ? (
                     <>
                       <RefreshCw className="w-4 h-4 animate-spin" />
-                      <span>{t('common.loading')}</span>
+                      <span>Đang truy vấn Blockchair & Cypher API...</span>
                     </>
                   ) : (
                     <>
                       <Zap className="w-4 h-4" />
-                      <span>{t('common.confirm')}</span>
+                      <span>Xác Minh Khối Litecoin (Core API)</span>
                     </>
                   )}
                 </button>
               </div>
             </div>
+            )
           )}
 
           {/* CHANNEL: BINANCE PAY / ID BINANCE (UID) */}
           {activeChannel === 'binance' && (
+            !isModuleEnabled('binance') ? (
+              renderChannelMaintenance('binance', 'Cổng Binance Pay & UID')
+            ) : (
             <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
               {/* Left: Binance Pay QR */}
               <div className="lg:col-span-5 flex flex-col items-center bg-slate-900/60 p-4 rounded-2xl border border-amber-500/30 space-y-3 text-center">
@@ -767,17 +1283,20 @@ export const DepositHubModal: React.FC<DepositHubModalProps> = ({
 
                 {/* Input Binance Order ID / Tx ID */}
                 <div className="space-y-1">
-                  <label className="text-[11px] text-slate-300 font-bold">
-                    BINANCE ORDER ID / TX ID:
+                  <label className="text-[11px] text-slate-300 font-bold flex items-center justify-between">
+                    <span>MÃ ĐƠN HÀNG / ORDER ID BINANCE PAY:</span>
+                    <span className="text-[10px] text-amber-400 font-normal">Xem trong Lịch sử Binance Pay</span>
                   </label>
                   <input
                     type="text"
-                    placeholder="293848192039..."
+                    placeholder="Ví dụ: 293848192039 hoặc Prepay ID..."
                     value={binanceTxInput}
                     onChange={(e) => setBinanceTxInput(e.target.value)}
                     className="w-full bg-slate-950 border border-slate-700 rounded-xl px-3 py-2 text-amber-300 font-mono text-xs focus:border-amber-400 outline-none"
                   />
                 </div>
+
+                {renderVerificationFeedback()}
 
                 {/* Verify Button */}
                 <button
@@ -789,17 +1308,18 @@ export const DepositHubModal: React.FC<DepositHubModalProps> = ({
                   {isVerifying ? (
                     <>
                       <RefreshCw className="w-4 h-4 animate-spin" />
-                      <span>{t('common.loading')}</span>
+                      <span>Đang truy vấn Binance Pay OpenAPI...</span>
                     </>
                   ) : (
                     <>
                       <Zap className="w-4 h-4" />
-                      <span>{t('common.confirm')}</span>
+                      <span>Xác Minh Binance Pay (OpenAPI v2)</span>
                     </>
                   )}
                 </button>
               </div>
             </div>
+            )
           )}
 
           {activeChannel === 'history' && (

@@ -1,4 +1,4 @@
-import React, { useState, useMemo, useRef, useEffect } from 'react';
+import React, { useState, useMemo, useRef, useEffect, useCallback } from 'react';
 import { 
   Gamepad2, 
   Zap, 
@@ -13,22 +13,30 @@ import {
   SlidersHorizontal, 
   LayoutGrid, 
   ChevronDown, 
-  ChevronUp 
+  ChevronUp,
+  Type
 } from 'lucide-react';
-import { GameItem } from '../types';
+import { GameItem, SectionHeaderItemConfig, CurrencyCode } from '../types';
 import { formatCurrency } from '../utils/formatters';
 import { useTranslation } from '../i18n';
 
 interface TopupSectionProps {
   games: GameItem[];
-  currency: 'VND' | 'USD';
+  currency: CurrencyCode;
   onSelectGame: (game: GameItem) => void;
+  onOpenAllGames?: () => void;
+  headerConfig?: SectionHeaderItemConfig;
+  onEditHeader?: () => void;
+  canEditHeader?: boolean;
 }
 
 export const TopupSection: React.FC<TopupSectionProps> = ({
   games,
   currency,
-  onSelectGame
+  onSelectGame,
+  headerConfig,
+  onEditHeader,
+  canEditHeader = true
 }) => {
   const { t } = useTranslation();
   const [searchTerm, setSearchTerm] = useState('');
@@ -60,22 +68,34 @@ export const TopupSection: React.FC<TopupSectionProps> = ({
 
   const visibleGridGames = filteredGames.slice(0, displayCount);
 
-  const checkScroll = () => {
-    if (scrollContainerRef.current) {
-      const { scrollLeft, scrollWidth, clientWidth } = scrollContainerRef.current;
-      setCanScrollLeft(scrollLeft > 10);
-      setCanScrollRight(scrollLeft < scrollWidth - clientWidth - 10);
-      const totalScrollable = scrollWidth - clientWidth;
-      setScrollProgress(totalScrollable > 0 ? (scrollLeft / totalScrollable) * 100 : 0);
-    }
-  };
+  const checkScroll = useCallback(() => {
+    const el = scrollContainerRef.current;
+    if (!el) return;
+    const { scrollLeft, scrollWidth, clientWidth } = el;
+    const nextLeft = scrollLeft > 15;
+    const nextRight = scrollLeft < scrollWidth - clientWidth - 15;
+    const totalScrollable = scrollWidth - clientWidth;
+    const nextProgress = totalScrollable > 0 ? Math.min(100, Math.max(0, Math.round((scrollLeft / totalScrollable) * 100))) : 0;
+
+    setCanScrollLeft(prev => (prev !== nextLeft ? nextLeft : prev));
+    setCanScrollRight(prev => (prev !== nextRight ? nextRight : prev));
+    setScrollProgress(prev => (prev !== nextProgress ? nextProgress : prev));
+  }, []);
 
   useEffect(() => {
-    checkScroll();
-    const handleResize = () => checkScroll();
-    window.addEventListener('resize', handleResize);
-    return () => window.removeEventListener('resize', handleResize);
-  }, [filteredGames, viewMode]);
+    let animId: number;
+    const scheduleCheck = () => {
+      cancelAnimationFrame(animId);
+      animId = requestAnimationFrame(checkScroll);
+    };
+
+    scheduleCheck();
+    window.addEventListener('resize', scheduleCheck);
+    return () => {
+      cancelAnimationFrame(animId);
+      window.removeEventListener('resize', scheduleCheck);
+    };
+  }, [checkScroll, filteredGames.length, viewMode]);
 
   const handleScroll = (direction: 'left' | 'right') => {
     if (scrollContainerRef.current) {
@@ -97,19 +117,30 @@ export const TopupSection: React.FC<TopupSectionProps> = ({
             <Zap className="w-5 h-5 animate-pulse" />
           </div>
           <div>
-            <h2 className="text-base sm:text-lg font-bold font-mono text-white tracking-wide flex items-center gap-2 flex-wrap">
-              <span>{t('topup.title')}</span>
-              <span className="px-2 py-0.5 rounded text-[10px] bg-cyan-950 text-cyan-300 border border-cyan-500/40 font-mono">
-                {games.length} GAMES • 1.702 TIERS
+            <h2 className={`tracking-wide flex items-center gap-2 flex-wrap ${headerConfig?.fontSize || 'text-base sm:text-lg'} ${headerConfig?.fontWeight || 'font-bold'} ${headerConfig?.fontFamily || 'font-mono'} ${headerConfig?.letterSpacing || 'tracking-wide'} ${headerConfig?.textTransform || 'uppercase'} ${headerConfig?.titleColor || 'text-white'}`}>
+              <span>{headerConfig?.title || t('topup.title')}</span>
+              <span className={`px-2 py-0.5 rounded text-[10px] ${headerConfig?.badgeColor || 'bg-cyan-950 text-cyan-300 border border-cyan-500/40'} font-mono`}>
+                {headerConfig?.badge || `${games.length} GAMES • 1.702 TIERS`}
               </span>
               <span className="px-2 py-0.5 rounded text-[10px] bg-emerald-950 text-emerald-300 border border-emerald-500/30 font-mono hidden sm:inline">
                 API Live 3s
               </span>
             </h2>
-            <p className="text-xs text-slate-400 font-mono">
-              {t('topup.subtitle')}
+            <p className={`text-xs ${headerConfig?.subtitleColor || 'text-slate-400'} font-mono`}>
+              {headerConfig?.subtitle || t('topup.subtitle')}
             </p>
           </div>
+            {canEditHeader && onEditHeader && (
+              <button
+                type="button"
+                onClick={onEditHeader}
+                title="Chỉnh sửa nội dung & font chữ mục Nạp Game"
+                className="px-2 py-0.5 rounded-md bg-cyan-500/20 hover:bg-cyan-500 hover:text-black text-cyan-300 hover:border-cyan-400 border border-cyan-500/40 transition-all text-[10px] font-mono font-bold flex items-center gap-1 cursor-pointer shrink-0 ml-1 shadow-sm"
+              >
+                <Type className="w-3 h-3" />
+                <span>Sửa chữ & font</span>
+              </button>
+            )}
         </div>
 
         {/* Top Controls: View Mode & Scroll Arrows */}

@@ -108,3 +108,13 @@
   padding-top: env(safe-area-inset-top, 16px);
 }
 
+/* Custom Typography Utilities */
+.font-jakarta { font-family: 'Plus Jakarta Sans', sans-serif !important; }
+.font-bevietnam { font-family: 'Be Vietnam Pro', sans-serif !important; }
+.font-jetbrains { font-family: 'JetBrains Mono', monospace !important; }
+.font-orbitron { font-family: 'Orbitron', sans-serif !important; }
+.font-chakra { font-family: 'Chakra Petch', sans-serif !important; }
+.font-montserrat { font-family: 'Montserrat', sans-serif !important; }
+.font-playfair { font-family: 'Playfair Display', serif !important; }
+.font-inter { font-family: 'Inter', sans-serif !important; }
+

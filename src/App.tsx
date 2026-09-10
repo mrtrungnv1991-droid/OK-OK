@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import confetti from 'canvas-confetti';
 import { 
   Flame, 
@@ -12,7 +12,8 @@ import {
   ChevronRight,
   TrendingDown,
   Lock,
-  Gift
+  Gift,
+  Type
 } from 'lucide-react';
 import { 
   Product, 
@@ -27,7 +28,8 @@ import {
   LanguageCode, 
   CurrencyCode,
   ProductReview,
-  TopupOrder
+  TopupOrder,
+  SectionsHeaderConfig
 } from './types';
 import { formatCurrency, generateTxHash, generateRandomKey } from './utils/formatters';
 import { Navbar } from './components/Navbar';
@@ -48,6 +50,7 @@ import { TicketsModal } from './components/TicketsModal';
 import { SellerSupplierModal } from './components/SellerSupplierModal';
 import { AdminPanelModal } from './components/AdminPanelModal';
 import { TelcoCardModal } from './components/TelcoCardModal';
+import { SectionHeaderEditorModal, SectionKey } from './components/SectionHeaderEditorModal';
 import { LuckyWheelModal } from './components/LuckyWheelModal';
 import { OrderLookupModal } from './components/OrderLookupModal';
 import { AffiliateResellerModal } from './components/AffiliateResellerModal';
@@ -97,7 +100,8 @@ function AppContent() {
     updateUserBalance, 
     updateEscrowLocked, 
     updateLanguage, 
-    updateCurrency 
+    updateCurrency,
+    refreshUserProfile
   } = useAuth();
 
   // Wallet Context
@@ -111,7 +115,8 @@ function AppContent() {
     submitTelcoCard, 
     approveInvoice, 
     rejectInvoice, 
-    requestWithdrawal 
+    requestWithdrawal,
+    fetchWalletData
   } = useWallet();
 
   // Catalog Context
@@ -141,6 +146,7 @@ function AppContent() {
     updateGameTier,
     deleteGameTier,
     bulkAdjustGamePrices,
+    resetGamesToDefault,
     addCategory,
     updateCategory,
     deleteCategory
@@ -179,6 +185,22 @@ function AppContent() {
     deleteVoucher 
   } = useAdmin();
 
+  // Section Headers & Fonts Customizer State
+  const [isSectionHeaderModalOpen, setIsSectionHeaderModalOpen] = useState(false);
+  const [activeEditingSection, setActiveEditingSection] = useState<SectionKey>('marketplace');
+
+  const handleOpenSectionHeaderEditor = (section: SectionKey) => {
+    setActiveEditingSection(section);
+    setIsSectionHeaderModalOpen(true);
+  };
+
+  const handleSaveSectionsHeaderConfig = (newConfig: SectionsHeaderConfig) => {
+    updateSystemConfig({
+      sectionsHeaderConfig: newConfig
+    });
+    showToast('Đã lưu cấu hình nội dung và phông chữ các phân khu!', 'success');
+  };
+
   // Purchase Type Filter ('all' | 'retail_instant' | 'escrow_pools')
   const [purchaseTypeFilter, setPurchaseTypeFilter] = useState<'all' | 'retail_instant' | 'escrow_pools'>('all');
 
@@ -193,21 +215,23 @@ function AppContent() {
   }, []);
 
   // Direct Product Link Listener (Supports ?product=..., ?productId=..., ?id=...)
+  const handledProductUrlRef = useRef<boolean>(false);
   useEffect(() => {
-    if (!products || products.length === 0) return;
+    if (handledProductUrlRef.current || !products || products.length === 0) return;
     try {
       const urlParams = new URLSearchParams(window.location.search);
       const targetId = urlParams.get('product') || urlParams.get('productId') || urlParams.get('id');
       if (targetId) {
         const matched = products.find(p => p.id === targetId || (p as any).slug === targetId);
         if (matched) {
+          handledProductUrlRef.current = true;
           openModal('instantBuy', { selectedProduct: matched });
         }
       }
     } catch {
       // Ignore in restricted environments
     }
-  }, [products]);
+  }, [products.length]);
 
   const triggerConfetti = (count = 75, spread = 65) => {
     try {
@@ -680,6 +704,9 @@ function AppContent() {
           currency={currentUser.currency}
           onOpenPool={(prod, pool) => openModal('poolDetail', { selectedProduct: prod, selectedPool: pool })}
           onInstantBuy={handleInstantBuy}
+          headerConfig={systemConfig.sectionsHeaderConfig?.flashSale}
+          onEditHeader={() => handleOpenSectionHeaderEditor('flashSale')}
+          canEditHeader={true}
         />
       </div>
 
@@ -691,6 +718,9 @@ function AppContent() {
           onOpenPool={(prod, pool) => openModal('poolDetail', { selectedProduct: prod, selectedPool: pool })}
           onInstantBuy={handleInstantBuy}
           onCreateNewPool={(prod) => openModal('createPool', { initialProduct: prod })}
+          headerConfig={systemConfig.sectionsHeaderConfig?.activePools}
+          onEditHeader={() => handleOpenSectionHeaderEditor('activePools')}
+          canEditHeader={true}
         />
       </div>
 
@@ -701,6 +731,9 @@ function AppContent() {
           currency={currentUser.currency}
           onSelectGame={(game) => openModal('topup', { selectedGame: game })}
           onOpenAllGames={() => openModal('topup')}
+          headerConfig={systemConfig.sectionsHeaderConfig?.topup}
+          onEditHeader={() => handleOpenSectionHeaderEditor('topup')}
+          canEditHeader={true}
         />
       </div>
 
@@ -709,17 +742,25 @@ function AppContent() {
         {/* Marketplace Header & Filter Controls */}
         <div className="flex flex-col md:flex-row md:items-end justify-between gap-4 mb-6">
           <div>
-            <div className="flex items-center gap-2 mb-2">
+            <div className="flex items-center gap-2 mb-2 flex-wrap">
               <div className="w-2.5 h-2.5 rounded-full bg-cyan-400 animate-ping" />
-              <span className="text-xs font-mono font-bold tracking-widest text-cyan-400 uppercase">
-                {t('marketplace.badge')}
+              <span className={`text-xs font-mono font-bold tracking-widest ${systemConfig.sectionsHeaderConfig?.marketplace?.badgeColor || 'text-cyan-400'} uppercase`}>
+                {systemConfig.sectionsHeaderConfig?.marketplace?.badge || t('marketplace.badge')}
               </span>
+              <button
+                onClick={() => handleOpenSectionHeaderEditor('marketplace')}
+                title="Chỉnh sửa nội dung & font chữ mục Kho Sản Phẩm"
+                className="p-1 sm:p-1.5 rounded-lg bg-slate-900/90 hover:bg-cyan-500 hover:text-black text-cyan-400 border border-cyan-500/30 transition-all text-xs flex items-center gap-1 cursor-pointer shrink-0 ml-1"
+              >
+                <Type className="w-3.5 h-3.5" />
+                <span className="text-[10px] font-mono font-bold">Sửa chữ & font</span>
+              </button>
             </div>
-            <h2 className="text-2xl sm:text-3xl font-black text-white uppercase tracking-tight">
-              {t('marketplace.title')}
+            <h2 className={`transition-all ${systemConfig.sectionsHeaderConfig?.marketplace?.fontSize || 'text-2xl sm:text-3xl'} ${systemConfig.sectionsHeaderConfig?.marketplace?.fontWeight || 'font-black'} ${systemConfig.sectionsHeaderConfig?.marketplace?.fontFamily || 'font-jakarta'} ${systemConfig.sectionsHeaderConfig?.marketplace?.letterSpacing || 'tracking-tight'} ${systemConfig.sectionsHeaderConfig?.marketplace?.textTransform || 'uppercase'} ${systemConfig.sectionsHeaderConfig?.marketplace?.titleColor || 'text-white'}`}>
+              {systemConfig.sectionsHeaderConfig?.marketplace?.title || t('marketplace.title')}
             </h2>
-            <p className="text-sm text-slate-400 mt-1">
-              {t('marketplace.subtitle')}
+            <p className={`text-sm ${systemConfig.sectionsHeaderConfig?.marketplace?.subtitleColor || 'text-slate-400'} mt-1`}>
+              {systemConfig.sectionsHeaderConfig?.marketplace?.subtitle || t('marketplace.subtitle')}
             </p>
           </div>
 
@@ -959,8 +1000,10 @@ function AppContent() {
           currency={currentUser.currency}
           initialAmount={modalPayload.initialDepositAmount}
           initialMethod={modalPayload.initialDepositMethod}
-          onDepositSuccess={(amount, methodTitle) => {
-            depositMoney(amount, methodTitle);
+          systemConfig={systemConfig}
+          transactions={transactions}
+          onDepositSuccess={async (amount, methodTitle, txCode) => {
+            await Promise.all([refreshUserProfile(), fetchWalletData()]);
             triggerConfetti(60, 60);
           }}
         />
@@ -1047,6 +1090,7 @@ function AppContent() {
           onUpdateGameTier={updateGameTier}
           onDeleteGameTier={deleteGameTier}
           onBulkAdjustGamePrices={bulkAdjustGamePrices}
+          onResetGames={resetGamesToDefault}
           categories={categories}
           onAddCategory={addCategory}
           onUpdateCategory={updateCategory}
@@ -1070,6 +1114,7 @@ function AppContent() {
           currency={currentUser.currency}
           telcoCards={telcoCards}
           onSubmitCard={handleCardSubmit}
+          systemConfig={systemConfig}
         />
       )}
 
@@ -1176,6 +1221,17 @@ function AppContent() {
         onOpenVault={() => openModal('vault')}
         onOpenDeposit={() => openModal('depositHub')}
       />
+
+      {/* Section Headers & Fonts Live Customizer Modal */}
+      {isSectionHeaderModalOpen && (
+        <SectionHeaderEditorModal
+          isOpen={true}
+          onClose={() => setIsSectionHeaderModalOpen(false)}
+          initialSection={activeEditingSection}
+          sectionsConfig={systemConfig.sectionsHeaderConfig}
+          onSave={handleSaveSectionsHeaderConfig}
+        />
+      )}
 
       {/* 9. Live Customer Support Chat Widget */}
       <LiveSupportChatWidget

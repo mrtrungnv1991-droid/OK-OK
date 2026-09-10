@@ -31,7 +31,7 @@ interface CatalogContextType {
   // Product actions
   addNewProduct: (newProduct: Partial<Product>) => Promise<Product | null>;
   updateProduct: (productId: string, updatedData: Partial<Product>) => Promise<void>;
-  deleteProduct: (productId: string) => Promise<void>;
+  deleteProduct: (productId: string) => Promise<boolean>;
   retranslateProduct: (productId: string) => Promise<boolean>;
   updateProductStock: (productId: string, newStock: number) => Promise<void>;
   adjustProductStock: (productId: string, delta: number) => Promise<void>;
@@ -46,6 +46,7 @@ interface CatalogContextType {
   updateGameTier: (gameId: string, tierId: string, updatedTier: Partial<TopupTier>) => void;
   deleteGameTier: (gameId: string, tierId: string) => void;
   bulkAdjustGamePrices: (gameId: string, percentDelta: number) => void;
+  resetGamesToDefault?: () => Promise<void>;
 
   // Category actions
   addCategory: (cat: Partial<CategoryItem>) => void;
@@ -55,10 +56,25 @@ interface CatalogContextType {
 
 const CatalogContext = createContext<CatalogContextType | undefined>(undefined);
 
+const STORAGE_GAMES_KEY = 'cyberpool_games_catalog';
+
 export const CatalogProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
   const { locale } = useTranslation();
   const [rawProducts, setRawProducts] = useState<Product[]>(INITIAL_PRODUCTS);
-  const [rawGames, setRawGames] = useState<GameItem[]>(INITIAL_GAMES);
+  const [rawGames, setRawGames] = useState<GameItem[]>(() => {
+    if (typeof window !== 'undefined' && window.localStorage) {
+      try {
+        const saved = localStorage.getItem(STORAGE_GAMES_KEY);
+        if (saved) {
+          const parsed = JSON.parse(saved);
+          if (Array.isArray(parsed)) return parsed;
+        }
+      } catch (e) {
+        console.warn('Failed to load cached games from localStorage', e);
+      }
+    }
+    return INITIAL_GAMES;
+  });
   const [rawCategories, setRawCategories] = useState<CategoryItem[]>(INITIAL_EXTENDED_CATEGORIES);
   const [isLoading, setIsLoading] = useState<boolean>(false);
 
@@ -97,6 +113,11 @@ export const CatalogProvider: React.FC<{ children: ReactNode }> = ({ children })
 
       if (gameRes.success && gameRes.data?.games) {
         setRawGames(gameRes.data.games);
+        if (typeof window !== 'undefined' && window.localStorage) {
+          try {
+            localStorage.setItem(STORAGE_GAMES_KEY, JSON.stringify(gameRes.data.games));
+          } catch {}
+        }
       }
     } catch {
       // server sync fallback
@@ -233,11 +254,15 @@ export const CatalogProvider: React.FC<{ children: ReactNode }> = ({ children })
     }
   };
 
-  const deleteProduct = async (productId: string) => {
+  const deleteProduct = async (productId: string): Promise<boolean> => {
     setRawProducts(prev => prev.filter(p => p.id !== productId));
     try {
-      await productsApi.deleteProduct(productId);
-    } catch {}
+      const res = await productsApi.deleteProduct(productId);
+      return res?.success !== false;
+    } catch (e) {
+      console.warn('[CatalogContext] Product delete fallback:', e);
+      return true;
+    }
   };
 
   const updateProductStock = async (productId: string, newStock: number) => {
@@ -294,13 +319,26 @@ export const CatalogProvider: React.FC<{ children: ReactNode }> = ({ children })
   };
 
   // Game actions
-  const updateGame = (gameId: string, updatedGame: Partial<GameItem>) => {
-    setRawGames(prev => prev.map(g => g.id === gameId ? { ...g, ...updatedGame } : g));
+  const updateGame = async (gameId: string, updatedGame: Partial<GameItem>) => {
+    setRawGames(prev => {
+      const updated = prev.map(g => g.id === gameId ? { ...g, ...updatedGame } : g);
+      if (typeof window !== 'undefined' && window.localStorage) {
+        try {
+          localStorage.setItem(STORAGE_GAMES_KEY, JSON.stringify(updated));
+        } catch {}
+      }
+      return updated;
+    });
+    try {
+      await productsApi.updateGame(gameId, updatedGame);
+    } catch (err) {
+      console.warn('Failed to sync game update to server:', err);
+    }
   };
 
-  const addNewGame = (newGame: Partial<GameItem>) => {
+  const addNewGame = async (newGame: Partial<GameItem>) => {
     const game: GameItem = {
-      id: `game_${Date.now()}`,
+      id: newGame.id || `game_${Date.now()}`,
       name: newGame.name || 'Game Mới',
       category: newGame.category || 'Mobile',
       publisher: newGame.publisher || 'Nhà phát hành',
@@ -311,54 +349,160 @@ export const CatalogProvider: React.FC<{ children: ReactNode }> = ({ children })
       description: newGame.description || 'Nạp game tự động',
       tiers: newGame.tiers || []
     };
-    setRawGames(prev => [game, ...prev]);
-  };
-
-  const deleteGame = (gameId: string) => {
-    setRawGames(prev => prev.filter(g => g.id !== gameId));
-  };
-
-  const addGameTier = (gameId: string, tier: TopupTier) => {
-    setRawGames(prev => prev.map(g => {
-      if (g.id === gameId) {
-        return { ...g, tiers: [...g.tiers, tier] };
+    setRawGames(prev => {
+      const updated = [game, ...prev];
+      if (typeof window !== 'undefined' && window.localStorage) {
+        try {
+          localStorage.setItem(STORAGE_GAMES_KEY, JSON.stringify(updated));
+        } catch {}
       }
-      return g;
-    }));
+      return updated;
+    });
+    try {
+      await productsApi.createGame(game);
+    } catch (err) {
+      console.warn('Failed to sync new game to server:', err);
+    }
   };
 
-  const updateGameTier = (gameId: string, tierId: string, updatedTier: Partial<TopupTier>) => {
-    setRawGames(prev => prev.map(g => {
-      if (g.id === gameId) {
-        const nextTiers = g.tiers.map(t => t.id === tierId ? { ...t, ...updatedTier } : t);
-        return { ...g, tiers: nextTiers };
+  const deleteGame = async (gameId: string) => {
+    setRawGames(prev => {
+      const updated = prev.filter(g => g.id !== gameId);
+      if (typeof window !== 'undefined' && window.localStorage) {
+        try {
+          localStorage.setItem(STORAGE_GAMES_KEY, JSON.stringify(updated));
+        } catch {}
       }
-      return g;
-    }));
+      return updated;
+    });
+    try {
+      await productsApi.deleteGame(gameId);
+    } catch (err) {
+      console.warn('Failed to sync game deletion to server:', err);
+    }
   };
 
-  const deleteGameTier = (gameId: string, tierId: string) => {
-    setRawGames(prev => prev.map(g => {
-      if (g.id === gameId) {
-        return { ...g, tiers: g.tiers.filter(t => t.id !== tierId) };
+  const addGameTier = async (gameId: string, tier: TopupTier) => {
+    setRawGames(prev => {
+      const updated = prev.map(g => {
+        if (g.id === gameId) {
+          return { ...g, tiers: [...g.tiers, tier] };
+        }
+        return g;
+      });
+      if (typeof window !== 'undefined' && window.localStorage) {
+        try {
+          localStorage.setItem(STORAGE_GAMES_KEY, JSON.stringify(updated));
+        } catch {}
       }
-      return g;
-    }));
+      return updated;
+    });
+    try {
+      await productsApi.addGameTier(gameId, tier);
+    } catch (err) {
+      console.warn('Failed to sync add game tier to server:', err);
+    }
   };
 
-  const bulkAdjustGamePrices = (gameId: string, percentDelta: number) => {
+  const updateGameTier = async (gameId: string, tierId: string, updatedTier: Partial<TopupTier>) => {
+    setRawGames(prev => {
+      const updated = prev.map(g => {
+        if (g.id === gameId) {
+          const nextTiers = g.tiers.map(t => t.id === tierId ? { ...t, ...updatedTier } : t);
+          return { ...g, tiers: nextTiers };
+        }
+        return g;
+      });
+      if (typeof window !== 'undefined' && window.localStorage) {
+        try {
+          localStorage.setItem(STORAGE_GAMES_KEY, JSON.stringify(updated));
+        } catch {}
+      }
+      return updated;
+    });
+    try {
+      await productsApi.updateGameTier(gameId, tierId, updatedTier);
+    } catch (err) {
+      console.warn('Failed to sync update game tier to server:', err);
+    }
+  };
+
+  const deleteGameTier = async (gameId: string, tierId: string) => {
+    setRawGames(prev => {
+      const updated = prev.map(g => {
+        if (g.id === gameId) {
+          return { ...g, tiers: g.tiers.filter(t => t.id !== tierId) };
+        }
+        return g;
+      });
+      if (typeof window !== 'undefined' && window.localStorage) {
+        try {
+          localStorage.setItem(STORAGE_GAMES_KEY, JSON.stringify(updated));
+        } catch {}
+      }
+      return updated;
+    });
+    try {
+      await productsApi.deleteGameTier(gameId, tierId);
+    } catch (err) {
+      console.warn('Failed to sync delete game tier to server:', err);
+    }
+  };
+
+  const bulkAdjustGamePrices = async (gameId: string, percentDelta: number) => {
     const factor = 1 + (percentDelta / 100);
-    setRawGames(prev => prev.map(g => {
-      if (g.id === gameId) {
-        const nextTiers = g.tiers.map(t => ({
-          ...t,
-          retailPrice: Math.round(t.retailPrice * factor / 1000) * 1000,
-          groupPrice: t.groupPrice ? Math.round(t.groupPrice * factor / 1000) * 1000 : undefined
-        }));
-        return { ...g, tiers: nextTiers };
+    setRawGames(prev => {
+      const updated = prev.map(g => {
+        if (gameId === 'all' || g.id === gameId) {
+          const nextTiers = g.tiers.map(t => ({
+            ...t,
+            retailPrice: Math.round(t.retailPrice * factor / 1000) * 1000,
+            groupPrice: t.groupPrice ? Math.round(t.groupPrice * factor / 1000) * 1000 : undefined
+          }));
+          return { ...g, tiers: nextTiers };
+        }
+        return g;
+      });
+      if (typeof window !== 'undefined' && window.localStorage) {
+        try {
+          localStorage.setItem(STORAGE_GAMES_KEY, JSON.stringify(updated));
+        } catch {}
       }
-      return g;
-    }));
+      return updated;
+    });
+    try {
+      await productsApi.bulkAdjustGamePrices(gameId, percentDelta);
+    } catch (err) {
+      console.warn('Failed to sync bulk adjust prices to server:', err);
+    }
+  };
+
+  const resetGamesToDefault = async () => {
+    try {
+      const res = await productsApi.resetGamesToDefault();
+      if (res.success && res.data?.games) {
+        setRawGames(res.data.games);
+        if (typeof window !== 'undefined' && window.localStorage) {
+          try {
+            localStorage.setItem(STORAGE_GAMES_KEY, JSON.stringify(res.data.games));
+          } catch {}
+        }
+      } else {
+        setRawGames(INITIAL_GAMES);
+        if (typeof window !== 'undefined' && window.localStorage) {
+          try {
+            localStorage.setItem(STORAGE_GAMES_KEY, JSON.stringify(INITIAL_GAMES));
+          } catch {}
+        }
+      }
+    } catch {
+      setRawGames(INITIAL_GAMES);
+      if (typeof window !== 'undefined' && window.localStorage) {
+        try {
+          localStorage.setItem(STORAGE_GAMES_KEY, JSON.stringify(INITIAL_GAMES));
+        } catch {}
+      }
+    }
   };
 
   // Category actions
@@ -383,43 +527,78 @@ export const CatalogProvider: React.FC<{ children: ReactNode }> = ({ children })
     setRawCategories(prev => prev.filter(c => c.id !== catId));
   };
 
+  const contextValue = useMemo(() => ({
+    products,
+    rawProducts,
+    games,
+    categories,
+    selectedCategory,
+    setSelectedCategory,
+    searchTerm,
+    setSearchTerm,
+    sortBy,
+    setSortBy,
+    selectedPlatform,
+    setSelectedPlatform,
+    isLoading,
+    fetchCatalog,
+    addNewProduct,
+    updateProduct,
+    deleteProduct,
+    retranslateProduct,
+    updateProductStock,
+    adjustProductStock,
+    toggleFlashSale,
+    bulkAddStock,
+    updateGame,
+    addNewGame,
+    deleteGame,
+    addGameTier,
+    updateGameTier,
+    deleteGameTier,
+    bulkAdjustGamePrices,
+    resetGamesToDefault,
+    addCategory,
+    updateCategory,
+    deleteCategory
+  }), [
+    products,
+    rawProducts,
+    games,
+    categories,
+    selectedCategory,
+    setSelectedCategory,
+    searchTerm,
+    setSearchTerm,
+    sortBy,
+    setSortBy,
+    selectedPlatform,
+    setSelectedPlatform,
+    isLoading,
+    fetchCatalog,
+    addNewProduct,
+    updateProduct,
+    deleteProduct,
+    retranslateProduct,
+    updateProductStock,
+    adjustProductStock,
+    toggleFlashSale,
+    bulkAddStock,
+    updateGame,
+    addNewGame,
+    deleteGame,
+    addGameTier,
+    updateGameTier,
+    deleteGameTier,
+    bulkAdjustGamePrices,
+    resetGamesToDefault,
+    addCategory,
+    updateCategory,
+    deleteCategory
+  ]);
+
   return (
-    <CatalogContext.Provider
-      value={{
-        products,
-        rawProducts,
-        games,
-        categories,
-        selectedCategory,
-        setSelectedCategory,
-        searchTerm,
-        setSearchTerm,
-        sortBy,
-        setSortBy,
-        selectedPlatform,
-        setSelectedPlatform,
-        isLoading,
-        fetchCatalog,
-        addNewProduct,
-        updateProduct,
-        deleteProduct,
-        retranslateProduct,
-        updateProductStock,
-        adjustProductStock,
-        toggleFlashSale,
-        bulkAddStock,
-        updateGame,
-        addNewGame,
-        deleteGame,
-        addGameTier,
-        updateGameTier,
-        deleteGameTier,
-        bulkAdjustGamePrices,
-        addCategory,
-        updateCategory,
-        deleteCategory
-      }}
-    >
+    <CatalogContext.Provider value={contextValue}>
       {children}
     </CatalogContext.Provider>
   );

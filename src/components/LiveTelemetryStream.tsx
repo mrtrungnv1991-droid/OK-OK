@@ -2,6 +2,8 @@ import React, { useState, useEffect } from 'react';
 import { Sparkles, Users, Key, Zap } from 'lucide-react';
 import { useTranslation } from '../i18n';
 
+import { CurrencyCode } from '../types';
+
 interface ToastItem {
   id: string;
   user: string;
@@ -11,7 +13,7 @@ interface ToastItem {
   time: string;
 }
 
-export const LiveTelemetryStream: React.FC = () => {
+export const LiveTelemetryStream: React.FC<{ currency?: CurrencyCode }> = () => {
   const { t } = useTranslation();
   const [currentToast, setCurrentToast] = useState<ToastItem | null>(null);
 

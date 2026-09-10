@@ -54,5 +54,21 @@ export const adminApi = {
 
   testCard24h: async (credentials?: { partnerId?: string; partnerKey?: string }): Promise<ApiResponse<any>> => {
     return api.post<any>('/admin/test-card24h', credentials || {});
+  },
+
+  testBinance: async (credentials?: { apiKey?: string; secretKey?: string }): Promise<ApiResponse<any>> => {
+    return api.post<any>('/admin/test-binance', credentials || {});
+  },
+
+  testCryptoUsdt: async (params?: { address?: string; network?: string }): Promise<ApiResponse<any>> => {
+    return api.post<any>('/admin/test-crypto-usdt', params || {});
+  },
+
+  testLtc: async (params?: { address?: string }): Promise<ApiResponse<any>> => {
+    return api.post<any>('/admin/test-ltc', params || {});
+  },
+
+  testMoMo: async (params?: { phone?: string; name?: string }): Promise<ApiResponse<any>> => {
+    return api.post<any>('/admin/test-momo', params || {});
   }
 };

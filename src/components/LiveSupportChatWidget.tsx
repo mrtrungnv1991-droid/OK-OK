@@ -20,6 +20,8 @@ import { useTranslation } from '../i18n';
 
 interface LiveSupportChatWidgetProps {
   user?: UserProfile;
+  userName?: string;
+  chatSessions?: any[];
   messages?: ChatMessage[];
   onSendMessage?: (text: string, orderRef?: string) => void;
   telegramSupportUrl?: string;
@@ -35,6 +37,8 @@ const QUICK_QUESTIONS = [
 
 export const LiveSupportChatWidget: React.FC<LiveSupportChatWidgetProps> = ({
   user,
+  userName,
+  chatSessions,
   messages: externalMessages,
   onSendMessage,
   telegramSupportUrl = 'https://t.me/cyberpool_support',
@@ -82,7 +86,7 @@ export const LiveSupportChatWidget: React.FC<LiveSupportChatWidgetProps> = ({
       const newMsg: ChatMessage = {
         id: `msg-${Date.now()}`,
         sender: 'user',
-        senderName: user?.username || 'User',
+        senderName: user?.name || user?.username || 'User',
         text: userText,
         timestamp: new Date().toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' }),
         orderRef
@@ -113,7 +117,7 @@ export const LiveSupportChatWidget: React.FC<LiveSupportChatWidgetProps> = ({
       const newMsg: ChatMessage = {
         id: `msg-${Date.now()}`,
         sender: 'user',
-        senderName: user?.username || 'User',
+        senderName: user?.name || user?.username || 'User',
         text: text,
         timestamp: new Date().toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' })
       };

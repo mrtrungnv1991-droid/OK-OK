@@ -13,7 +13,7 @@ import {
   Zap,
   ArrowRight
 } from 'lucide-react';
-import { UserOrder } from '../types';
+import { UserOrder, CurrencyCode } from '../types';
 import { formatCurrency } from '../utils/formatters';
 import { useTranslation } from '../i18n';
 import { WebDeliveryOutput } from './WebDeliveryOutput';
@@ -22,7 +22,7 @@ interface OrderLookupModalProps {
   isOpen: boolean;
   onClose: () => void;
   orders: UserOrder[];
-  currency: 'VND' | 'USD';
+  currency: CurrencyCode;
 }
 
 export const OrderLookupModal: React.FC<OrderLookupModalProps> = ({
@@ -33,12 +33,12 @@ export const OrderLookupModal: React.FC<OrderLookupModalProps> = ({
 }) => {
   const { t } = useTranslation();
 
-  if (!isOpen) return null;
-
   const [query, setQuery] = useState('');
   const [hasSearched, setHasSearched] = useState(false);
   const [foundOrder, setFoundOrder] = useState<UserOrder | null>(null);
   const [copiedKey, setCopiedKey] = useState(false);
+
+  if (!isOpen) return null;
 
   const handleSearch = (e: React.FormEvent) => {
     e.preventDefault();

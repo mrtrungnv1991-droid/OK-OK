@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, useEffect, ReactNode, useCallback } from 'react';
+import React, { createContext, useContext, useState, useEffect, ReactNode, useCallback, useMemo } from 'react';
 import { 
   TransactionRecord, 
   TelcoCardSubmission, 
@@ -264,24 +264,38 @@ export const WalletProvider: React.FC<{ children: ReactNode }> = ({ children }) 
     }
   };
 
+  const contextValue = useMemo(() => ({
+    transactions,
+    telcoCards,
+    topupInvoices,
+    withdrawals,
+    isLoading,
+    fetchWalletData,
+    addTransaction,
+    depositMoney,
+    submitTelcoCard,
+    createTopupInvoice,
+    approveInvoice,
+    rejectInvoice,
+    requestWithdrawal
+  }), [
+    transactions,
+    telcoCards,
+    topupInvoices,
+    withdrawals,
+    isLoading,
+    fetchWalletData,
+    addTransaction,
+    depositMoney,
+    submitTelcoCard,
+    createTopupInvoice,
+    approveInvoice,
+    rejectInvoice,
+    requestWithdrawal
+  ]);
+
   return (
-    <WalletContext.Provider
-      value={{
-        transactions,
-        telcoCards,
-        topupInvoices,
-        withdrawals,
-        isLoading,
-        fetchWalletData,
-        addTransaction,
-        depositMoney,
-        submitTelcoCard,
-        createTopupInvoice,
-        approveInvoice,
-        rejectInvoice,
-        requestWithdrawal
-      }}
-    >
+    <WalletContext.Provider value={contextValue}>
       {children}
     </WalletContext.Provider>
   );

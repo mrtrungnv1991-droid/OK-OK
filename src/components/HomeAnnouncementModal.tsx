@@ -6,19 +6,22 @@ import { useTranslation } from '../i18n';
 interface HomeAnnouncementModalProps {
   isOpen: boolean;
   onClose: () => void;
-  config: SystemConfig;
-  onOpenChat: () => void;
+  config?: SystemConfig;
+  systemConfig?: SystemConfig;
+  onOpenChat?: () => void;
 }
 
 export const HomeAnnouncementModal: React.FC<HomeAnnouncementModalProps> = ({
   isOpen,
   onClose,
   config,
-  onOpenChat
+  systemConfig,
+  onOpenChat = () => {}
 }) => {
+  const activeConfig = systemConfig || config;
   const { t } = useTranslation();
 
-  if (!isOpen) return null;
+  if (!isOpen || !activeConfig) return null;
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-black/85 backdrop-blur-sm animate-in fade-in duration-200">

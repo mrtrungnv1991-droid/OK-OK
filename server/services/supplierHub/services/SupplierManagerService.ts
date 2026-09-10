@@ -822,6 +822,20 @@ export class SupplierManagerService {
     return Array.from(this.productMappings.values());
   }
 
+  public static deleteMappingByLocalProductId(localProductId: string): void {
+    let changed = false;
+    for (const [key, mapping] of this.productMappings.entries()) {
+      if (mapping.localProductId === localProductId) {
+        this.productMappings.delete(key);
+        this.localToMapping.delete(localProductId);
+        changed = true;
+      }
+    }
+    if (changed) {
+      PersistentSupplierStorage.saveProductMappings(this.productMappings);
+    }
+  }
+
   public static getSyncJobs(supplierId: string): SyncJobModel[] {
     return Array.from(this.syncJobs.values())
       .filter(j => j.supplierId === supplierId)

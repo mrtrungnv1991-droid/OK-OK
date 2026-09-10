@@ -14,7 +14,7 @@ import {
   RefreshCw,
   HelpCircle
 } from 'lucide-react';
-import { UserOrder } from '../types';
+import { UserOrder, CurrencyCode } from '../types';
 import { formatCurrency } from '../utils/formatters';
 import { GiftUpCardViewer } from './GiftUpCardViewer';
 import { useTranslation } from '../i18n';
@@ -24,7 +24,8 @@ interface KeyVaultModalProps {
   orders: UserOrder[];
   isOpen: boolean;
   onClose: () => void;
-  currency: 'VND' | 'USD';
+  currency: CurrencyCode;
+  onOpenTickets?: () => void;
 }
 
 export const KeyVaultModal: React.FC<KeyVaultModalProps> = ({

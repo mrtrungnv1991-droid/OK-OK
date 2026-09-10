@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, useEffect, ReactNode, useCallback } from 'react';
+import React, { createContext, useContext, useState, useEffect, ReactNode, useCallback, useMemo } from 'react';
 import { 
   UserOrder, 
   ManualOrder, 
@@ -438,31 +438,52 @@ export const OrdersProvider: React.FC<{ children: ReactNode }> = ({ children }) 
     };
   };
 
+  const contextValue = useMemo(() => ({
+    orders,
+    manualOrders,
+    tickets,
+    chatSessions,
+    chatMessages,
+    luckyWheelPrizes,
+    spinRecords,
+    isLoading,
+    fetchOrders,
+    addOrder,
+    joinPool,
+    buyInstantSingle,
+    createTopupOrder,
+    forceEscrowAction,
+    createSupportTicket,
+    adminReplyTicket,
+    adminSendChatMessage,
+    sendUserChatMessage,
+    processManualOrder,
+    spinLuckyWheel
+  }), [
+    orders,
+    manualOrders,
+    tickets,
+    chatSessions,
+    chatMessages,
+    luckyWheelPrizes,
+    spinRecords,
+    isLoading,
+    fetchOrders,
+    addOrder,
+    joinPool,
+    buyInstantSingle,
+    createTopupOrder,
+    forceEscrowAction,
+    createSupportTicket,
+    adminReplyTicket,
+    adminSendChatMessage,
+    sendUserChatMessage,
+    processManualOrder,
+    spinLuckyWheel
+  ]);
+
   return (
-    <OrdersContext.Provider
-      value={{
-        orders,
-        manualOrders,
-        tickets,
-        chatSessions,
-        chatMessages,
-        luckyWheelPrizes,
-        spinRecords,
-        isLoading,
-        fetchOrders,
-        addOrder,
-        joinPool,
-        buyInstantSingle,
-        createTopupOrder,
-        forceEscrowAction,
-        createSupportTicket,
-        adminReplyTicket,
-        adminSendChatMessage,
-        sendUserChatMessage,
-        processManualOrder,
-        spinLuckyWheel
-      }}
-    >
+    <OrdersContext.Provider value={contextValue}>
       {children}
     </OrdersContext.Provider>
   );

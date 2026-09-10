@@ -15,7 +15,7 @@ import {
   Server,
   UserCheck
 } from 'lucide-react';
-import { GameItem, TopupTier, TopupOrder, UserProfile } from '../types';
+import { GameItem, TopupTier, TopupOrder, UserProfile, CurrencyCode } from '../types';
 import { formatCurrency } from '../utils/formatters';
 import { useTranslation } from '../i18n';
 
@@ -27,7 +27,7 @@ interface TopupModalProps {
   onClose: () => void;
   user?: UserProfile;
   userBalance?: number;
-  currency?: 'VND' | 'USD';
+  currency?: CurrencyCode;
   onConfirmTopup: (order: TopupOrder, isGroupTopup: boolean) => void;
   onOpenWallet: () => void;
 }
@@ -54,12 +54,13 @@ export const TopupModal: React.FC<TopupModalProps> = ({
   const [showGamePicker, setShowGamePicker] = useState(false);
 
   useEffect(() => {
-    if (initialGame || game) {
-      setCurrentGame(initialGame || game || null);
-    } else if (!currentGame && games.length > 0) {
-      setCurrentGame(games[0]);
+    const targetGame = initialGame || game;
+    if (targetGame) {
+      setCurrentGame(prev => (prev?.id === targetGame.id ? prev : targetGame));
+    } else if (games.length > 0) {
+      setCurrentGame(prev => prev || games[0]);
     }
-  }, [initialGame, game, games]);
+  }, [initialGame?.id, game?.id, games.length]);
 
   const activeGame = currentGame || (games.length > 0 ? games[0] : null);
 

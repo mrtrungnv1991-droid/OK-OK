@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef, useEffect, useMemo, useCallback } from 'react';
 import { 
   Users, 
   Clock, 
@@ -13,9 +13,10 @@ import {
   CheckCircle2,
   Zap,
   Filter,
-  Gift
+  Gift,
+  Type
 } from 'lucide-react';
-import { Product, GroupPool, CurrencyCode } from '../types';
+import { Product, GroupPool, CurrencyCode, SectionHeaderItemConfig } from '../types';
 import { useTranslation } from '../i18n';
 import { ProductCard } from './ProductCard';
 
@@ -26,6 +27,9 @@ interface ActivePoolsShowcaseProps {
   onOpenPool?: (product: Product, pool?: GroupPool) => void;
   onInstantBuy?: (product: Product) => void;
   onCreateNewPool?: (product?: Product) => void;
+  headerConfig?: SectionHeaderItemConfig;
+  onEditHeader?: () => void;
+  canEditHeader?: boolean;
 }
 
 export const ActivePoolsShowcase: React.FC<ActivePoolsShowcaseProps> = ({
@@ -34,7 +38,10 @@ export const ActivePoolsShowcase: React.FC<ActivePoolsShowcaseProps> = ({
   onJoinPool,
   onOpenPool,
   onInstantBuy,
-  onCreateNewPool
+  onCreateNewPool,
+  headerConfig,
+  onEditHeader,
+  canEditHeader = true
 }) => {
   const { t } = useTranslation();
   const handleJoin = onJoinPool || onOpenPool;
@@ -47,45 +54,61 @@ export const ActivePoolsShowcase: React.FC<ActivePoolsShowcaseProps> = ({
   const [scrollProgress, setScrollProgress] = useState(0);
 
   // Extract all active pools across products
-  const allActivePools = products.flatMap(prod => 
-    (prod.activePools || []).map(pool => ({
-      product: prod,
-      pool: pool
-    }))
-  );
+  const allActivePools = useMemo(() => {
+    return products.flatMap(prod => 
+      (prod.activePools || []).map(pool => ({
+        product: prod,
+        pool: pool
+      }))
+    );
+  }, [products]);
 
   // Filter products based on selected tab
-  const displayedProducts = products.filter(p => {
-    if (filterType === 'all') return true;
-    if (filterType === 'almost_full') {
-      const activePool = p.activePools[0];
-      return activePool && (activePool.filledSlots / activePool.targetSlots) >= 0.6;
-    }
-    if (filterType === 'hot') {
-      return p.activePools.some(pool => pool.isHot || pool.filledSlots >= 3);
-    }
-    if (filterType === 'ai') return p.category === 'ai_tools';
-    if (filterType === 'gaming') return p.category === 'gaming';
-    if (filterType === 'giftup') return p.category === 'giftup_cards';
-    return true;
-  });
+  const displayedProducts = useMemo(() => {
+    return products.filter(p => {
+      if (filterType === 'all') return true;
+      if (filterType === 'almost_full') {
+        const activePool = p.activePools?.[0];
+        return activePool && (activePool.filledSlots / activePool.targetSlots) >= 0.6;
+      }
+      if (filterType === 'hot') {
+        return (p.activePools || []).some(pool => pool.isHot || pool.filledSlots >= 3);
+      }
+      if (filterType === 'ai') return p.category === 'ai_tools';
+      if (filterType === 'gaming') return p.category === 'gaming';
+      if (filterType === 'giftup') return p.category === 'giftup_cards';
+      return true;
+    });
+  }, [products, filterType]);
 
-  const checkScroll = () => {
-    if (scrollContainerRef.current) {
-      const { scrollLeft, scrollWidth, clientWidth } = scrollContainerRef.current;
-      setCanScrollLeft(scrollLeft > 10);
-      setCanScrollRight(scrollLeft < scrollWidth - clientWidth - 10);
-      const total = scrollWidth - clientWidth;
-      setScrollProgress(total > 0 ? (scrollLeft / total) * 100 : 0);
-    }
-  };
+  const checkScroll = useCallback(() => {
+    const el = scrollContainerRef.current;
+    if (!el) return;
+    const { scrollLeft, scrollWidth, clientWidth } = el;
+    const nextLeft = scrollLeft > 15;
+    const nextRight = scrollLeft < scrollWidth - clientWidth - 15;
+    const total = scrollWidth - clientWidth;
+    const nextProgress = total > 0 ? Math.min(100, Math.max(0, Math.round((scrollLeft / total) * 100))) : 0;
+
+    setCanScrollLeft(prev => (prev !== nextLeft ? nextLeft : prev));
+    setCanScrollRight(prev => (prev !== nextRight ? nextRight : prev));
+    setScrollProgress(prev => (prev !== nextProgress ? nextProgress : prev));
+  }, []);
 
   useEffect(() => {
-    checkScroll();
-    const handleResize = () => checkScroll();
-    window.addEventListener('resize', handleResize);
-    return () => window.removeEventListener('resize', handleResize);
-  }, [displayedProducts, viewMode]);
+    let animId: number;
+    const scheduleCheck = () => {
+      cancelAnimationFrame(animId);
+      animId = requestAnimationFrame(checkScroll);
+    };
+
+    scheduleCheck();
+    window.addEventListener('resize', scheduleCheck);
+    return () => {
+      cancelAnimationFrame(animId);
+      window.removeEventListener('resize', scheduleCheck);
+    };
+  }, [checkScroll, displayedProducts.length, viewMode]);
 
   const handleScroll = (direction: 'left' | 'right') => {
     if (scrollContainerRef.current) {
@@ -107,16 +130,27 @@ export const ActivePoolsShowcase: React.FC<ActivePoolsShowcaseProps> = ({
             <div className="p-1.5 rounded-md bg-cyan-500/20 text-cyan-400 border border-cyan-500/40">
               <Flame className="w-5 h-5 text-cyan-400 animate-pulse" />
             </div>
-            <h2 className="text-lg sm:text-xl font-bold font-mono text-white tracking-wide flex items-center gap-2">
-              <span>{t('showcase.title')}</span>
-              <span className="px-2 py-0.5 rounded text-[11px] bg-cyan-950 text-cyan-300 border border-cyan-500/40 font-mono">
-                {t('showcase.items_count', { count: displayedProducts.length })}
+            <h2 className={`tracking-wide flex items-center gap-2 flex-wrap ${headerConfig?.fontSize || 'text-lg sm:text-xl'} ${headerConfig?.fontWeight || 'font-bold'} ${headerConfig?.fontFamily || 'font-mono'} ${headerConfig?.letterSpacing || 'tracking-wide'} ${headerConfig?.textTransform || 'uppercase'} ${headerConfig?.titleColor || 'text-white'}`}>
+              <span>{headerConfig?.title || t('showcase.title')}</span>
+              <span className={`px-2 py-0.5 rounded text-[11px] ${headerConfig?.badgeColor || 'bg-cyan-950 text-cyan-300 border border-cyan-500/40'} font-mono`}>
+                {headerConfig?.badge || t('showcase.items_count', { count: displayedProducts.length })}
               </span>
             </h2>
+            {canEditHeader && onEditHeader && (
+              <button
+                type="button"
+                onClick={onEditHeader}
+                title="Chỉnh sửa nội dung & font chữ mục Gom Đơn"
+                className="px-2 py-0.5 rounded-md bg-cyan-500/20 hover:bg-cyan-500 hover:text-black text-cyan-300 hover:border-cyan-400 border border-cyan-500/40 transition-all text-[10px] font-mono font-bold flex items-center gap-1 cursor-pointer shrink-0 ml-1 shadow-sm"
+              >
+                <Type className="w-3 h-3" />
+                <span>Sửa chữ & font</span>
+              </button>
+            )}
           </div>
-          <p className="text-xs text-slate-400 font-mono flex items-center gap-2">
+          <p className={`text-xs ${headerConfig?.subtitleColor || 'text-slate-400'} font-mono flex items-center gap-2`}>
             <span className="inline-block w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
-            <span>{t('showcase.escrow_note')}</span>
+            <span>{headerConfig?.subtitle || t('showcase.escrow_note')}</span>
           </p>
         </div>
 

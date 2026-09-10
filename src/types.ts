@@ -58,7 +58,7 @@ export interface SellerInfo {
   id: string;
   name: string;
   avatar: string;
-  badge: 'Tesla Verified' | 'SpaceX Master' | 'Cyber Escrow' | 'Top Merchant' | 'Official Partner';
+  badge: 'Tesla Verified' | 'SpaceX Master' | 'Cyber Escrow' | 'Top Merchant' | 'Official Partner' | 'Verified' | string;
   rating: number;
   totalDeals: number;
   completedPools: number;
@@ -184,6 +184,12 @@ export interface Product {
   flashSaleEnds?: string;
   flashSaleStockClaimed?: number;
   flashSaleTotalStock?: number;
+  status?: 'active' | 'out_of_stock' | 'maintenance' | string;
+  isAvailable?: boolean;
+  images?: string[];
+  source_info?: any;
+  outOfStockReason?: string;
+  ctvPrice?: number;
 }
 
 export interface TopupTier {
@@ -239,7 +245,7 @@ export interface SupportTicket {
   subject: string;
   category: 'Key Issue' | 'Top-Up Delay' | 'Escrow Refund' | 'General Support';
   priority?: 'low' | 'medium' | 'high' | 'urgent';
-  status: 'open' | 'investigating' | 'resolved' | 'auto_replaced';
+  status: 'open' | 'investigating' | 'in_progress' | 'resolved' | 'auto_replaced';
   createdAt: string;
   messages: {
     id: string;
@@ -256,6 +262,7 @@ export interface SupplierApiConfig {
   apiUrl: string;
   apiKey: string;
   balance: number;
+  currentBalance?: number;
   status: 'connected' | 'syncing' | 'error';
   lastSync: string;
   autoCheckLive: boolean;
@@ -313,6 +320,7 @@ export type LanguageCode = 'vi' | 'en' | 'zh' | 'ja' | 'ko' | 'ru' | 'fr' | 'de'
 export interface UserProfile {
   id: string;
   name: string;
+  username?: string;
   email: string;
   avatar: string;
   walletBalance: number;
@@ -680,11 +688,30 @@ export interface DepositPromotionRule {
 }
 
 // Currency
-export type Currency = 'VND' | 'USD' | 'USDT' | 'EUR' | 'JPY';
+export type Currency = CurrencyCode;
 
 // Multi-Language & Multi-Currency
-export type SupportedLanguage = 'vi' | 'en' | 'zh' | 'ja';
-export type SupportedCurrency = 'VND' | 'USD' | 'USDT' | 'EUR' | 'JPY';
+export type SupportedLanguage = LanguageCode;
+export type SupportedCurrency = CurrencyCode;
+
+// Deposit API Modules Control
+export type DepositModuleId = 'vietqr' | 'telco' | 'momo' | 'crypto' | 'ltc' | 'binance';
+
+export interface DepositModuleStatus {
+  enabled: boolean;
+  maintenanceMessage?: string;
+  updatedAt?: string;
+}
+
+export interface DepositModulesConfig {
+  vietqr: DepositModuleStatus;
+  telco: DepositModuleStatus;
+  momo: DepositModuleStatus;
+  crypto: DepositModuleStatus;
+  ltc: DepositModuleStatus;
+  binance: DepositModuleStatus;
+  [key: string]: DepositModuleStatus | undefined;
+}
 
 // Theme & Appearance CMS
 export interface ThemeConfig {
@@ -735,6 +762,9 @@ export interface SystemConfig {
   autoEscrowRelease: boolean;
   cronCheckLiveActive: boolean;
   
+  // Deposit API Modules Control (Tắt / Bật cổng API nạp tiền cho từng module)
+  depositModulesConfig?: DepositModulesConfig;
+
   // Banking / API Integrations
   bankName: string;
   bankAccountNo: string;
@@ -783,6 +813,7 @@ export interface SystemConfig {
   
   // Deposit Bonus Rules
   depositPromotions?: DepositPromotionRule[];
+  vouchers?: VoucherCoupon[];
   firstDepositBonusPercent?: number;
 
   // Telegram Bot & Alerts
@@ -819,6 +850,8 @@ export interface SystemConfig {
     port?: number;
     user?: string;
     pass?: string;
+    username?: string;
+    password?: string;
     fromName?: string;
     fromEmail?: string;
     encryption?: 'tls' | 'ssl' | 'none';
@@ -838,11 +871,38 @@ export interface SystemConfig {
     siteLogo?: string;
     bannerImage?: string;
     holidayEffect?: string;
+    accentColor?: string;
+    mode?: string;
+    borderRadius?: string;
+    layoutStyle?: string;
   };
 
   // Hero & Web Layout Proportion Configuration
   heroConfig?: HeroCustomConfig;
   uiLayoutConfig?: UiLayoutConfig;
+  sectionsHeaderConfig?: SectionsHeaderConfig;
+}
+
+export interface SectionHeaderItemConfig {
+  title?: string;
+  subtitle?: string;
+  badge?: string;
+  fontFamily?: string;
+  fontSize?: string;
+  fontWeight?: string;
+  letterSpacing?: string;
+  textTransform?: 'uppercase' | 'capitalize' | 'normal-case';
+  titleColor?: string;
+  subtitleColor?: string;
+  badgeColor?: string;
+  customClass?: string;
+}
+
+export interface SectionsHeaderConfig {
+  flashSale?: SectionHeaderItemConfig;
+  activePools?: SectionHeaderItemConfig;
+  topup?: SectionHeaderItemConfig;
+  marketplace?: SectionHeaderItemConfig;
 }
 
 export interface LaunchpadButtonConfig {
@@ -881,6 +941,9 @@ export interface HeroCustomConfig {
   contentAlignment: 'left' | 'center' | 'balanced_split';
   verticalPadding: 'compact' | 'standard' | 'generous';
   heroBackground: 'cyber_grid' | 'neon_glow' | 'aurora' | 'minimal_dark';
+  fontFamily?: string;
+  fontSize?: string;
+  letterSpacing?: string;
   showTrustPods: boolean;
   trustPod1: {
     title: string;

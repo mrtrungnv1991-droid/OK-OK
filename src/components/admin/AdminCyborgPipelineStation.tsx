@@ -31,7 +31,8 @@ import {
   Unlock,
   Users,
   ShoppingCart,
-  Info
+  Info,
+  AlertTriangle
 } from 'lucide-react';
 import { CurrencyCode, Product, ProductCategory } from '../../types';
 import { formatCurrency } from '../../utils/formatters';
@@ -55,6 +56,7 @@ export const AdminCyborgPipelineStation: React.FC<AdminCyborgPipelineStationProp
 
   // Status state
   const [status, setStatus] = useState<any>(null);
+  const [isLiveConfirmModalOpen, setIsLiveConfirmModalOpen] = useState(false);
 
   // Quick Image Modal State
   const [imageModalProduct, setImageModalProduct] = useState<Product | null>(null);
@@ -167,16 +169,7 @@ export const AdminCyborgPipelineStation: React.FC<AdminCyborgPipelineStationProp
     loadSafetySettings();
   }, []);
 
-  const handleToggleSafety = async (enableLive: boolean) => {
-    if (enableLive) {
-      const ok = window.confirm(
-        '⚠️ CẢNH BÁO BẬT API MUA HÀNG NGUỒN G2UP THẬT (LIVE BUY):\n\n' +
-        'Khi bật chế độ này, nếu khách đặt mua sản phẩm G2UP trên web, hệ thống sẽ gọi API buy_product của G2UP và TRỪ TIỀN THẬT từ ví G2UP của bạn!\n\n' +
-        'Nếu bạn chỉ muốn bán tài khoản/key đã sao chép về kho nội bộ, hãy giữ CHẾ ĐỘ AN TOÀN (TẮT).\n\n' +
-        'Bạn có chắc chắn muốn BẬT API Mua Hàng Thật không?'
-      );
-      if (!ok) return;
-    }
+  const executeToggleSafety = async (enableLive: boolean) => {
     setIsTogglingSafety(true);
     try {
       const res = await productsApi.cyborgUpdateSafetySettings(enableLive);
@@ -190,6 +183,15 @@ export const AdminCyborgPipelineStation: React.FC<AdminCyborgPipelineStationProp
       showToast(err.message || 'Lỗi cập nhật', 'error');
     } finally {
       setIsTogglingSafety(false);
+      setIsLiveConfirmModalOpen(false);
+    }
+  };
+
+  const handleToggleSafety = (enableLive: boolean) => {
+    if (enableLive) {
+      setIsLiveConfirmModalOpen(true);
+    } else {
+      executeToggleSafety(false);
     }
   };
 
@@ -1434,6 +1436,50 @@ export const AdminCyborgPipelineStation: React.FC<AdminCyborgPipelineStationProp
               >
                 <Check className="w-4 h-4" />
                 <span>{imageModalSaving ? 'Đang lưu...' : 'LƯU ẢNH SẢN PHẨM'}</span>
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+      {/* MODAL: CONFIRM LIVE BUY MODE */}
+      {isLiveConfirmModalOpen && (
+        <div className="fixed inset-0 z-50 bg-black/85 backdrop-blur-sm flex items-center justify-center p-4">
+          <div className="w-full max-w-lg bg-slate-900 border border-amber-500/50 rounded-2xl p-6 space-y-4 text-white shadow-2xl">
+            <div className="flex items-center gap-3 border-b border-slate-800 pb-3">
+              <div className="p-3 rounded-xl bg-amber-500/20 text-amber-400 border border-amber-500/30">
+                <AlertTriangle className="w-6 h-6" />
+              </div>
+              <div>
+                <h3 className="text-sm font-bold text-white uppercase tracking-wider">CẢNH BÁO BẬT API MUA HÀNG NGUỒN G2UP THẬT (LIVE BUY)</h3>
+                <p className="text-xs text-amber-300/80">Hành động này sẽ kích hoạt trừ tiền ví API thật</p>
+              </div>
+            </div>
+
+            <div className="p-4 bg-slate-950 rounded-xl border border-amber-500/20 space-y-2.5 text-xs text-slate-300">
+              <p>
+                Khi bật chế độ này, nếu khách đặt mua sản phẩm G2UP trên web, hệ thống sẽ gọi API <code className="text-cyan-300 bg-slate-900 px-1.5 py-0.5 rounded">buy_product</code> của G2UP và <strong className="text-rose-400">TRỪ TIỀN THẬT</strong> từ số dư ví G2UP của bạn!
+              </p>
+              <p className="text-slate-400 text-[11px]">
+                💡 Nếu bạn chỉ muốn bán tài khoản/key đã sao chép về kho nội bộ, hãy giữ <strong className="text-emerald-400">CHẾ ĐỘ AN TOÀN (TẮT)</strong>.
+              </p>
+            </div>
+
+            <div className="flex items-center justify-end gap-2.5 pt-2 border-t border-slate-800">
+              <button
+                type="button"
+                onClick={() => setIsLiveConfirmModalOpen(false)}
+                className="px-4 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs font-semibold cursor-pointer transition-colors"
+              >
+                Hủy Bỏ (Giữ An Toàn)
+              </button>
+              <button
+                type="button"
+                onClick={() => executeToggleSafety(true)}
+                disabled={isTogglingSafety}
+                className="px-4 py-2 rounded-xl bg-amber-500 hover:bg-amber-400 text-black text-xs font-bold flex items-center gap-2 cursor-pointer shadow-lg shadow-amber-500/30 transition-all disabled:opacity-50"
+              >
+                <Check className="w-4 h-4" />
+                <span>{isTogglingSafety ? 'Đang kích hoạt...' : 'Tôi Hiểu Rõ, Bật Live Buy'}</span>
               </button>
             </div>
           </div>

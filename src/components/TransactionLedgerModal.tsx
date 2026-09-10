@@ -19,7 +19,7 @@ interface TransactionLedgerModalProps {
   isOpen: boolean;
   onClose: () => void;
   transactions: TransactionRecord[];
-  user: UserProfile;
+  user?: UserProfile;
   currency?: CurrencyCode | string;
 }
 
@@ -28,12 +28,13 @@ export const TransactionLedgerModal: React.FC<TransactionLedgerModalProps> = ({
   onClose,
   transactions,
   user,
-  currency = user.currency
+  currency = user?.currency || 'VND'
 }) => {
   const { t } = useTranslation();
-  if (!isOpen) return null;
 
   const [filterType, setFilterType] = useState<string>('all');
+
+  if (!isOpen) return null;
 
   const filteredTransactions = transactions.filter((tx) => {
     if (filterType === 'all') return true;

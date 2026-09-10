@@ -16,7 +16,7 @@ import {
   Server,
   DollarSign
 } from 'lucide-react';
-import { SupplierApiConfig, UserProfile } from '../types';
+import { SupplierApiConfig, UserProfile, CurrencyCode } from '../types';
 import { formatCurrency } from '../utils/formatters';
 import { useTranslation } from '../i18n';
 import { useUI } from '../contexts/UIContext';
@@ -25,8 +25,9 @@ interface SellerSupplierModalProps {
   suppliers: SupplierApiConfig[];
   isOpen: boolean;
   onClose: () => void;
-  user: UserProfile;
-  onSyncProvider: (providerId: string) => void;
+  user?: UserProfile;
+  currency?: CurrencyCode;
+  onSyncProvider?: (providerId: string) => void;
 }
 
 export const SellerSupplierModal: React.FC<SellerSupplierModalProps> = ({
@@ -34,16 +35,18 @@ export const SellerSupplierModal: React.FC<SellerSupplierModalProps> = ({
   isOpen,
   onClose,
   user,
-  onSyncProvider
+  currency,
+  onSyncProvider = () => {}
 }) => {
   const { t } = useTranslation();
   const { showToast } = useUI();
-  if (!isOpen) return null;
 
   const [activeTab, setActiveTab] = useState<'suppliers' | 'batch_keys' | 'payouts'>('suppliers');
   const [syncingId, setSyncingId] = useState<string | null>(null);
   const [rawKeys, setRawKeys] = useState('');
   const [validationResult, setValidationResult] = useState<{ total: number; valid: number; duplicates: number } | null>(null);
+
+  if (!isOpen) return null;
 
   const handleTriggerSync = (id: string) => {
     setSyncingId(id);

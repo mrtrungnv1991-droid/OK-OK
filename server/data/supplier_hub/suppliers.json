@@ -28,15 +28,15 @@
     "autoSyncEnabled": true,
     "syncIntervalMinutes": 30,
     "stats": {
-      "totalProducts": 240,
-      "mappedProducts": 120,
+      "totalProducts": 245,
+      "mappedProducts": 125,
       "totalOrders": 0,
       "totalRevenue": 0,
       "totalCost": 0,
       "totalProfit": 0
     },
     "createdAt": "2026-09-04T10:57:10.318Z",
-    "updatedAt": "2026-09-07T04:28:24.057Z",
+    "updatedAt": "2026-09-08T23:55:14.705Z",
     "lastDiagnostics": {
       "network": "PASS",
       "authentication": "PASS",
@@ -50,8 +50,8 @@
         {
           "step": "Network Connectivity",
           "status": "PASS",
-          "message": "HTTP 200 OK (468ms)",
-          "durationMs": 468
+          "message": "HTTP 200 OK (1210ms)",
+          "durationMs": 1210
         },
         {
           "step": "API Authentication",
@@ -63,25 +63,25 @@
           "step": "API Wallet Balance",
           "status": "PASS",
           "message": "Số dư ví API: 61.000 VND",
-          "durationMs": 333
+          "durationMs": 360
         },
         {
           "step": "Categories Discovery",
           "status": "PASS",
-          "message": "Đã phát hiện 1 danh mục qua API",
-          "durationMs": 352
+          "message": "Đã phát hiện 10 danh mục qua API",
+          "durationMs": 377
         },
         {
           "step": "Products Discovery",
           "status": "PASS",
           "message": "Quét thành công 120 sản phẩm thực tế từ API",
-          "durationMs": 343
+          "durationMs": 376
         }
       ],
-      "checkedAt": "2026-09-07T04:28:24.057Z"
+      "checkedAt": "2026-09-08T23:55:14.705Z"
     },
-    "lastConnectedAt": "2026-09-07T04:28:24.057Z",
-    "lastBalanceCheckAt": "2026-09-07T04:28:24.057Z",
-    "lastSyncAt": "2026-09-07T04:28:18.568Z"
+    "lastConnectedAt": "2026-09-08T23:55:14.705Z",
+    "lastBalanceCheckAt": "2026-09-08T23:55:14.705Z",
+    "lastSyncAt": "2026-09-10T01:39:32.805Z"
   }
 ]

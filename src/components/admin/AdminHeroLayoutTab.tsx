@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { 
   Layout, 
   Sparkles, 
@@ -25,9 +25,28 @@ import {
   Palette,
   Globe,
   Languages,
-  Bot
+  Bot,
+  Type
 } from 'lucide-react';
-import { SystemConfig, HeroCustomConfig, LaunchpadButtonConfig, UiLayoutConfig, HeroTranslationData } from '../../types';
+import { 
+  SystemConfig, 
+  HeroCustomConfig, 
+  LaunchpadButtonConfig, 
+  UiLayoutConfig, 
+  HeroTranslationData,
+  SectionsHeaderConfig,
+  SectionHeaderItemConfig
+} from '../../types';
+import { 
+  FONT_OPTIONS, 
+  FONT_SIZES, 
+  FONT_WEIGHTS, 
+  LETTER_SPACINGS, 
+  TEXT_TRANSFORMS, 
+  TITLE_COLOR_PRESETS,
+  DEFAULT_SECTION_DATA,
+  SectionKey
+} from '../SectionHeaderEditorModal';
 import { 
   getLocalizedHeroConfig, 
   HERO_TRANSLATIONS_DICT, 
@@ -44,6 +63,8 @@ import {
 interface AdminHeroLayoutTabProps {
   systemConfig: SystemConfig;
   onUpdateSystemConfig: (newConfig: Partial<SystemConfig>) => void;
+  initialSection?: 'ratio_container' | 'text_content' | 'metric_pods' | 'launchpad_bar' | 'section_headers';
+  initialTargetSection?: SectionKey;
 }
 
 export const DEFAULT_HERO_CONFIG: HeroCustomConfig = {
@@ -58,6 +79,8 @@ export const DEFAULT_HERO_CONFIG: HeroCustomConfig = {
   contentAlignment: 'balanced_split',
   verticalPadding: 'standard',
   heroBackground: 'cyber_grid',
+  fontFamily: 'font-mono',
+  letterSpacing: 'tracking-tight',
   showTrustPods: true,
   trustPod1: {
     title: 'Tốc Độ Nhận Key',
@@ -99,7 +122,9 @@ export const DEFAULT_UI_LAYOUT_CONFIG: UiLayoutConfig = {
 
 export const AdminHeroLayoutTab: React.FC<AdminHeroLayoutTabProps> = ({
   systemConfig,
-  onUpdateSystemConfig
+  onUpdateSystemConfig,
+  initialSection,
+  initialTargetSection
 }) => {
   const [heroConfig, setHeroConfig] = useState<HeroCustomConfig>(
     systemConfig.heroConfig || DEFAULT_HERO_CONFIG
@@ -107,8 +132,30 @@ export const AdminHeroLayoutTab: React.FC<AdminHeroLayoutTabProps> = ({
   const [uiLayout, setUiLayout] = useState<UiLayoutConfig>(
     systemConfig.uiLayoutConfig || DEFAULT_UI_LAYOUT_CONFIG
   );
-  const [activeSection, setActiveSection] = useState<'ratio_container' | 'text_content' | 'metric_pods' | 'launchpad_bar'>('ratio_container');
+  const [sectionsConfig, setSectionsConfig] = useState<SectionsHeaderConfig>(
+    systemConfig.sectionsHeaderConfig || {
+      flashSale: { ...DEFAULT_SECTION_DATA.flashSale },
+      activePools: { ...DEFAULT_SECTION_DATA.activePools },
+      topup: { ...DEFAULT_SECTION_DATA.topup },
+      marketplace: { ...DEFAULT_SECTION_DATA.marketplace }
+    }
+  );
+  const [activeSectionHeaderTab, setActiveSectionHeaderTab] = useState<SectionKey>(initialTargetSection || 'marketplace');
+  const [activeSection, setActiveSection] = useState<'ratio_container' | 'text_content' | 'metric_pods' | 'launchpad_bar' | 'section_headers'>(initialSection || 'ratio_container');
+
+  useEffect(() => {
+    if (initialSection) {
+      setActiveSection(initialSection);
+    }
+  }, [initialSection]);
+
+  useEffect(() => {
+    if (initialTargetSection) {
+      setActiveSectionHeaderTab(initialTargetSection);
+    }
+  }, [initialTargetSection]);
   const [saveSuccess, setSaveSuccess] = useState(false);
+  const [isResetModalOpen, setIsResetModalOpen] = useState(false);
   const [previewDevice, setPreviewDevice] = useState<'desktop' | 'mobile'>('desktop');
   const [previewLang, setPreviewLang] = useState<SupportedLocale>('vi');
   const [editingLang, setEditingLang] = useState<SupportedLocale>('vi');
@@ -157,7 +204,8 @@ export const AdminHeroLayoutTab: React.FC<AdminHeroLayoutTabProps> = ({
     setHeroConfig(updatedHeroConfig);
     onUpdateSystemConfig({
       heroConfig: updatedHeroConfig,
-      uiLayoutConfig: uiLayout
+      uiLayoutConfig: uiLayout,
+      sectionsHeaderConfig: sectionsConfig
     });
     setSaveSuccess(true);
     setTimeout(() => setSaveSuccess(false), 3000);
@@ -261,7 +309,7 @@ export const AdminHeroLayoutTab: React.FC<AdminHeroLayoutTabProps> = ({
       setHeroConfig(prev => {
         const trans = { ...(prev.translations || {}) };
         const currentLangTrans = { ...(trans[editingLang] || {}) };
-        currentLangTrans[field] = value;
+        (currentLangTrans as any)[field] = value;
         (currentLangTrans as any).status = 'manual'; // Marked manual override
         (currentLangTrans as any).updatedAt = new Date().toISOString();
         trans[editingLang] = currentLangTrans;
@@ -309,16 +357,41 @@ export const AdminHeroLayoutTab: React.FC<AdminHeroLayoutTabProps> = ({
   };
 
   const handleResetToDefault = () => {
-    if (window.confirm('Bạn có chắc muốn khôi phục tỷ lệ khung web & cấu hình Hero về mặc định chuẩn?')) {
-      setHeroConfig(DEFAULT_HERO_CONFIG);
-      setUiLayout(DEFAULT_UI_LAYOUT_CONFIG);
-      onUpdateSystemConfig({
-        heroConfig: DEFAULT_HERO_CONFIG,
-        uiLayoutConfig: DEFAULT_UI_LAYOUT_CONFIG
-      });
-      setSaveSuccess(true);
-      setTimeout(() => setSaveSuccess(false), 3000);
-    }
+    setIsResetModalOpen(true);
+  };
+
+  const confirmResetToDefault = () => {
+    setHeroConfig(DEFAULT_HERO_CONFIG);
+    setUiLayout(DEFAULT_UI_LAYOUT_CONFIG);
+    const defSections: SectionsHeaderConfig = {
+      flashSale: { ...DEFAULT_SECTION_DATA.flashSale },
+      activePools: { ...DEFAULT_SECTION_DATA.activePools },
+      topup: { ...DEFAULT_SECTION_DATA.topup },
+      marketplace: { ...DEFAULT_SECTION_DATA.marketplace }
+    };
+    setSectionsConfig(defSections);
+    onUpdateSystemConfig({
+      heroConfig: DEFAULT_HERO_CONFIG,
+      uiLayoutConfig: DEFAULT_UI_LAYOUT_CONFIG,
+      sectionsHeaderConfig: defSections
+    });
+    setSaveSuccess(true);
+    setIsResetModalOpen(false);
+    setTimeout(() => setSaveSuccess(false), 3000);
+  };
+
+  const updateSectionField = <K extends keyof SectionHeaderItemConfig>(
+    section: SectionKey,
+    field: K,
+    value: SectionHeaderItemConfig[K]
+  ) => {
+    setSectionsConfig(prev => ({
+      ...prev,
+      [section]: {
+        ...(prev[section] || DEFAULT_SECTION_DATA[section]),
+        [field]: value
+      }
+    }));
   };
 
   const updateHeroField = <K extends keyof HeroCustomConfig>(field: K, value: HeroCustomConfig[K]) => {
@@ -388,11 +461,11 @@ export const AdminHeroLayoutTab: React.FC<AdminHeroLayoutTabProps> = ({
           <div className="flex items-center gap-2">
             <Layout className="w-5 h-5 text-cyan-400" />
             <h3 className="text-sm sm:text-base font-extrabold text-white uppercase tracking-wider font-mono">
-              QUẢN TRỊ TỶ LỆ KHUNG WEB & HERO BANNER (PROPORTIONS & HERO CMS)
+              QUẢN TRỊ TỶ LỆ KHUNG WEB, HERO BANNER & FONT CHỮ (ALL-IN-ONE CMS)
             </h3>
           </div>
           <p className="text-xs text-slate-400 mt-1">
-            Tùy chỉnh tỷ lệ chiều rộng website (Container Max-Width), font chữ, tiêu đề, 2 hộp thông số bảo lãnh và thanh phím tắt Launchpad đồng đều, không bị lệch hoặc cắt cụt chữ.
+            Hợp nhất quản trị tỷ lệ web, tiêu đề & banner Hero, hộp thông số, phím tắt Launchpad và toàn bộ nội dung, font chữ 4 phân khu chính (Flash Sale, Gom Đơn, Nạp Game, Kho Hàng).
           </p>
         </div>
 
@@ -594,6 +667,18 @@ export const AdminHeroLayoutTab: React.FC<AdminHeroLayoutTabProps> = ({
         >
           <Layers className="w-3.5 h-3.5" />
           <span>4. Thanh Phím Tắt Launchpad</span>
+        </button>
+
+        <button
+          onClick={() => setActiveSection('section_headers')}
+          className={`flex items-center gap-2 px-3.5 py-2 rounded-lg text-xs font-mono font-bold whitespace-nowrap transition-all cursor-pointer ${
+            activeSection === 'section_headers'
+              ? 'bg-cyan-500 text-black shadow-[0_0_15px_rgba(6,182,212,0.3)]'
+              : 'bg-slate-900 text-slate-300 hover:bg-slate-800 border border-slate-800'
+          }`}
+        >
+          <Type className="w-3.5 h-3.5" />
+          <span>5. Chữ & Font 4 Phân Khu</span>
         </button>
       </div>
 
@@ -1135,6 +1220,270 @@ export const AdminHeroLayoutTab: React.FC<AdminHeroLayoutTabProps> = ({
                 </div>
               </div>
             ))}
+          </div>
+        </div>
+      )}
+
+      {/* Section 5: Tiêu Đề & Font Chữ 4 Phân Khu */}
+      {activeSection === 'section_headers' && (
+        <div className="space-y-6">
+          {/* Sub-tab selection for the 4 sections */}
+          <div className="flex flex-wrap items-center gap-2 p-1.5 bg-slate-950 rounded-xl border border-slate-800">
+            {(['flashSale', 'activePools', 'topup', 'marketplace'] as SectionKey[]).map(key => {
+              const label = key === 'flashSale' ? 'Flash Sale Giờ Vàng'
+                : key === 'activePools' ? 'Gom Đơn Đang Chạy'
+                : key === 'topup' ? 'Nạp Game Trực Tiếp'
+                : 'Kho Sản Phẩm (Marketplace)';
+              const isActive = activeSectionHeaderTab === key;
+              return (
+                <button
+                  key={key}
+                  type="button"
+                  onClick={() => setActiveSectionHeaderTab(key)}
+                  className={`px-3 py-2 rounded-lg text-xs font-mono font-bold transition-all cursor-pointer ${
+                    isActive
+                      ? 'bg-cyan-500 text-black shadow-[0_0_12px_rgba(6,182,212,0.4)]'
+                      : 'text-slate-400 hover:text-white hover:bg-slate-900'
+                  }`}
+                >
+                  {label}
+                </button>
+              );
+            })}
+          </div>
+
+          {/* Configuration Form & Live Preview for current section */}
+          {(() => {
+            const currentItem: SectionHeaderItemConfig = 
+              sectionsConfig[activeSectionHeaderTab] || DEFAULT_SECTION_DATA[activeSectionHeaderTab];
+
+            return (
+              <div className="space-y-6">
+                {/* Live Preview Box */}
+                <div className="p-5 rounded-2xl bg-gradient-to-b from-slate-900/90 to-slate-950/90 border border-slate-800 shadow-xl space-y-3">
+                  <div className="flex items-center justify-between border-b border-slate-800/80 pb-2.5">
+                    <span className="text-[11px] font-mono text-cyan-400 font-bold uppercase tracking-wider flex items-center gap-1.5">
+                      <Eye className="w-3.5 h-3.5" /> Xem trước tiêu đề phân khu thực tế
+                    </span>
+                    <span className="text-[10px] font-mono text-slate-500">
+                      Font: {currentItem.fontFamily} | Size: {currentItem.fontSize}
+                    </span>
+                  </div>
+
+                  <div className="py-3 px-2">
+                    <div className="flex items-center gap-2 mb-2">
+                      <div className="w-2.5 h-2.5 rounded-full bg-cyan-400 animate-ping" />
+                      <span className={`text-xs font-mono font-bold tracking-widest ${currentItem.badgeColor} uppercase`}>
+                        {currentItem.badge}
+                      </span>
+                    </div>
+                    <h2
+                      className={`${currentItem.fontSize} ${currentItem.fontWeight} ${currentItem.fontFamily} ${currentItem.letterSpacing} ${currentItem.textTransform} ${currentItem.titleColor} transition-all`}
+                    >
+                      {currentItem.title}
+                    </h2>
+                    <p className={`text-sm ${currentItem.subtitleColor} mt-1`}>
+                      {currentItem.subtitle}
+                    </p>
+                  </div>
+                </div>
+
+                {/* Edit Controls Grid */}
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
+                  {/* Left Column: Text Content */}
+                  <div className="p-4 rounded-xl bg-slate-950 border border-slate-800 space-y-4">
+                    <h4 className="text-xs font-mono font-bold text-cyan-400 uppercase flex items-center gap-2">
+                      <Type className="w-4 h-4" />
+                      <span>1. Nội Dung Văn Bản (Text Content)</span>
+                    </h4>
+
+                    <div className="space-y-3">
+                      <div>
+                        <label className="block text-xs font-mono text-slate-400 mb-1">Huy Hiệu (Badge Label):</label>
+                        <input
+                          type="text"
+                          value={currentItem.badge}
+                          onChange={e => updateSectionField(activeSectionHeaderTab, 'badge', e.target.value)}
+                          className="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-xs font-mono text-white focus:border-cyan-400 focus:outline-none"
+                        />
+                      </div>
+
+                      <div>
+                        <label className="block text-xs font-mono text-slate-400 mb-1">Tiêu Đề Chính (Main Title):</label>
+                        <input
+                          type="text"
+                          value={currentItem.title}
+                          onChange={e => updateSectionField(activeSectionHeaderTab, 'title', e.target.value)}
+                          className="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-sm font-bold text-white focus:border-cyan-400 focus:outline-none"
+                        />
+                      </div>
+
+                      <div>
+                        <label className="block text-xs font-mono text-slate-400 mb-1">Tiêu Đề Phụ (Subtitle / Description):</label>
+                        <textarea
+                          rows={2}
+                          value={currentItem.subtitle}
+                          onChange={e => updateSectionField(activeSectionHeaderTab, 'subtitle', e.target.value)}
+                          className="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-xs text-slate-200 focus:border-cyan-400 focus:outline-none"
+                        />
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Right Column: Typography & Font Options */}
+                  <div className="p-4 rounded-xl bg-slate-950 border border-slate-800 space-y-4">
+                    <h4 className="text-xs font-mono font-bold text-cyan-400 uppercase flex items-center gap-2">
+                      <Palette className="w-4 h-4" />
+                      <span>2. Phông Chữ & Định Dạng (Typography)</span>
+                    </h4>
+
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                      {/* Font Family */}
+                      <div className="sm:col-span-2">
+                        <label className="block text-xs font-mono text-slate-400 mb-1">Phông Chữ (Font Family):</label>
+                        <div className="grid grid-cols-2 sm:grid-cols-4 gap-1.5">
+                          {FONT_OPTIONS.map(f => (
+                            <button
+                              key={f.id}
+                              type="button"
+                              onClick={() => updateSectionField(activeSectionHeaderTab, 'fontFamily', f.id)}
+                              className={`p-2 rounded-lg border text-left transition-all cursor-pointer ${
+                                currentItem.fontFamily === f.id
+                                  ? 'border-cyan-400 bg-cyan-950/60 text-cyan-300'
+                                  : 'border-slate-800 bg-slate-900 text-slate-300 hover:border-slate-700'
+                              }`}
+                            >
+                              <div className={`text-xs font-bold truncate ${f.id}`}>{f.label}</div>
+                              <div className="text-[10px] text-slate-500 font-mono">{f.desc}</div>
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+
+                      {/* Font Size */}
+                      <div>
+                        <label className="block text-xs font-mono text-slate-400 mb-1">Cỡ Chữ (Font Size):</label>
+                        <select
+                          value={currentItem.fontSize}
+                          onChange={e => updateSectionField(activeSectionHeaderTab, 'fontSize', e.target.value)}
+                          className="w-full bg-slate-900 border border-slate-700 rounded-lg px-2.5 py-1.5 text-xs font-mono text-white focus:border-cyan-400 focus:outline-none"
+                        >
+                          {FONT_SIZES.map(s => (
+                            <option key={s.id} value={s.id}>{s.label}</option>
+                          ))}
+                        </select>
+                      </div>
+
+                      {/* Font Weight */}
+                      <div>
+                        <label className="block text-xs font-mono text-slate-400 mb-1">Độ Đậm (Weight):</label>
+                        <select
+                          value={currentItem.fontWeight}
+                          onChange={e => updateSectionField(activeSectionHeaderTab, 'fontWeight', e.target.value)}
+                          className="w-full bg-slate-900 border border-slate-700 rounded-lg px-2.5 py-1.5 text-xs font-mono text-white focus:border-cyan-400 focus:outline-none"
+                        >
+                          {FONT_WEIGHTS.map(w => (
+                            <option key={w.id} value={w.id}>{w.label}</option>
+                          ))}
+                        </select>
+                      </div>
+
+                      {/* Letter Spacing */}
+                      <div>
+                        <label className="block text-xs font-mono text-slate-400 mb-1">Khoảng Cách Chữ:</label>
+                        <select
+                          value={currentItem.letterSpacing}
+                          onChange={e => updateSectionField(activeSectionHeaderTab, 'letterSpacing', e.target.value)}
+                          className="w-full bg-slate-900 border border-slate-700 rounded-lg px-2.5 py-1.5 text-xs font-mono text-white focus:border-cyan-400 focus:outline-none"
+                        >
+                          {LETTER_SPACINGS.map(l => (
+                            <option key={l.id} value={l.id}>{l.label}</option>
+                          ))}
+                        </select>
+                      </div>
+
+                      {/* Text Transform */}
+                      <div>
+                        <label className="block text-xs font-mono text-slate-400 mb-1">Kiểu Hoa / Thường:</label>
+                        <select
+                          value={currentItem.textTransform}
+                          onChange={e => updateSectionField(activeSectionHeaderTab, 'textTransform', e.target.value as any)}
+                          className="w-full bg-slate-900 border border-slate-700 rounded-lg px-2.5 py-1.5 text-xs font-mono text-white focus:border-cyan-400 focus:outline-none"
+                        >
+                          {TEXT_TRANSFORMS.map(t => (
+                            <option key={t.id} value={t.id}>{t.label}</option>
+                          ))}
+                        </select>
+                      </div>
+
+                      {/* Title Color Presets */}
+                      <div className="sm:col-span-2">
+                        <label className="block text-xs font-mono text-slate-400 mb-1">Màu Tiêu Đề:</label>
+                        <div className="flex flex-wrap gap-2">
+                          {TITLE_COLOR_PRESETS.map(c => (
+                            <button
+                              key={c.id}
+                              type="button"
+                              onClick={() => updateSectionField(activeSectionHeaderTab, 'titleColor', c.id)}
+                              className={`px-2.5 py-1 rounded-lg border text-xs font-mono transition-all cursor-pointer ${
+                                currentItem.titleColor === c.id
+                                  ? 'border-cyan-400 bg-cyan-950/60 font-bold'
+                                  : 'border-slate-800 bg-slate-900 text-slate-300 hover:border-slate-700'
+                              } ${c.id}`}
+                            >
+                              {c.label}
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            );
+          })()}
+        </div>
+      )}
+      {/* CONFIRM RESET HERO & LAYOUT MODAL */}
+      {isResetModalOpen && (
+        <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4">
+          <div className="w-full max-w-md bg-slate-900 border border-amber-500/40 rounded-2xl p-6 space-y-4 text-white shadow-2xl">
+            <div className="flex items-center gap-3 border-b border-slate-800 pb-3">
+              <div className="p-2.5 rounded-xl bg-amber-500/20 text-amber-400 border border-amber-500/30">
+                <RotateCcw className="w-5 h-5" />
+              </div>
+              <div>
+                <h3 className="text-sm font-bold text-white uppercase tracking-wider">Khôi Phục Cấu Hình Chuẩn</h3>
+                <p className="text-xs text-slate-400">Trả về tỷ lệ khung web & nội dung mặc định ban đầu</p>
+              </div>
+            </div>
+
+            <div className="p-3.5 bg-slate-950 rounded-xl border border-slate-800 space-y-2 text-xs text-slate-300">
+              <p>
+                Bạn có chắc chắn muốn khôi phục tỷ lệ khung web, độ rộng tối đa và toàn bộ nội dung Hero Banner về giá trị mặc định chuẩn của hệ thống?
+              </p>
+              <div className="text-amber-300/90 bg-amber-950/40 border border-amber-500/30 p-2.5 rounded-lg text-[11px] leading-relaxed">
+                ⚠️ Các tùy biến tỷ lệ hiện tại sẽ được thay thế bằng cấu hình tối ưu giao diện ban đầu.
+              </div>
+            </div>
+
+            <div className="flex items-center justify-end gap-2.5 pt-2">
+              <button
+                type="button"
+                onClick={() => setIsResetModalOpen(false)}
+                className="px-4 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs font-semibold cursor-pointer transition-colors"
+              >
+                Hủy Bỏ
+              </button>
+              <button
+                type="button"
+                onClick={confirmResetToDefault}
+                className="px-4 py-2 rounded-xl bg-amber-600 hover:bg-amber-500 text-slate-950 text-xs font-bold flex items-center gap-2 cursor-pointer shadow-lg shadow-amber-600/30 transition-all"
+              >
+                <RotateCcw className="w-4 h-4" />
+                <span>Xác Nhận Khôi Phục</span>
+              </button>
+            </div>
           </div>
         </div>
       )}

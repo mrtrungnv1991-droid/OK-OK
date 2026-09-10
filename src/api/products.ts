@@ -1,5 +1,5 @@
 import { api, ApiResponse } from './client';
-import { Product, GameItem, CategoryItem } from '../types';
+import { Product, GameItem, CategoryItem, TopupTier } from '../types';
 
 export const productsApi = {
   getProducts: async (params?: Record<string, string | number>): Promise<ApiResponse<{ products: Product[]; total: number; categories: CategoryItem[] }>> => {
@@ -68,6 +68,38 @@ export const productsApi = {
 
   getGameById: async (id: string): Promise<ApiResponse<{ game: GameItem }>> => {
     return api.get<{ game: GameItem }>(`/games/${id}`);
+  },
+
+  createGame: async (gameData: Partial<GameItem>): Promise<ApiResponse<{ game: GameItem; message?: string }>> => {
+    return api.post<{ game: GameItem; message?: string }>('/games', gameData);
+  },
+
+  updateGame: async (id: string, gameData: Partial<GameItem>): Promise<ApiResponse<{ game: GameItem; message?: string }>> => {
+    return api.put<{ game: GameItem; message?: string }>(`/games/${id}`, gameData);
+  },
+
+  deleteGame: async (id: string): Promise<ApiResponse<{ message?: string; deletedId?: string; remaining?: number }>> => {
+    return api.delete<{ message?: string; deletedId?: string; remaining?: number }>(`/games/${id}`);
+  },
+
+  addGameTier: async (gameId: string, tier: TopupTier): Promise<ApiResponse<{ message?: string; tiers: TopupTier[] }>> => {
+    return api.post<{ message?: string; tiers: TopupTier[] }>(`/games/${gameId}/tiers`, { tier });
+  },
+
+  updateGameTier: async (gameId: string, tierId: string, tier: Partial<TopupTier>): Promise<ApiResponse<{ message?: string; tier: TopupTier }>> => {
+    return api.put<{ message?: string; tier: TopupTier }>(`/games/${gameId}/tiers/${tierId}`, { tier });
+  },
+
+  deleteGameTier: async (gameId: string, tierId: string): Promise<ApiResponse<{ message?: string; tiers: TopupTier[] }>> => {
+    return api.delete<{ message?: string; tiers: TopupTier[] }>(`/games/${gameId}/tiers/${tierId}`);
+  },
+
+  bulkAdjustGamePrices: async (gameId: string, percentDelta: number): Promise<ApiResponse<{ message?: string; games: GameItem[] }>> => {
+    return api.post<{ message?: string; games: GameItem[] }>('/games/bulk-adjust', { gameId, percentDelta });
+  },
+
+  resetGamesToDefault: async (): Promise<ApiResponse<{ message?: string; games: GameItem[] }>> => {
+    return api.post<{ message?: string; games: GameItem[] }>('/games/reset', {});
   },
 
   // ==========================================

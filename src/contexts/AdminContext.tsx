@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, useEffect, ReactNode, useCallback } from 'react';
+import React, { createContext, useContext, useState, useEffect, ReactNode, useCallback, useMemo } from 'react';
 import { 
   MemberUser, 
   SupplierApiConfig, 
@@ -85,7 +85,15 @@ const DEFAULT_SYSTEM_CONFIG: SystemConfiguration = {
   telcoCallbackUrl: '/api/v1/webhooks/card24h',
   cryptoUsdtAddress: 'TXu9...cyber88',
   momoPhone: '0388999999',
-  momoName: 'CYBERPOOL'
+  momoName: 'CYBERPOOL',
+  depositModulesConfig: {
+    vietqr: { enabled: true, maintenanceMessage: 'Cổng chuyển khoản / VietQR Napas 24/7 đang tạm bảo trì hệ thống.' },
+    telco: { enabled: true, maintenanceMessage: 'Cổng đổi thẻ cào điện thoại Card24h đang tạm dừng để bảo trì API đối tác.' },
+    momo: { enabled: true, maintenanceMessage: 'Cổng ví điện tử MoMo & ZaloPay đang tạm nâng cấp hạ tầng.' },
+    crypto: { enabled: true, maintenanceMessage: 'Cổng nạp Crypto USDT (TRC20 / BEP20) đang bảo trì node blockchain.' },
+    ltc: { enabled: true, maintenanceMessage: 'Cổng nạp Litecoin (LTC Core) đang đồng bộ khối blockchain.' },
+    binance: { enabled: true, maintenanceMessage: 'Cổng Binance Pay tạm dừng kết nối API.' },
+  }
 };
 
 const AdminContext = createContext<AdminContextType | undefined>(undefined);
@@ -222,27 +230,44 @@ export const AdminProvider: React.FC<{ children: ReactNode }> = ({ children }) =
     setVouchers(prev => prev.filter(v => v.id !== voucherId));
   };
 
+  const contextValue = useMemo(() => ({
+    members,
+    suppliers,
+    systemConfig,
+    vouchers,
+    stats,
+    auditLogs,
+    isLoading,
+    fetchAdminData,
+    updateMemberRole,
+    toggleMemberStatus,
+    adjustMemberBalance,
+    updateSupplierBalance,
+    updateSystemConfig,
+    addVoucher,
+    toggleVoucherStatus,
+    deleteVoucher
+  }), [
+    members,
+    suppliers,
+    systemConfig,
+    vouchers,
+    stats,
+    auditLogs,
+    isLoading,
+    fetchAdminData,
+    updateMemberRole,
+    toggleMemberStatus,
+    adjustMemberBalance,
+    updateSupplierBalance,
+    updateSystemConfig,
+    addVoucher,
+    toggleVoucherStatus,
+    deleteVoucher
+  ]);
+
   return (
-    <AdminContext.Provider
-      value={{
-        members,
-        suppliers,
-        systemConfig,
-        vouchers,
-        stats,
-        auditLogs,
-        isLoading,
-        fetchAdminData,
-        updateMemberRole,
-        toggleMemberStatus,
-        adjustMemberBalance,
-        updateSupplierBalance,
-        updateSystemConfig,
-        addVoucher,
-        toggleVoucherStatus,
-        deleteVoucher
-      }}
-    >
+    <AdminContext.Provider value={contextValue}>
       {children}
     </AdminContext.Provider>
   );

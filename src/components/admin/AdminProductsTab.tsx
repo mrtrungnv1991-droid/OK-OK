@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { 
   PlusCircle, 
   Search, 
@@ -18,7 +18,8 @@ import {
   CheckCircle2,
   Upload,
   Image as ImageIcon,
-  Laptop
+  Laptop,
+  AlertCircle
 } from 'lucide-react';
 import { Product, ProductCategory, CurrencyCode } from '../../types';
 import { formatCurrency } from '../../utils/formatters';
@@ -32,7 +33,7 @@ interface AdminProductsTabProps {
   currency: CurrencyCode;
   onAddNewProduct: (newProduct: Partial<Product>) => void;
   onUpdateProduct?: (productId: string, updatedData: Partial<Product>) => void;
-  onDeleteProduct: (productId: string) => void;
+  onDeleteProduct: (productId: string) => Promise<boolean | void> | void;
   onUpdateProductStock: (productId: string, newStock: number) => void;
   onAdjustProductStock?: (productId: string, delta: number) => void;
   onToggleFlashSale: (
@@ -81,6 +82,38 @@ export const AdminProductsTab: React.FC<AdminProductsTabProps> = ({
   const [isRetranslating, setIsRetranslating] = useState<boolean>(false);
   const [retranslateSuccess, setRetranslateSuccess] = useState<string | null>(null);
 
+  // Delete Confirmation State
+  const [productToDelete, setProductToDelete] = useState<Product | null>(null);
+  const [isDeletingProduct, setIsDeletingProduct] = useState(false);
+  const [actionNotice, setActionNotice] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
+
+  useEffect(() => {
+    if (actionNotice) {
+      const timer = setTimeout(() => setActionNotice(null), 4500);
+      return () => clearTimeout(timer);
+    }
+  }, [actionNotice]);
+
+  const handleConfirmDeleteProduct = async () => {
+    if (!productToDelete) return;
+    setIsDeletingProduct(true);
+    try {
+      await onDeleteProduct(productToDelete.id);
+      setActionNotice({
+        type: 'success',
+        text: `Đã xóa vĩnh viễn sản phẩm "${productToDelete.title}" thành công!`
+      });
+      setProductToDelete(null);
+    } catch (err: any) {
+      setActionNotice({
+        type: 'error',
+        text: `Lỗi khi xóa sản phẩm: ${err?.message || 'Không thể thực hiện xóa'}`
+      });
+    } finally {
+      setIsDeletingProduct(false);
+    }
+  };
+
   const [newProdForm, setNewProdForm] = useState({
     title: '',
     category: 'ai_tools' as ProductCategory,
@@ -122,7 +155,10 @@ export const AdminProductsTab: React.FC<AdminProductsTabProps> = ({
   const handleProcessModalImageFile = (file: File) => {
     if (!file) return;
     if (!file.type.startsWith('image/')) {
-      alert('Vui lòng chọn file hình ảnh hợp lệ (PNG, JPG, WEBP, GIF, SVG).');
+      setActionNotice({
+        type: 'error',
+        text: 'Vui lòng chọn file hình ảnh hợp lệ (PNG, JPG, WEBP, GIF, SVG).'
+      });
       return;
     }
     setImageModalFileName(file.name);
@@ -146,7 +182,10 @@ export const AdminProductsTab: React.FC<AdminProductsTabProps> = ({
   const handleProcessImageFile = (file: File) => {
     if (!file) return;
     if (!file.type.startsWith('image/')) {
-      alert('Vui lòng chọn định dạng hình ảnh hợp lệ (PNG, JPG, WEBP, GIF, SVG).');
+      setActionNotice({
+        type: 'error',
+        text: 'Vui lòng chọn định dạng hình ảnh hợp lệ (PNG, JPG, WEBP, GIF, SVG).'
+      });
       return;
     }
 
@@ -346,6 +385,31 @@ export const AdminProductsTab: React.FC<AdminProductsTabProps> = ({
           <span>{isAddingProduct ? 'Đóng Form' : '+ Thêm Sản Phẩm Mới'}</span>
         </button>
       </div>
+
+      {/* Action Notification Banner */}
+      {actionNotice && (
+        <div className={`p-3 rounded-xl border flex items-center justify-between gap-3 text-xs font-medium ${
+          actionNotice.type === 'success'
+            ? 'bg-emerald-950/80 border-emerald-500/50 text-emerald-300'
+            : 'bg-rose-950/80 border-rose-500/50 text-rose-300'
+        }`}>
+          <div className="flex items-center gap-2">
+            {actionNotice.type === 'success' ? (
+              <Check className="w-4 h-4 text-emerald-400 shrink-0" />
+            ) : (
+              <AlertCircle className="w-4 h-4 text-rose-400 shrink-0" />
+            )}
+            <span>{actionNotice.text}</span>
+          </div>
+          <button
+            type="button"
+            onClick={() => setActionNotice(null)}
+            className="p-1 hover:bg-slate-800/60 rounded text-slate-400 hover:text-slate-200 cursor-pointer"
+          >
+            <X className="w-3.5 h-3.5" />
+          </button>
+        </div>
+      )}
 
       {/* Form Thêm Sản Phẩm Mới */}
       {isAddingProduct && (
@@ -851,9 +915,13 @@ export const AdminProductsTab: React.FC<AdminProductsTabProps> = ({
                       </button>
 
                       <button
-                        onClick={() => onDeleteProduct(prod.id)}
+                        type="button"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setProductToDelete(prod);
+                        }}
                         className="p-2 rounded-lg text-rose-400 hover:bg-rose-950/60 border border-transparent hover:border-rose-500/30 transition-colors cursor-pointer"
-                        title="Xóa sản phẩm"
+                        title="Xóa vĩnh viễn sản phẩm"
                       >
                         <Trash2 className="w-4 h-4" />
                       </button>
@@ -1501,6 +1569,74 @@ export const AdminProductsTab: React.FC<AdminProductsTabProps> = ({
               >
                 <Check className="w-4 h-4" />
                 <span>LƯU ẢNH SẢN PHẨM</span>
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* CONFIRM DELETE PRODUCT MODAL */}
+      {productToDelete && (
+        <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4">
+          <div className="w-full max-w-md bg-slate-900 border border-red-500/40 rounded-2xl p-6 space-y-4 text-white shadow-2xl">
+            <div className="flex items-center gap-3 border-b border-slate-800 pb-3">
+              <div className="p-2.5 rounded-xl bg-red-500/20 text-red-400 border border-red-500/30">
+                <Trash2 className="w-5 h-5" />
+              </div>
+              <div>
+                <h3 className="text-sm font-bold text-white uppercase tracking-wider">Xác Nhận Xóa Sản Phẩm</h3>
+                <p className="text-xs text-slate-400">Hành động này sẽ gỡ bỏ hoàn toàn sản phẩm</p>
+              </div>
+            </div>
+
+            <div className="p-3.5 bg-slate-950 rounded-xl border border-slate-800 space-y-3 text-xs">
+              <div className="flex items-center gap-3">
+                {productToDelete.bannerImg ? (
+                  <img
+                    src={productToDelete.bannerImg}
+                    alt={productToDelete.title}
+                    className="w-12 h-12 rounded-lg object-cover border border-slate-700 shrink-0"
+                  />
+                ) : (
+                  <div className="w-12 h-12 rounded-lg bg-slate-800 flex items-center justify-center text-slate-500 border border-slate-700 shrink-0">
+                    <Trash2 className="w-5 h-5 text-slate-400" />
+                  </div>
+                )}
+                <div className="min-w-0 flex-1">
+                  <div className="text-slate-100 font-semibold truncate text-xs">
+                    {productToDelete.title}
+                  </div>
+                  <div className="text-slate-400 text-[11px] font-mono mt-0.5 truncate">
+                    ID: <span className="text-cyan-400">{productToDelete.id}</span> • Mục: <span className="text-slate-300">{productToDelete.category}</span>
+                  </div>
+                  <div className="text-emerald-400 font-mono text-xs mt-0.5">
+                    Giá lẻ: {formatCurrency(productToDelete.retailPrice, currency)}
+                  </div>
+                </div>
+              </div>
+
+              <div className="text-amber-300/90 bg-amber-950/40 border border-amber-500/30 p-2.5 rounded-lg text-[11px] leading-relaxed">
+                ⚠️ <strong className="text-amber-200">Cảnh báo:</strong> Sản phẩm sẽ bị xóa vĩnh viễn khỏi cửa hàng và hệ thống kho hàng. Các liên kết tự động với nhà cung cấp (nếu có) sẽ được giải phóng an toàn.
+              </div>
+            </div>
+
+            <div className="flex items-center justify-end gap-2.5 pt-2">
+              <button
+                type="button"
+                onClick={() => setProductToDelete(null)}
+                disabled={isDeletingProduct}
+                className="px-4 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs font-semibold cursor-pointer transition-colors"
+              >
+                Hủy Bỏ
+              </button>
+              <button
+                type="button"
+                onClick={handleConfirmDeleteProduct}
+                disabled={isDeletingProduct}
+                className="px-4 py-2 rounded-xl bg-red-600 hover:bg-red-500 text-white text-xs font-bold flex items-center gap-2 cursor-pointer shadow-lg shadow-red-600/30 transition-all disabled:opacity-50"
+              >
+                <Trash2 className="w-4 h-4" />
+                <span>{isDeletingProduct ? 'Đang Xóa...' : 'Xác Nhận Xóa Vĩnh Viễn'}</span>
               </button>
             </div>
           </div>

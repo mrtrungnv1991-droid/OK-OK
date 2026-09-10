@@ -16,11 +16,12 @@ import {
   PlusCircle,
   MessageSquare
 } from 'lucide-react';
-import { SupportTicket, UserProfile } from '../types';
+import { SupportTicket, UserProfile, UserOrder } from '../types';
 import { useTranslation } from '../i18n';
 
 interface TicketsModalProps {
   tickets: SupportTicket[];
+  orders?: UserOrder[];
   isOpen: boolean;
   onClose: () => void;
   user: UserProfile;
@@ -30,6 +31,7 @@ interface TicketsModalProps {
 
 export const TicketsModal: React.FC<TicketsModalProps> = ({
   tickets,
+  orders = [],
   isOpen,
   onClose,
   user,
@@ -37,7 +39,6 @@ export const TicketsModal: React.FC<TicketsModalProps> = ({
   onReplyTicket
 }) => {
   const { t } = useTranslation();
-  if (!isOpen) return null;
 
   const [activeTicketId, setActiveTicketId] = useState<string>(tickets[0]?.id || '');
   const [replyText, setReplyText] = useState('');
@@ -46,6 +47,8 @@ export const TicketsModal: React.FC<TicketsModalProps> = ({
   const [newCategory, setNewCategory] = useState<'Key Issue' | 'Top-Up Delay' | 'Escrow Refund' | 'General Support'>('Key Issue');
   const [newMessage, setNewMessage] = useState('');
   const [copiedKey, setCopiedKey] = useState<string | null>(null);
+
+  if (!isOpen) return null;
 
   const activeTicket = tickets.find(t => t.id === activeTicketId) || tickets[0];
 

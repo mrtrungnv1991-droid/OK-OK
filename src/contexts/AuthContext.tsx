@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, useEffect, ReactNode, useCallback } from 'react';
+import React, { createContext, useContext, useState, useEffect, ReactNode, useCallback, useMemo } from 'react';
 import { UserProfile, CurrencyCode, LanguageCode } from '../types';
 import { authApi, AuthUser } from '../api/auth';
 import { api } from '../api/client';
@@ -232,24 +232,37 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     });
   };
 
+  const contextValue = useMemo(() => ({
+    currentUser,
+    setCurrentUser,
+    isAuthenticated,
+    isLoading,
+    login,
+    register,
+    logout,
+    refreshUserProfile,
+    updateUserRole,
+    updateUserBalance,
+    updateEscrowLocked,
+    updateLanguage,
+    updateCurrency
+  }), [
+    currentUser,
+    isAuthenticated,
+    isLoading,
+    login,
+    register,
+    logout,
+    refreshUserProfile,
+    updateUserRole,
+    updateUserBalance,
+    updateEscrowLocked,
+    updateLanguage,
+    updateCurrency
+  ]);
+
   return (
-    <AuthContext.Provider
-      value={{
-        currentUser,
-        setCurrentUser,
-        isAuthenticated,
-        isLoading,
-        login,
-        register,
-        logout,
-        refreshUserProfile,
-        updateUserRole,
-        updateUserBalance,
-        updateEscrowLocked,
-        updateLanguage,
-        updateCurrency
-      }}
-    >
+    <AuthContext.Provider value={contextValue}>
       {children}
     </AuthContext.Provider>
   );

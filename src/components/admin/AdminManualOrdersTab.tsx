@@ -60,7 +60,7 @@ export const AdminManualOrdersTab: React.FC<AdminManualOrdersTabProps> = ({
     if (manualOrders && manualOrders.length > 0) {
       setOrders(manualOrders);
     }
-  }, [manualOrders]);
+  }, [manualOrders?.length]);
 
   // Comprehensive overview metrics
   const totalOrders = orders.length;

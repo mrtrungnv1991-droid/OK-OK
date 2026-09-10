@@ -117,6 +117,7 @@ export const AdminPaymentSystemTab: React.FC<{ currency: CurrencyCode }> = ({ cu
   const [dlqItems, setDlqItems] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [statusMessage, setStatusMessage] = useState<string | null>(null);
+  const [isLiveModeModalOpen, setIsLiveModeModalOpen] = useState(false);
 
   // Filters
   const [txFilterStatus, setTxFilterStatus] = useState<string>('ALL');
@@ -305,15 +306,12 @@ export const AdminPaymentSystemTab: React.FC<{ currency: CurrencyCode }> = ({ cu
     }
   };
 
-  const handleToggleLiveMode = async () => {
-    const nextMode = !healthData?.live_mode;
-    const confirm = window.confirm(
-      nextMode
-        ? 'CẢNH BÁO: Bạn có chắc muốn BẬT LIVE MODE? Hệ thống sẽ trừ tiền thật trên các tài khoản nguồn đối tác!'
-        : 'Chuyển về SANDBOX / MOCK MODE: Hệ thống chỉ giả lập và không đụng vào tiền thật.'
-    );
-    if (!confirm) return;
+  const handleToggleLiveMode = () => {
+    setIsLiveModeModalOpen(true);
+  };
 
+  const confirmToggleLiveMode = async () => {
+    const nextMode = !healthData?.live_mode;
     try {
       const res = await fetch('/api/v1/payments/admin/system-config', {
         method: 'POST',
@@ -326,6 +324,8 @@ export const AdminPaymentSystemTab: React.FC<{ currency: CurrencyCode }> = ({ cu
       }
     } catch (e) {
       console.error(e);
+    } finally {
+      setIsLiveModeModalOpen(false);
     }
   };
 
@@ -1456,6 +1456,67 @@ export const AdminPaymentSystemTab: React.FC<{ currency: CurrencyCode }> = ({ cu
                 </button>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+      {/* CONFIRM TOGGLE LIVE MODE MODAL */}
+      {isLiveModeModalOpen && (
+        <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4">
+          <div className="w-full max-w-md bg-slate-900 border border-amber-500/40 rounded-2xl p-6 space-y-4 text-white shadow-2xl">
+            <div className="flex items-center gap-3 border-b border-slate-800 pb-3">
+              <div className={`p-2.5 rounded-xl border ${!healthData?.live_mode ? 'bg-red-500/20 text-red-400 border-red-500/30' : 'bg-emerald-500/20 text-emerald-400 border-emerald-500/30'}`}>
+                <AlertTriangle className="w-5 h-5" />
+              </div>
+              <div>
+                <h3 className="text-sm font-bold text-white uppercase tracking-wider">
+                  {!healthData?.live_mode ? 'Xác Nhận Bật LIVE REAL-MONEY' : 'Xác Nhận Chuyển Về Sandbox'}
+                </h3>
+                <p className="text-xs text-slate-400">Thay đổi môi trường xử lý thanh toán và tài khoản nguồn</p>
+              </div>
+            </div>
+
+            <div className="p-3.5 bg-slate-950 rounded-xl border border-slate-800 space-y-2 text-xs">
+              {!healthData?.live_mode ? (
+                <>
+                  <div className="text-red-400 font-bold flex items-center gap-1.5">
+                    <span>⚠️ CẢNH BÁO: BẬT TIỀN THẬT (LIVE MODE)</span>
+                  </div>
+                  <p className="text-slate-300 leading-relaxed">
+                    Khi kích hoạt Live Mode, hệ thống sẽ gọi API thanh toán và trừ tiền thật trên các tài khoản nguồn đối tác thực tế.
+                  </p>
+                </>
+              ) : (
+                <>
+                  <div className="text-emerald-400 font-bold flex items-center gap-1.5">
+                    <span>✓ Chuyển về Chế Độ Giả Lập (SANDBOX / MOCK)</span>
+                  </div>
+                  <p className="text-slate-300 leading-relaxed">
+                    Hệ thống sẽ chỉ giả lập phản hồi thành công và không can thiệp hay trừ tiền trên bất kỳ tài khoản ngân hàng / ví thật nào.
+                  </p>
+                </>
+              )}
+            </div>
+
+            <div className="flex items-center justify-end gap-2.5 pt-2">
+              <button
+                type="button"
+                onClick={() => setIsLiveModeModalOpen(false)}
+                className="px-4 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs font-semibold cursor-pointer transition-colors"
+              >
+                Hủy Bỏ
+              </button>
+              <button
+                type="button"
+                onClick={confirmToggleLiveMode}
+                className={`px-4 py-2 rounded-xl text-xs font-bold cursor-pointer transition-all shadow-lg ${
+                  !healthData?.live_mode
+                    ? 'bg-red-600 hover:bg-red-500 text-white shadow-red-600/30'
+                    : 'bg-emerald-600 hover:bg-emerald-500 text-white shadow-emerald-600/30'
+                }`}
+              >
+                {!healthData?.live_mode ? 'Xác Nhận Bật Live' : 'Chuyển Sang Sandbox'}
+              </button>
+            </div>
           </div>
         </div>
       )}

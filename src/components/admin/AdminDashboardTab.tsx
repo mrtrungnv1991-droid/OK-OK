@@ -49,9 +49,6 @@ export const AdminDashboardTab: React.FC<AdminDashboardTabProps> = ({
                   v7.4.2
                 </span>
               </div>
-              <p className="text-[11px] text-slate-400 font-mono mt-0.5">
-                Xác thực toàn vẹn 18.7K Files • 388 PHP Core • 64 Database Tables • 121 Games (1.702 Tiers)
-              </p>
             </div>
           </div>
 

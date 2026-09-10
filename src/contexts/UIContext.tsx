@@ -82,17 +82,17 @@ export const UIProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
   // Ref to track recently dispatched dedupe keys to prevent spam
   const recentDedupeRef = React.useRef<Map<string, number>>(new Map());
 
-  const openModal = (modal: ModalType, payload: ModalPayload = {}) => {
+  const openModal = React.useCallback((modal: ModalType, payload: ModalPayload = {}) => {
     setActiveModal(modal);
     setModalPayload(payload);
-  };
+  }, []);
 
-  const closeModal = () => {
+  const closeModal = React.useCallback(() => {
     setActiveModal(null);
     setModalPayload({});
-  };
+  }, []);
 
-  const isModalOpen = (modal: ModalType) => activeModal === modal;
+  const isModalOpen = React.useCallback((modal: ModalType) => activeModal === modal, [activeModal]);
 
   const dismissToast = React.useCallback((id: string) => {
     const existingTimer = timerMapRef.current.get(id);
@@ -204,19 +204,34 @@ export const UIProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
   }, []);
 
 
+  const contextValue = React.useMemo(() => ({
+    activeModal,
+    modalPayload,
+    openModal,
+    closeModal,
+    isModalOpen,
+    toasts,
+    showToast,
+    dismissToast,
+    removeToast,
+    updateToast,
+    clearAllToasts
+  }), [
+    activeModal,
+    modalPayload,
+    openModal,
+    closeModal,
+    isModalOpen,
+    toasts,
+    showToast,
+    dismissToast,
+    removeToast,
+    updateToast,
+    clearAllToasts
+  ]);
+
   return (
-    <UIContext.Provider
-      value={{
-        activeModal,
-        modalPayload,
-        openModal,
-        closeModal,
-        isModalOpen,
-        toasts,
-        showToast,
-        removeToast
-      }}
-    >
+    <UIContext.Provider value={contextValue}>
       {children}
     </UIContext.Provider>
   );

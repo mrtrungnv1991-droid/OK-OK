@@ -25,12 +25,12 @@ import {
   ChevronUp,
   AlertCircle
 } from 'lucide-react';
-import { GameItem, TopupTier } from '../../types';
+import { GameItem, TopupTier, CurrencyCode } from '../../types';
 import { formatCurrency } from '../../utils/formatters';
 
 interface AdminGamesTabProps {
   games: GameItem[];
-  currency?: 'VND' | 'USD';
+  currency?: CurrencyCode;
   onUpdateGame?: (gameId: string, updatedData: Partial<GameItem>) => void;
   onAddNewGame?: (newGame: Partial<GameItem>) => void;
   onDeleteGame?: (gameId: string) => void;
@@ -38,6 +38,7 @@ interface AdminGamesTabProps {
   onUpdateGameTier?: (gameId: string, tierId: string, updatedTier: Partial<TopupTier>) => void;
   onDeleteGameTier?: (gameId: string, tierId: string) => void;
   onBulkAdjustGamePrices?: (gameId: string, percentDelta: number) => void;
+  onResetGames?: () => void;
 }
 
 export const AdminGamesTab: React.FC<AdminGamesTabProps> = ({
@@ -49,7 +50,8 @@ export const AdminGamesTab: React.FC<AdminGamesTabProps> = ({
   onAddGameTier,
   onUpdateGameTier,
   onDeleteGameTier,
-  onBulkAdjustGamePrices
+  onBulkAdjustGamePrices,
+  onResetGames
 }) => {
   const [searchTerm, setSearchTerm] = useState('');
   const [categoryFilter, setCategoryFilter] = useState<string>('all');
@@ -58,6 +60,11 @@ export const AdminGamesTab: React.FC<AdminGamesTabProps> = ({
   
   // Notice Feedback
   const [saveNotice, setSaveNotice] = useState<string | null>(null);
+
+  // Deletion Confirmation States
+  const [gameToDelete, setGameToDelete] = useState<GameItem | null>(null);
+  const [tierToDelete, setTierToDelete] = useState<{ gameId: string; tierId: string; tierName: string } | null>(null);
+  const [isResetConfirmOpen, setIsResetConfirmOpen] = useState(false);
 
   // Modal / Form States
   const [isAddingNewGame, setIsAddingNewGame] = useState(false);
@@ -227,12 +234,16 @@ export const AdminGamesTab: React.FC<AdminGamesTabProps> = ({
 
   // Delete tier from game
   const handleDeleteTier = (gameId: string, tierId: string, tierName: string) => {
-    if (confirm(`Bạn có chắc chắn muốn xóa gói nạp "${tierName}" khỏi game này?`)) {
-      if (onDeleteGameTier) {
-        onDeleteGameTier(gameId, tierId);
-      }
-      showNotification(`Đã xóa gói nạp "${tierName}"!`);
+    setTierToDelete({ gameId, tierId, tierName });
+  };
+
+  const handleConfirmDeleteTier = () => {
+    if (!tierToDelete) return;
+    if (onDeleteGameTier) {
+      onDeleteGameTier(tierToDelete.gameId, tierToDelete.tierId);
     }
+    showNotification(`Đã xóa gói nạp "${tierToDelete.tierName}"!`);
+    setTierToDelete(null);
   };
 
   // Clone a game
@@ -319,12 +330,24 @@ export const AdminGamesTab: React.FC<AdminGamesTabProps> = ({
 
   // Delete a game
   const handleDeleteGameConfirm = (game: GameItem) => {
-    if (confirm(`⚠️ BẠN CÓ CHẮC CHẮN MUỐN XÓA TỰA GAME "${game.name.toUpperCase()}" VÀ TOÀN BỘ ${game.tiers.length} GÓI NẠP?`)) {
-      if (onDeleteGame) {
-        onDeleteGame(game.id);
-      }
-      showNotification(`Đã xóa vĩnh viễn tựa game "${game.name}"!`);
+    setGameToDelete(game);
+  };
+
+  const handleConfirmDeleteGame = () => {
+    if (!gameToDelete) return;
+    if (onDeleteGame) {
+      onDeleteGame(gameToDelete.id);
     }
+    showNotification(`Đã xóa vĩnh viễn tựa game "${gameToDelete.name}"!`);
+    setGameToDelete(null);
+  };
+
+  const handleConfirmResetGames = () => {
+    if (onResetGames) {
+      onResetGames();
+      showNotification('Đã khôi phục dữ liệu 121 tựa game gốc ban đầu thành công!');
+    }
+    setIsResetConfirmOpen(false);
   };
 
   // Execute bulk price adjustment
@@ -412,6 +435,17 @@ export const AdminGamesTab: React.FC<AdminGamesTabProps> = ({
             <Percent className="w-3.5 h-3.5 text-amber-200" />
             <span>Tăng / Giảm Giá Hàng Loạt</span>
           </button>
+
+          {onResetGames && (
+            <button
+              onClick={() => setIsResetConfirmOpen(true)}
+              className="px-2.5 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-400 hover:text-rose-300 border border-slate-700/60 text-xs font-medium flex items-center gap-1.5 cursor-pointer transition-colors"
+              title="Khôi phục danh sách 121 tựa game mặc định ban đầu"
+            >
+              <RefreshCw className="w-3.5 h-3.5" />
+              <span>Khôi Phục Gốc</span>
+            </button>
+          )}
 
           <button
             onClick={() => setIsAddingNewGame(true)}
@@ -993,6 +1027,154 @@ export const AdminGamesTab: React.FC<AdminGamesTabProps> = ({
           })
         )}
       </div>
+
+      {/* CONFIRM DELETE GAME MODAL */}
+      {gameToDelete && (
+        <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4">
+          <div className="w-full max-w-md bg-slate-900 border border-rose-500/40 rounded-2xl p-6 space-y-4 text-white shadow-2xl">
+            <div className="flex items-center gap-3 border-b border-slate-800 pb-3">
+              <div className="p-2.5 rounded-xl bg-rose-500/20 text-rose-400 border border-rose-500/30">
+                <Trash2 className="w-5 h-5" />
+              </div>
+              <div>
+                <h3 className="text-sm font-bold text-white uppercase tracking-wider">Xác Nhận Xóa Tựa Game</h3>
+                <p className="text-xs text-slate-400">Gỡ bỏ tựa game và toàn bộ các gói nạp</p>
+              </div>
+            </div>
+
+            <div className="p-3.5 bg-slate-950 rounded-xl border border-slate-800 space-y-2 text-xs">
+              <div className="flex items-center gap-3">
+                <img
+                  src={gameToDelete.thumbnail}
+                  alt={gameToDelete.name}
+                  className="w-12 h-12 rounded-lg object-cover border border-slate-700 shrink-0"
+                />
+                <div className="min-w-0 flex-1">
+                  <div className="text-slate-100 font-semibold truncate text-sm">
+                    {gameToDelete.name}
+                  </div>
+                  <div className="text-slate-400 font-mono text-[11px] mt-0.5">
+                    ID: <span className="text-cyan-400">{gameToDelete.id}</span> • Thể loại: <span className="text-slate-300">{gameToDelete.category}</span>
+                  </div>
+                  <div className="text-amber-400 font-mono text-xs mt-0.5">
+                    Tổng số gói nạp: {gameToDelete.tiers.length} gói
+                  </div>
+                </div>
+              </div>
+
+              <div className="text-amber-300 bg-amber-950/40 border border-amber-500/30 p-2.5 rounded-lg text-[11px] leading-relaxed">
+                ⚠️ Cảnh báo: Thao tác này sẽ xóa vĩnh viễn tựa game cùng toàn bộ {gameToDelete.tiers.length} gói nạp và không thể hoàn tác.
+              </div>
+            </div>
+
+            <div className="flex items-center justify-end gap-2.5 pt-2">
+              <button
+                type="button"
+                onClick={() => setGameToDelete(null)}
+                className="px-4 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs font-semibold cursor-pointer transition-colors"
+              >
+                Hủy Bỏ
+              </button>
+              <button
+                type="button"
+                onClick={handleConfirmDeleteGame}
+                className="px-4 py-2 rounded-xl bg-rose-600 hover:bg-rose-500 text-white text-xs font-bold flex items-center gap-2 cursor-pointer shadow-lg shadow-rose-600/30 transition-all"
+              >
+                <Trash2 className="w-4 h-4" />
+                <span>Xác Nhận Xóa Game</span>
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* CONFIRM DELETE TIER MODAL */}
+      {tierToDelete && (
+        <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4">
+          <div className="w-full max-w-sm bg-slate-900 border border-rose-500/40 rounded-2xl p-5 space-y-4 text-white shadow-2xl">
+            <div className="flex items-center gap-3 border-b border-slate-800 pb-3">
+              <div className="p-2 rounded-xl bg-rose-500/20 text-rose-400 border border-rose-500/30">
+                <Trash2 className="w-4 h-4" />
+              </div>
+              <div>
+                <h3 className="text-xs font-bold text-white uppercase tracking-wider">Xóa Gói Nạp</h3>
+                <p className="text-[11px] text-slate-400">Xác nhận gỡ bỏ gói nạp khỏi game</p>
+              </div>
+            </div>
+
+            <div className="p-3 bg-slate-950 rounded-xl border border-slate-800 text-xs space-y-1">
+              <div className="text-slate-200 font-semibold">
+                {tierToDelete.tierName}
+              </div>
+              <div className="text-slate-400 text-[11px] font-mono">
+                ID gói: <span className="text-cyan-400">{tierToDelete.tierId}</span>
+              </div>
+            </div>
+
+            <div className="flex items-center justify-end gap-2 pt-2">
+              <button
+                type="button"
+                onClick={() => setTierToDelete(null)}
+                className="px-3 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs font-semibold cursor-pointer"
+              >
+                Hủy Bỏ
+              </button>
+              <button
+                type="button"
+                onClick={handleConfirmDeleteTier}
+                className="px-4 py-1.5 rounded-lg bg-rose-600 hover:bg-rose-500 text-white text-xs font-bold flex items-center gap-1.5 cursor-pointer"
+              >
+                <Trash2 className="w-3.5 h-3.5" />
+                <span>Xóa Gói</span>
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* CONFIRM RESET TO DEFAULT GAMES MODAL */}
+      {isResetConfirmOpen && (
+        <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4">
+          <div className="w-full max-w-md bg-slate-900 border border-amber-500/40 rounded-2xl p-6 space-y-4 text-white shadow-2xl">
+            <div className="flex items-center gap-3 border-b border-slate-800 pb-3">
+              <div className="p-2.5 rounded-xl bg-amber-500/20 text-amber-400 border border-amber-500/30">
+                <RefreshCw className="w-5 h-5" />
+              </div>
+              <div>
+                <h3 className="text-sm font-bold text-white uppercase tracking-wider">Khôi Phục Dữ Liệu Gốc Ban Đầu</h3>
+                <p className="text-xs text-slate-400">Đặt lại danh mục 121 tựa game chuẩn</p>
+              </div>
+            </div>
+
+            <div className="p-3.5 bg-slate-950 rounded-xl border border-slate-800 space-y-2 text-xs">
+              <p className="text-slate-300 leading-relaxed">
+                Hệ thống sẽ nạp lại toàn bộ danh sách <strong>121 tựa game</strong> với đầy đủ các gói nạp mặc định và lưu đồng bộ trực tiếp vào cơ sở dữ liệu hệ thống.
+              </p>
+              <div className="text-amber-300 bg-amber-950/40 border border-amber-500/30 p-2.5 rounded-lg text-[11px] leading-relaxed">
+                ℹ️ Lưu ý: Mọi thay đổi hoặc các game tùy chỉnh bạn đã thêm mới sẽ được thay thế bằng danh mục chuẩn của hệ thống.
+              </div>
+            </div>
+
+            <div className="flex items-center justify-end gap-2.5 pt-2">
+              <button
+                type="button"
+                onClick={() => setIsResetConfirmOpen(false)}
+                className="px-4 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs font-semibold cursor-pointer transition-colors"
+              >
+                Hủy Bỏ
+              </button>
+              <button
+                type="button"
+                onClick={handleConfirmResetGames}
+                className="px-4 py-2 rounded-xl bg-amber-600 hover:bg-amber-500 text-white text-xs font-bold flex items-center gap-2 cursor-pointer shadow-lg shadow-amber-600/30 transition-all"
+              >
+                <RefreshCw className="w-4 h-4" />
+                <span>Xác Nhận Khôi Phục</span>
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

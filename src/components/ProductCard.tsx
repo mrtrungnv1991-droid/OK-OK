@@ -11,14 +11,14 @@ import {
   Gamepad2,
   Image as ImageIcon
 } from 'lucide-react';
-import { Product, GroupPool } from '../types';
+import { Product, GroupPool, CurrencyCode } from '../types';
 import { formatCurrency } from '../utils/formatters';
 import { useCart } from '../contexts/CartContext';
 import { useTranslation } from '../i18n';
 
 interface ProductCardProps {
   product: Product;
-  currency: 'VND' | 'USD';
+  currency: CurrencyCode;
   onJoinPool?: (product: Product, pool?: GroupPool) => void;
   onOpenPoolModal?: (pool?: GroupPool) => void;
   onInstantBuy?: (product: Product) => void;

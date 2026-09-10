@@ -3,6 +3,7 @@ import crypto from 'crypto';
 import { db } from '../../../db/store';
 import { requireAuth, requireRole, AuthenticatedRequest } from '../../../middleware/authMiddleware';
 import { AuditService } from '../../../services/auditService';
+import { GatewayVerificationService } from '../../../services/gatewayVerificationService';
 
 export const adminRouter = Router();
 
@@ -159,5 +160,45 @@ adminRouter.post('/test-card24h', async (req: AuthenticatedRequest, res) => {
       success: false,
       error: `Không thể kết nối đến máy chủ Card24h: ${err.message || 'Lỗi mạng'}`
     });
+  }
+});
+
+// POST /api/v1/admin/test-binance - Test Binance Pay OpenAPI Connectivity
+adminRouter.post('/test-binance', async (req: AuthenticatedRequest, res) => {
+  try {
+    const result = await GatewayVerificationService.testBinanceApiConnection(req.body);
+    res.json(result);
+  } catch (err: any) {
+    res.status(500).json({ success: false, error: err?.message || 'Lỗi kiểm tra Binance API' });
+  }
+});
+
+// POST /api/v1/admin/test-crypto-usdt - Test TronScan & BSC On-Chain Node Connectivity
+adminRouter.post('/test-crypto-usdt', async (req: AuthenticatedRequest, res) => {
+  try {
+    const result = await GatewayVerificationService.testTronScanCryptoConnection(req.body);
+    res.json(result);
+  } catch (err: any) {
+    res.status(500).json({ success: false, error: err?.message || 'Lỗi kiểm tra TronScan Node' });
+  }
+});
+
+// POST /api/v1/admin/test-ltc - Test Litecoin Mainnet Core Blockchain Explorer
+adminRouter.post('/test-ltc', async (req: AuthenticatedRequest, res) => {
+  try {
+    const result = await GatewayVerificationService.testLitecoinConnection(req.body);
+    res.json(result);
+  } catch (err: any) {
+    res.status(500).json({ success: false, error: err?.message || 'Lỗi kiểm tra Litecoin Blockchain' });
+  }
+});
+
+// POST /api/v1/admin/test-momo - Test MoMo Business Payment Gateway
+adminRouter.post('/test-momo', async (req: AuthenticatedRequest, res) => {
+  try {
+    const result = await GatewayVerificationService.testMoMoApiConnection(req.body);
+    res.json(result);
+  } catch (err: any) {
+    res.status(500).json({ success: false, error: err?.message || 'Lỗi kiểm tra MoMo API' });
   }
 });

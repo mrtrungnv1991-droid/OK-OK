@@ -14,6 +14,7 @@ import { INITIAL_GAMES, INITIAL_SUPPLIERS } from '../../src/data/mockTopupGames'
 import { INITIAL_VOUCHERS } from '../../src/data/systemAdminData';
 import { ALL_PRODUCTS_DATA } from '../../src/i18n/catalogData/allProductsData';
 import { PRODUCT_TRANSLATIONS } from '../../src/i18n/catalogTranslations';
+import { GameStorageService } from '../services/gameStorageService';
 
 class DatabaseStore {
   public users: Map<string, ServerUser> = new Map();
@@ -115,7 +116,7 @@ class DatabaseStore {
       p.translations = translations;
       return p;
     });
-    this.games = JSON.parse(JSON.stringify(INITIAL_GAMES));
+    this.games = GameStorageService.loadGames();
     this.suppliers = JSON.parse(JSON.stringify(INITIAL_SUPPLIERS));
     this.vouchers = JSON.parse(JSON.stringify(INITIAL_VOUCHERS));
 

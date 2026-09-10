@@ -3,6 +3,8 @@ import { db } from '../../../db/store';
 import { requireAuth, requireRole, AuthenticatedRequest } from '../../../middleware/authMiddleware';
 import { InventoryService } from '../../../services/inventoryService';
 import { TranslationService } from '../../../services/translationService';
+import { PersistentSupplierStorage } from '../../../services/supplierHub/storage/PersistentSupplierStorage';
+import { SupplierManagerService } from '../../../services/supplierHub/services/SupplierManagerService';
 
 export const productRouter = Router();
 
@@ -260,7 +262,7 @@ productRouter.delete('/:id', (req, res) => {
     return res.status(404).json({ success: false, error: 'Product not found' });
   }
 
-  db.products.splice(index, 1);
+  const [deletedProduct] = db.products.splice(index, 1);
 
   // Clean up product translations
   const keysToDelete: string[] = [];
@@ -269,9 +271,36 @@ productRouter.delete('/:id', (req, res) => {
   });
   keysToDelete.forEach(k => db.productTranslations.delete(k));
 
+  // Persist synced local products list if this product was a synced item
+  try {
+    PersistentSupplierStorage.persistSyncedLocalProducts();
+  } catch (e) {
+    console.warn('[ProductsApi] Error persisting synced local products on delete:', e);
+  }
+
+  // Remove any supplier product mappings linked to this local product
+  try {
+    SupplierManagerService.deleteMappingByLocalProductId(productId);
+  } catch (e) {
+    console.warn('[ProductsApi] Error removing supplier product mappings on delete:', e);
+  }
+
+  // Clean up any inventory items linked to this product
+  try {
+    for (const [keyId, item] of db.inventory.entries()) {
+      if (item.productId === productId) {
+        db.inventory.delete(keyId);
+      }
+    }
+  } catch (e) {
+    console.warn('[ProductsApi] Error cleaning up inventory items on delete:', e);
+  }
+
   res.json({
     success: true,
-    message: 'Product deleted successfully'
+    message: 'Đã xóa sản phẩm thành công',
+    deletedId: productId,
+    product: deletedProduct
   });
 });
 

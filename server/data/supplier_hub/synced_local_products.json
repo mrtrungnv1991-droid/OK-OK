@@ -846,61 +846,6 @@
     "outputTemplate": "username|password|cookie"
   },
   {
-    "id": "prod-src-api_li-16",
-    "title": "Apple",
-    "description": "Fresh and crisp apples, perfect for snacking or incorporating into various recipes.",
-    "category": "groceries",
-    "retailPrice": 1000,
-    "originalPrice": 1250,
-    "stockAvailable": 8,
-    "images": [
-      "https://cdn.dummyjson.com/product-images/groceries/apple/1.webp"
-    ],
-    "platform": "CYBER-SOURCE",
-    "tags": [
-      "SOURCE_SYNCED",
-      "API",
-      "ACCOUNT"
-    ],
-    "productType": "account",
-    "source_info": {
-      "supplierId": "sup_api_live_dummyjson",
-      "supplierName": "Global Verified Products Gateway (DummyJSON Live)",
-      "connectionType": "API",
-      "sourceProductId": "16",
-      "supplierCost": 1.99,
-      "calculatedPrice": 1000,
-      "manualPriceOverride": false,
-      "markupAmount": 0,
-      "projectedProfit": 998.01,
-      "deliveryBranch": "ACCOUNT",
-      "outputFormat": "USER_PASS_COOKIE",
-      "outputTemplate": "username|password|cookie",
-      "lastSyncedAt": "2026-09-07T04:21:35.304Z",
-      "stockStatus": "IN_STOCK"
-    },
-    "seller": {
-      "id": "sup_api_live_dummyjson",
-      "name": "Global Verified Products Gateway (DummyJSON Live)",
-      "avatar": "https://images.unsplash.com/photo-1563986768609-322da13575f3?auto=format&fit=crop&w=150&q=80",
-      "badge": "Supplier Direct",
-      "rating": 4.95,
-      "totalDeals": 1500,
-      "completedPools": 850,
-      "responseTime": "< 1 phút"
-    },
-    "groupPrice": 850,
-    "bannerImg": "https://cdn.dummyjson.com/product-images/groceries/apple/1.webp",
-    "status": "AVAILABLE",
-    "isAvailable": true,
-    "deliveryBranch": "ACCOUNT",
-    "minSlots": 5,
-    "deliveryType": "account_invite",
-    "deliveryEstimate": "Giao tài khoản tự động (User:Pass:Cookie)",
-    "outputFormat": "USER_PASS_COOKIE",
-    "outputTemplate": "username|password|cookie"
-  },
-  {
     "id": "prod-src-api_li-17",
     "title": "Beef Steak",
     "description": "High-quality beef steak, great for grilling or cooking to your preferred level of doneness.",
@@ -20337,7 +20282,7 @@
       "deliveryBranch": "ACCOUNT",
       "outputFormat": "USER_PASS_COOKIE",
       "outputTemplate": "username|password|cookie",
-      "lastSyncedAt": "2026-09-07T04:27:24.378Z",
+      "lastSyncedAt": "2026-09-10T01:39:32.802Z",
       "stockStatus": "OUT_OF_STOCK"
     }
   },
@@ -20394,7 +20339,7 @@
       "deliveryBranch": "ACCOUNT",
       "outputFormat": "USER_PASS_COOKIE",
       "outputTemplate": "username|password|cookie",
-      "lastSyncedAt": "2026-09-07T04:27:24.378Z",
+      "lastSyncedAt": "2026-09-10T01:39:32.802Z",
       "stockStatus": "OUT_OF_STOCK"
     }
   },
@@ -20451,7 +20396,7 @@
       "deliveryBranch": "ACCOUNT",
       "outputFormat": "USER_PASS_COOKIE",
       "outputTemplate": "username|password|cookie",
-      "lastSyncedAt": "2026-09-07T04:27:24.378Z",
+      "lastSyncedAt": "2026-09-10T01:39:32.802Z",
       "stockStatus": "OUT_OF_STOCK"
     }
   },
@@ -20508,7 +20453,7 @@
       "deliveryBranch": "ACCOUNT",
       "outputFormat": "USER_PASS_COOKIE",
       "outputTemplate": "username|password|cookie",
-      "lastSyncedAt": "2026-09-07T04:27:24.378Z",
+      "lastSyncedAt": "2026-09-10T01:39:32.802Z",
       "stockStatus": "OUT_OF_STOCK"
     }
   },
@@ -20565,7 +20510,7 @@
       "deliveryBranch": "ACCOUNT",
       "outputFormat": "USER_PASS_COOKIE",
       "outputTemplate": "username|password|cookie",
-      "lastSyncedAt": "2026-09-07T04:27:24.378Z",
+      "lastSyncedAt": "2026-09-10T01:39:32.802Z",
       "stockStatus": "OUT_OF_STOCK"
     }
   },
@@ -20622,7 +20567,7 @@
       "deliveryBranch": "ACCOUNT",
       "outputFormat": "USER_PASS_COOKIE",
       "outputTemplate": "username|password|cookie",
-      "lastSyncedAt": "2026-09-07T04:27:24.378Z",
+      "lastSyncedAt": "2026-09-10T01:39:32.802Z",
       "stockStatus": "OUT_OF_STOCK"
     }
   },
@@ -20679,7 +20624,7 @@
       "deliveryBranch": "ACCOUNT",
       "outputFormat": "USER_PASS_COOKIE",
       "outputTemplate": "username|password|cookie",
-      "lastSyncedAt": "2026-09-07T04:27:24.378Z",
+      "lastSyncedAt": "2026-09-10T01:39:32.802Z",
       "stockStatus": "OUT_OF_STOCK"
     }
   },
@@ -20736,7 +20681,7 @@
       "deliveryBranch": "ACCOUNT",
       "outputFormat": "USER_PASS_COOKIE",
       "outputTemplate": "username|password|cookie",
-      "lastSyncedAt": "2026-09-07T04:27:24.378Z",
+      "lastSyncedAt": "2026-09-10T01:39:32.802Z",
       "stockStatus": "OUT_OF_STOCK"
     }
   },
@@ -20793,7 +20738,7 @@
       "deliveryBranch": "ACCOUNT",
       "outputFormat": "USER_PASS_COOKIE",
       "outputTemplate": "username|password|cookie",
-      "lastSyncedAt": "2026-09-07T04:27:24.379Z",
+      "lastSyncedAt": "2026-09-10T01:39:32.802Z",
       "stockStatus": "OUT_OF_STOCK"
     }
   },
@@ -20850,7 +20795,7 @@
       "deliveryBranch": "ACCOUNT",
       "outputFormat": "USER_PASS_COOKIE",
       "outputTemplate": "username|password|cookie",
-      "lastSyncedAt": "2026-09-07T04:27:24.379Z",
+      "lastSyncedAt": "2026-09-10T01:39:32.802Z",
       "stockStatus": "OUT_OF_STOCK"
     }
   },
@@ -20907,7 +20852,7 @@
       "deliveryBranch": "ACCOUNT",
       "outputFormat": "USER_PASS_COOKIE",
       "outputTemplate": "username|password|cookie",
-      "lastSyncedAt": "2026-09-07T04:27:24.379Z",
+      "lastSyncedAt": "2026-09-10T01:39:32.802Z",
       "stockStatus": "OUT_OF_STOCK"
     }
   },
@@ -20964,7 +20909,7 @@
       "deliveryBranch": "ACCOUNT",
       "outputFormat": "USER_PASS_COOKIE",
       "outputTemplate": "username|password|cookie",
-      "lastSyncedAt": "2026-09-07T04:27:24.379Z",
+      "lastSyncedAt": "2026-09-10T01:39:32.802Z",
       "stockStatus": "OUT_OF_STOCK"
     }
   },
@@ -21021,7 +20966,7 @@
       "deliveryBranch": "ACCOUNT",
       "outputFormat": "USER_PASS_COOKIE",
       "outputTemplate": "username|password|cookie",
-      "lastSyncedAt": "2026-09-07T04:27:24.379Z",
+      "lastSyncedAt": "2026-09-10T01:39:32.802Z",
       "stockStatus": "OUT_OF_STOCK"
     }
   },
@@ -21078,7 +21023,7 @@
       "deliveryBranch": "ACCOUNT",
       "outputFormat": "USER_PASS_COOKIE",
       "outputTemplate": "username|password|cookie",
-      "lastSyncedAt": "2026-09-07T04:27:24.379Z",
+      "lastSyncedAt": "2026-09-10T01:39:32.802Z",
       "stockStatus": "OUT_OF_STOCK"
     }
   },
@@ -21135,7 +21080,7 @@
       "deliveryBranch": "ACCOUNT",
       "outputFormat": "USER_PASS_COOKIE",
       "outputTemplate": "username|password|cookie",
-      "lastSyncedAt": "2026-09-07T04:27:24.379Z",
+      "lastSyncedAt": "2026-09-10T01:39:32.802Z",
       "stockStatus": "OUT_OF_STOCK"
     }
   },
@@ -21192,7 +21137,7 @@
       "deliveryBranch": "ACCOUNT",
       "outputFormat": "USER_PASS_COOKIE",
       "outputTemplate": "username|password|cookie",
-      "lastSyncedAt": "2026-09-07T04:27:24.379Z",
+      "lastSyncedAt": "2026-09-10T01:39:32.802Z",
       "stockStatus": "OUT_OF_STOCK"
     }
   },
@@ -21249,7 +21194,7 @@
       "deliveryBranch": "ACCOUNT",
       "outputFormat": "USER_PASS_COOKIE",
       "outputTemplate": "username|password|cookie",
-      "lastSyncedAt": "2026-09-07T04:27:24.380Z",
+      "lastSyncedAt": "2026-09-10T01:39:32.802Z",
       "stockStatus": "OUT_OF_STOCK"
     }
   },
@@ -21306,7 +21251,7 @@
       "deliveryBranch": "ACCOUNT",
       "outputFormat": "USER_PASS_COOKIE",
       "outputTemplate": "username|password|cookie",
-      "lastSyncedAt": "2026-09-07T04:27:24.380Z",
+      "lastSyncedAt": "2026-09-10T01:39:32.802Z",
       "stockStatus": "OUT_OF_STOCK"
     }
   },
@@ -21363,7 +21308,7 @@
       "deliveryBranch": "ACCOUNT",
       "outputFormat": "USER_PASS_COOKIE",
       "outputTemplate": "username|password|cookie",
-      "lastSyncedAt": "2026-09-07T04:27:24.380Z",
+      "lastSyncedAt": "2026-09-10T01:39:32.802Z",
       "stockStatus": "OUT_OF_STOCK"
     }
   },
@@ -21420,7 +21365,7 @@
       "deliveryBranch": "ACCOUNT",
       "outputFormat": "USER_PASS_COOKIE",
       "outputTemplate": "username|password|cookie",
-      "lastSyncedAt": "2026-09-07T04:27:24.380Z",
+      "lastSyncedAt": "2026-09-10T01:39:32.802Z",
       "stockStatus": "OUT_OF_STOCK"
     }
   },
@@ -21477,7 +21422,7 @@
       "deliveryBranch": "ACCOUNT",
       "outputFormat": "USER_PASS_COOKIE",
       "outputTemplate": "username|password|cookie",
-      "lastSyncedAt": "2026-09-07T04:27:24.380Z",
+      "lastSyncedAt": "2026-09-10T01:39:32.802Z",
       "stockStatus": "OUT_OF_STOCK"
     }
   },
@@ -21534,7 +21479,7 @@
       "deliveryBranch": "ACCOUNT",
       "outputFormat": "USER_PASS_COOKIE",
       "outputTemplate": "username|password|cookie",
-      "lastSyncedAt": "2026-09-07T04:27:24.380Z",
+      "lastSyncedAt": "2026-09-10T01:39:32.802Z",
       "stockStatus": "OUT_OF_STOCK"
     }
   },
@@ -21591,7 +21536,7 @@
       "deliveryBranch": "ACCOUNT",
       "outputFormat": "USER_PASS_COOKIE",
       "outputTemplate": "username|password|cookie",
-      "lastSyncedAt": "2026-09-07T04:27:24.380Z",
+      "lastSyncedAt": "2026-09-10T01:39:32.803Z",
       "stockStatus": "OUT_OF_STOCK"
     }
   },
@@ -21648,7 +21593,7 @@
       "deliveryBranch": "ACCOUNT",
       "outputFormat": "USER_PASS_COOKIE",
       "outputTemplate": "username|password|cookie",
-      "lastSyncedAt": "2026-09-07T04:27:24.380Z",
+      "lastSyncedAt": "2026-09-10T01:39:32.803Z",
       "stockStatus": "OUT_OF_STOCK"
     }
   },
@@ -21705,7 +21650,7 @@
       "deliveryBranch": "ACCOUNT",
       "outputFormat": "USER_PASS_COOKIE",
       "outputTemplate": "username|password|cookie",
-      "lastSyncedAt": "2026-09-07T04:27:24.380Z",
+      "lastSyncedAt": "2026-09-10T01:39:32.803Z",
       "stockStatus": "OUT_OF_STOCK"
     }
   },
@@ -21762,7 +21707,7 @@
       "deliveryBranch": "ACCOUNT",
       "outputFormat": "USER_PASS_COOKIE",
       "outputTemplate": "username|password|cookie",
-      "lastSyncedAt": "2026-09-07T04:27:24.380Z",
+      "lastSyncedAt": "2026-09-10T01:39:32.803Z",
       "stockStatus": "OUT_OF_STOCK"
     }
   },
@@ -21819,7 +21764,7 @@
       "deliveryBranch": "ACCOUNT",
       "outputFormat": "USER_PASS_COOKIE",
       "outputTemplate": "username|password|cookie",
-      "lastSyncedAt": "2026-09-07T04:27:24.380Z",
+      "lastSyncedAt": "2026-09-10T01:39:32.803Z",
       "stockStatus": "OUT_OF_STOCK"
     }
   },
@@ -21876,7 +21821,7 @@
       "deliveryBranch": "ACCOUNT",
       "outputFormat": "USER_PASS_COOKIE",
       "outputTemplate": "username|password|cookie",
-      "lastSyncedAt": "2026-09-07T04:27:24.380Z",
+      "lastSyncedAt": "2026-09-10T01:39:32.803Z",
       "stockStatus": "OUT_OF_STOCK"
     }
   },
@@ -21933,7 +21878,7 @@
       "deliveryBranch": "ACCOUNT",
       "outputFormat": "USER_PASS_COOKIE",
       "outputTemplate": "username|password|cookie",
-      "lastSyncedAt": "2026-09-07T04:27:24.380Z",
+      "lastSyncedAt": "2026-09-10T01:39:32.803Z",
       "stockStatus": "OUT_OF_STOCK"
     }
   },
@@ -21990,7 +21935,7 @@
       "deliveryBranch": "ACCOUNT",
       "outputFormat": "USER_PASS_COOKIE",
       "outputTemplate": "username|password|cookie",
-      "lastSyncedAt": "2026-09-07T04:27:24.380Z",
+      "lastSyncedAt": "2026-09-10T01:39:32.803Z",
       "stockStatus": "OUT_OF_STOCK"
     }
   },
@@ -22047,7 +21992,7 @@
       "deliveryBranch": "ACCOUNT",
       "outputFormat": "USER_PASS_COOKIE",
       "outputTemplate": "username|password|cookie",
-      "lastSyncedAt": "2026-09-07T04:27:24.380Z",
+      "lastSyncedAt": "2026-09-10T01:39:32.803Z",
       "stockStatus": "OUT_OF_STOCK"
     }
   },
@@ -22104,7 +22049,7 @@
       "deliveryBranch": "ACCOUNT",
       "outputFormat": "USER_PASS_COOKIE",
       "outputTemplate": "username|password|cookie",
-      "lastSyncedAt": "2026-09-07T04:27:24.380Z",
+      "lastSyncedAt": "2026-09-10T01:39:32.803Z",
       "stockStatus": "OUT_OF_STOCK"
     }
   },
@@ -22161,7 +22106,7 @@
       "deliveryBranch": "ACCOUNT",
       "outputFormat": "USER_PASS_COOKIE",
       "outputTemplate": "username|password|cookie",
-      "lastSyncedAt": "2026-09-07T04:27:24.380Z",
+      "lastSyncedAt": "2026-09-10T01:39:32.803Z",
       "stockStatus": "OUT_OF_STOCK"
     }
   },
@@ -22218,7 +22163,7 @@
       "deliveryBranch": "ACCOUNT",
       "outputFormat": "USER_PASS_COOKIE",
       "outputTemplate": "username|password|cookie",
-      "lastSyncedAt": "2026-09-07T04:27:24.380Z",
+      "lastSyncedAt": "2026-09-10T01:39:32.803Z",
       "stockStatus": "OUT_OF_STOCK"
     }
   },
@@ -22275,7 +22220,7 @@
       "deliveryBranch": "ACCOUNT",
       "outputFormat": "USER_PASS_COOKIE",
       "outputTemplate": "username|password|cookie",
-      "lastSyncedAt": "2026-09-07T04:27:24.380Z",
+      "lastSyncedAt": "2026-09-10T01:39:32.803Z",
       "stockStatus": "OUT_OF_STOCK"
     }
   },
@@ -22332,7 +22277,7 @@
       "deliveryBranch": "ACCOUNT",
       "outputFormat": "USER_PASS_COOKIE",
       "outputTemplate": "username|password|cookie",
-      "lastSyncedAt": "2026-09-07T04:27:24.380Z",
+      "lastSyncedAt": "2026-09-10T01:39:32.803Z",
       "stockStatus": "OUT_OF_STOCK"
     }
   },
@@ -22389,7 +22334,7 @@
       "deliveryBranch": "ACCOUNT",
       "outputFormat": "USER_PASS_COOKIE",
       "outputTemplate": "username|password|cookie",
-      "lastSyncedAt": "2026-09-07T04:27:24.380Z",
+      "lastSyncedAt": "2026-09-10T01:39:32.803Z",
       "stockStatus": "OUT_OF_STOCK"
     }
   },
@@ -22446,7 +22391,7 @@
       "deliveryBranch": "ACCOUNT",
       "outputFormat": "USER_PASS_COOKIE",
       "outputTemplate": "username|password|cookie",
-      "lastSyncedAt": "2026-09-07T04:27:24.380Z",
+      "lastSyncedAt": "2026-09-10T01:39:32.803Z",
       "stockStatus": "OUT_OF_STOCK"
     }
   },
@@ -22503,7 +22448,7 @@
       "deliveryBranch": "ACCOUNT",
       "outputFormat": "USER_PASS_COOKIE",
       "outputTemplate": "username|password|cookie",
-      "lastSyncedAt": "2026-09-07T04:27:24.380Z",
+      "lastSyncedAt": "2026-09-10T01:39:32.803Z",
       "stockStatus": "OUT_OF_STOCK"
     }
   },
@@ -22560,7 +22505,7 @@
       "deliveryBranch": "ACCOUNT",
       "outputFormat": "USER_PASS_COOKIE",
       "outputTemplate": "username|password|cookie",
-      "lastSyncedAt": "2026-09-07T04:27:24.380Z",
+      "lastSyncedAt": "2026-09-10T01:39:32.803Z",
       "stockStatus": "OUT_OF_STOCK"
     }
   },
@@ -22617,7 +22562,7 @@
       "deliveryBranch": "ACCOUNT",
       "outputFormat": "USER_PASS_COOKIE",
       "outputTemplate": "username|password|cookie",
-      "lastSyncedAt": "2026-09-07T04:27:24.380Z",
+      "lastSyncedAt": "2026-09-10T01:39:32.803Z",
       "stockStatus": "OUT_OF_STOCK"
     }
   },
@@ -22674,7 +22619,7 @@
       "deliveryBranch": "ACCOUNT",
       "outputFormat": "USER_PASS_COOKIE",
       "outputTemplate": "username|password|cookie",
-      "lastSyncedAt": "2026-09-07T04:27:24.380Z",
+      "lastSyncedAt": "2026-09-10T01:39:32.803Z",
       "stockStatus": "OUT_OF_STOCK"
     }
   },
@@ -22731,7 +22676,7 @@
       "deliveryBranch": "ACCOUNT",
       "outputFormat": "USER_PASS_COOKIE",
       "outputTemplate": "username|password|cookie",
-      "lastSyncedAt": "2026-09-07T04:27:24.380Z",
+      "lastSyncedAt": "2026-09-10T01:39:32.803Z",
       "stockStatus": "OUT_OF_STOCK"
     }
   },
@@ -22788,7 +22733,7 @@
       "deliveryBranch": "ACCOUNT",
       "outputFormat": "USER_PASS_COOKIE",
       "outputTemplate": "username|password|cookie",
-      "lastSyncedAt": "2026-09-07T04:27:24.380Z",
+      "lastSyncedAt": "2026-09-10T01:39:32.803Z",
       "stockStatus": "OUT_OF_STOCK"
     }
   },
@@ -22845,7 +22790,7 @@
       "deliveryBranch": "ACCOUNT",
       "outputFormat": "USER_PASS_COOKIE",
       "outputTemplate": "username|password|cookie",
-      "lastSyncedAt": "2026-09-07T04:27:24.380Z",
+      "lastSyncedAt": "2026-09-10T01:39:32.803Z",
       "stockStatus": "OUT_OF_STOCK"
     }
   },
@@ -22902,7 +22847,7 @@
       "deliveryBranch": "ACCOUNT",
       "outputFormat": "USER_PASS_COOKIE",
       "outputTemplate": "username|password|cookie",
-      "lastSyncedAt": "2026-09-07T04:27:24.380Z",
+      "lastSyncedAt": "2026-09-10T01:39:32.803Z",
       "stockStatus": "OUT_OF_STOCK"
     }
   },
@@ -22959,7 +22904,7 @@
       "deliveryBranch": "ACCOUNT",
       "outputFormat": "USER_PASS_COOKIE",
       "outputTemplate": "username|password|cookie",
-      "lastSyncedAt": "2026-09-07T04:27:24.380Z",
+      "lastSyncedAt": "2026-09-10T01:39:32.803Z",
       "stockStatus": "OUT_OF_STOCK"
     }
   },
@@ -23016,7 +22961,7 @@
       "deliveryBranch": "ACCOUNT",
       "outputFormat": "USER_PASS_COOKIE",
       "outputTemplate": "username|password|cookie",
-      "lastSyncedAt": "2026-09-07T04:27:24.380Z",
+      "lastSyncedAt": "2026-09-10T01:39:32.803Z",
       "stockStatus": "OUT_OF_STOCK"
     }
   },
@@ -23073,7 +23018,7 @@
       "deliveryBranch": "ACCOUNT",
       "outputFormat": "USER_PASS_COOKIE",
       "outputTemplate": "username|password|cookie",
-      "lastSyncedAt": "2026-09-07T04:27:24.380Z",
+      "lastSyncedAt": "2026-09-10T01:39:32.803Z",
       "stockStatus": "OUT_OF_STOCK"
     }
   },
@@ -23130,7 +23075,7 @@
       "deliveryBranch": "ACCOUNT",
       "outputFormat": "USER_PASS_COOKIE",
       "outputTemplate": "username|password|cookie",
-      "lastSyncedAt": "2026-09-07T04:27:24.380Z",
+      "lastSyncedAt": "2026-09-10T01:39:32.803Z",
       "stockStatus": "OUT_OF_STOCK"
     }
   },
@@ -23187,7 +23132,7 @@
       "deliveryBranch": "ACCOUNT",
       "outputFormat": "USER_PASS_COOKIE",
       "outputTemplate": "username|password|cookie",
-      "lastSyncedAt": "2026-09-07T04:27:24.380Z",
+      "lastSyncedAt": "2026-09-10T01:39:32.803Z",
       "stockStatus": "OUT_OF_STOCK"
     }
   },
@@ -23244,7 +23189,7 @@
       "deliveryBranch": "ACCOUNT",
       "outputFormat": "USER_PASS_COOKIE",
       "outputTemplate": "username|password|cookie",
-      "lastSyncedAt": "2026-09-07T04:27:24.380Z",
+      "lastSyncedAt": "2026-09-10T01:39:32.803Z",
       "stockStatus": "OUT_OF_STOCK"
     }
   },
@@ -23301,7 +23246,7 @@
       "deliveryBranch": "ACCOUNT",
       "outputFormat": "USER_PASS_COOKIE",
       "outputTemplate": "username|password|cookie",
-      "lastSyncedAt": "2026-09-07T04:27:24.381Z",
+      "lastSyncedAt": "2026-09-10T01:39:32.803Z",
       "stockStatus": "OUT_OF_STOCK"
     }
   },
@@ -23358,7 +23303,7 @@
       "deliveryBranch": "ACCOUNT",
       "outputFormat": "USER_PASS_COOKIE",
       "outputTemplate": "username|password|cookie",
-      "lastSyncedAt": "2026-09-07T04:27:24.381Z",
+      "lastSyncedAt": "2026-09-10T01:39:32.803Z",
       "stockStatus": "OUT_OF_STOCK"
     }
   },
@@ -23415,7 +23360,7 @@
       "deliveryBranch": "ACCOUNT",
       "outputFormat": "USER_PASS_COOKIE",
       "outputTemplate": "username|password|cookie",
-      "lastSyncedAt": "2026-09-07T04:27:24.381Z",
+      "lastSyncedAt": "2026-09-10T01:39:32.803Z",
       "stockStatus": "OUT_OF_STOCK"
     }
   },
@@ -23472,7 +23417,7 @@
       "deliveryBranch": "ACCOUNT",
       "outputFormat": "USER_PASS_COOKIE",
       "outputTemplate": "username|password|cookie",
-      "lastSyncedAt": "2026-09-07T04:27:24.381Z",
+      "lastSyncedAt": "2026-09-10T01:39:32.803Z",
       "stockStatus": "OUT_OF_STOCK"
     }
   },
@@ -23529,7 +23474,7 @@
       "deliveryBranch": "ACCOUNT",
       "outputFormat": "USER_PASS_COOKIE",
       "outputTemplate": "username|password|cookie",
-      "lastSyncedAt": "2026-09-07T04:27:24.381Z",
+      "lastSyncedAt": "2026-09-10T01:39:32.803Z",
       "stockStatus": "OUT_OF_STOCK"
     }
   },
@@ -23586,7 +23531,7 @@
       "deliveryBranch": "ACCOUNT",
       "outputFormat": "USER_PASS_COOKIE",
       "outputTemplate": "username|password|cookie",
-      "lastSyncedAt": "2026-09-07T04:27:24.381Z",
+      "lastSyncedAt": "2026-09-10T01:39:32.803Z",
       "stockStatus": "OUT_OF_STOCK"
     }
   },
@@ -23595,10 +23540,10 @@
     "title": "GODHUMAN",
     "description": "user:pass:cokie",
     "category": "GOD(warrantly sec 10day)",
-    "retailPrice": 7000,
-    "groupPrice": 5950,
-    "originalPrice": 8750,
-    "stockAvailable": 893,
+    "retailPrice": 13000,
+    "groupPrice": 11050,
+    "originalPrice": 16250,
+    "stockAvailable": 76,
     "status": "AVAILABLE",
     "isAvailable": true,
     "images": [
@@ -23633,15 +23578,15 @@
       "supplierName": "G2UP.NET (Roblox & Game Accounts Gateway)",
       "connectionType": "API",
       "sourceProductId": "1752",
-      "supplierCost": 5800,
-      "calculatedPrice": 7000,
+      "supplierCost": 10500,
+      "calculatedPrice": 13000,
       "manualPriceOverride": false,
-      "markupAmount": 1160,
-      "projectedProfit": 1200,
+      "markupAmount": 2100,
+      "projectedProfit": 2500,
       "deliveryBranch": "ACCOUNT",
       "outputFormat": "USER_PASS_COOKIE",
       "outputTemplate": "username|password|cookie",
-      "lastSyncedAt": "2026-09-07T04:27:24.381Z",
+      "lastSyncedAt": "2026-09-10T01:39:32.803Z",
       "stockStatus": "IN_STOCK"
     }
   },
@@ -23650,10 +23595,10 @@
     "title": "God vh mf (mảnh mũ)",
     "description": "user:pass:cokie",
     "category": "GOD(warrantly sec 10day)",
-    "retailPrice": 16000,
-    "groupPrice": 13600,
-    "originalPrice": 20000,
-    "stockAvailable": 46,
+    "retailPrice": 18000,
+    "groupPrice": 15300,
+    "originalPrice": 22500,
+    "stockAvailable": 415,
     "status": "AVAILABLE",
     "isAvailable": true,
     "images": [
@@ -23688,15 +23633,15 @@
       "supplierName": "G2UP.NET (Roblox & Game Accounts Gateway)",
       "connectionType": "API",
       "sourceProductId": "1753",
-      "supplierCost": 12600,
-      "calculatedPrice": 16000,
+      "supplierCost": 14700,
+      "calculatedPrice": 18000,
       "manualPriceOverride": false,
-      "markupAmount": 2520,
-      "projectedProfit": 3400,
+      "markupAmount": 2940,
+      "projectedProfit": 3300,
       "deliveryBranch": "ACCOUNT",
       "outputFormat": "USER_PASS_COOKIE",
       "outputTemplate": "username|password|cookie",
-      "lastSyncedAt": "2026-09-07T04:27:24.381Z",
+      "lastSyncedAt": "2026-09-10T01:39:32.803Z",
       "stockStatus": "IN_STOCK"
     }
   },
@@ -23708,9 +23653,9 @@
     "retailPrice": 8000,
     "groupPrice": 6800,
     "originalPrice": 10000,
-    "stockAvailable": 38,
-    "status": "AVAILABLE",
-    "isAvailable": true,
+    "stockAvailable": 0,
+    "status": "OUT_OF_STOCK",
+    "isAvailable": false,
     "images": [
       "https://g2up.net/assets/storage/images/favicon_NQ3.png"
     ],
@@ -23719,7 +23664,8 @@
     "tags": [
       "SOURCE_SYNCED",
       "API",
-      "ACCOUNT"
+      "ACCOUNT",
+      "OUT_OF_STOCK"
     ],
     "deliveryBranch": "ACCOUNT",
     "productType": "account",
@@ -23751,18 +23697,19 @@
       "deliveryBranch": "ACCOUNT",
       "outputFormat": "USER_PASS_COOKIE",
       "outputTemplate": "username|password|cookie",
-      "lastSyncedAt": "2026-09-07T04:27:24.381Z",
-      "stockStatus": "IN_STOCK"
-    }
+      "lastSyncedAt": "2026-09-10T01:39:32.803Z",
+      "stockStatus": "OUT_OF_STOCK"
+    },
+    "outOfStockReason": "Sản phẩm đã bán hết tại shop API nguồn"
   },
   {
     "id": "prod-src-g2up_n-1755",
     "title": "GOD BUDDHA",
     "description": "user:pass:cokie",
     "category": "GOD(warrantly sec 10day)",
-    "retailPrice": 8000,
-    "groupPrice": 6800,
-    "originalPrice": 10000,
+    "retailPrice": 11000,
+    "groupPrice": 9350,
+    "originalPrice": 13750,
     "stockAvailable": 0,
     "status": "OUT_OF_STOCK",
     "isAvailable": false,
@@ -23800,15 +23747,15 @@
       "supplierName": "G2UP.NET (Roblox & Game Accounts Gateway)",
       "connectionType": "API",
       "sourceProductId": "1755",
-      "supplierCost": 6300,
-      "calculatedPrice": 8000,
+      "supplierCost": 8400,
+      "calculatedPrice": 11000,
       "manualPriceOverride": false,
-      "markupAmount": 1260,
-      "projectedProfit": 1700,
+      "markupAmount": 1680,
+      "projectedProfit": 2600,
       "deliveryBranch": "ACCOUNT",
       "outputFormat": "USER_PASS_COOKIE",
       "outputTemplate": "username|password|cookie",
-      "lastSyncedAt": "2026-09-07T04:27:24.381Z",
+      "lastSyncedAt": "2026-09-10T01:39:32.803Z",
       "stockStatus": "OUT_OF_STOCK"
     }
   },
@@ -23865,7 +23812,7 @@
       "deliveryBranch": "ACCOUNT",
       "outputFormat": "USER_PASS_COOKIE",
       "outputTemplate": "username|password|cookie",
-      "lastSyncedAt": "2026-09-07T04:27:24.381Z",
+      "lastSyncedAt": "2026-09-10T01:39:32.803Z",
       "stockStatus": "OUT_OF_STOCK"
     }
   },
@@ -23922,7 +23869,7 @@
       "deliveryBranch": "ACCOUNT",
       "outputFormat": "USER_PASS_COOKIE",
       "outputTemplate": "username|password|cookie",
-      "lastSyncedAt": "2026-09-07T04:27:24.381Z",
+      "lastSyncedAt": "2026-09-10T01:39:32.803Z",
       "stockStatus": "OUT_OF_STOCK"
     }
   },
@@ -23979,7 +23926,7 @@
       "deliveryBranch": "ACCOUNT",
       "outputFormat": "USER_PASS_COOKIE",
       "outputTemplate": "username|password|cookie",
-      "lastSyncedAt": "2026-09-07T04:27:24.381Z",
+      "lastSyncedAt": "2026-09-10T01:39:32.803Z",
       "stockStatus": "OUT_OF_STOCK"
     }
   },
@@ -24036,7 +23983,7 @@
       "deliveryBranch": "ACCOUNT",
       "outputFormat": "USER_PASS_COOKIE",
       "outputTemplate": "username|password|cookie",
-      "lastSyncedAt": "2026-09-07T04:27:24.381Z",
+      "lastSyncedAt": "2026-09-10T01:39:32.803Z",
       "stockStatus": "OUT_OF_STOCK"
     }
   },
@@ -24093,7 +24040,7 @@
       "deliveryBranch": "ACCOUNT",
       "outputFormat": "USER_PASS_COOKIE",
       "outputTemplate": "username|password|cookie",
-      "lastSyncedAt": "2026-09-07T04:27:24.381Z",
+      "lastSyncedAt": "2026-09-10T01:39:32.803Z",
       "stockStatus": "OUT_OF_STOCK"
     }
   },
@@ -24150,7 +24097,7 @@
       "deliveryBranch": "ACCOUNT",
       "outputFormat": "USER_PASS_COOKIE",
       "outputTemplate": "username|password|cookie",
-      "lastSyncedAt": "2026-09-07T04:27:24.381Z",
+      "lastSyncedAt": "2026-09-10T01:39:32.803Z",
       "stockStatus": "OUT_OF_STOCK"
     }
   },
@@ -24207,7 +24154,7 @@
       "deliveryBranch": "ACCOUNT",
       "outputFormat": "USER_PASS_COOKIE",
       "outputTemplate": "username|password|cookie",
-      "lastSyncedAt": "2026-09-07T04:27:24.381Z",
+      "lastSyncedAt": "2026-09-10T01:39:32.803Z",
       "stockStatus": "OUT_OF_STOCK"
     }
   },
@@ -24264,7 +24211,7 @@
       "deliveryBranch": "ACCOUNT",
       "outputFormat": "USER_PASS_COOKIE",
       "outputTemplate": "username|password|cookie",
-      "lastSyncedAt": "2026-09-07T04:27:24.381Z",
+      "lastSyncedAt": "2026-09-10T01:39:32.803Z",
       "stockStatus": "OUT_OF_STOCK"
     }
   },
@@ -24273,10 +24220,10 @@
     "title": "god cdk sg vh mf",
     "description": "user:pass:cokie",
     "category": "GOD(warrantly sec 10day)",
-    "retailPrice": 21000,
-    "groupPrice": 17850,
-    "originalPrice": 26250,
-    "stockAvailable": 92,
+    "retailPrice": 26000,
+    "groupPrice": 22100,
+    "originalPrice": 32500,
+    "stockAvailable": 1957,
     "status": "AVAILABLE",
     "isAvailable": true,
     "images": [
@@ -24311,15 +24258,15 @@
       "supplierName": "G2UP.NET (Roblox & Game Accounts Gateway)",
       "connectionType": "API",
       "sourceProductId": "1808",
-      "supplierCost": 16800,
-      "calculatedPrice": 21000,
+      "supplierCost": 21000,
+      "calculatedPrice": 26000,
       "manualPriceOverride": false,
-      "markupAmount": 3360,
-      "projectedProfit": 4200,
+      "markupAmount": 4200,
+      "projectedProfit": 5000,
       "deliveryBranch": "ACCOUNT",
       "outputFormat": "USER_PASS_COOKIE",
       "outputTemplate": "username|password|cookie",
-      "lastSyncedAt": "2026-09-07T04:27:24.381Z",
+      "lastSyncedAt": "2026-09-10T01:39:32.803Z",
       "stockStatus": "IN_STOCK"
     }
   },
@@ -24331,7 +24278,7 @@
     "retailPrice": 6000,
     "groupPrice": 5100,
     "originalPrice": 7500,
-    "stockAvailable": 7119,
+    "stockAvailable": 5348,
     "status": "AVAILABLE",
     "isAvailable": true,
     "images": [
@@ -24374,7 +24321,7 @@
       "deliveryBranch": "ACCOUNT",
       "outputFormat": "USER_PASS_COOKIE",
       "outputTemplate": "username|password|cookie",
-      "lastSyncedAt": "2026-09-07T04:27:24.381Z",
+      "lastSyncedAt": "2026-09-10T01:39:32.803Z",
       "stockStatus": "IN_STOCK"
     }
   },
@@ -24431,7 +24378,7 @@
       "deliveryBranch": "ACCOUNT",
       "outputFormat": "USER_PASS_COOKIE",
       "outputTemplate": "username|password|cookie",
-      "lastSyncedAt": "2026-09-07T04:27:24.381Z",
+      "lastSyncedAt": "2026-09-10T01:39:32.803Z",
       "stockStatus": "OUT_OF_STOCK"
     }
   },
@@ -24440,9 +24387,9 @@
     "title": "level random +Yeti",
     "description": "user:pass:cokie",
     "category": "GOD(warrantly sec 10day)",
-    "retailPrice": 9000,
-    "groupPrice": 7650,
-    "originalPrice": 11250,
+    "retailPrice": 26000,
+    "groupPrice": 22100,
+    "originalPrice": 32500,
     "stockAvailable": 0,
     "status": "OUT_OF_STOCK",
     "isAvailable": false,
@@ -24480,15 +24427,15 @@
       "supplierName": "G2UP.NET (Roblox & Game Accounts Gateway)",
       "connectionType": "API",
       "sourceProductId": "1898",
-      "supplierCost": 7400,
-      "calculatedPrice": 9000,
+      "supplierCost": 21000,
+      "calculatedPrice": 26000,
       "manualPriceOverride": false,
-      "markupAmount": 1480,
-      "projectedProfit": 1600,
+      "markupAmount": 4200,
+      "projectedProfit": 5000,
       "deliveryBranch": "ACCOUNT",
       "outputFormat": "USER_PASS_COOKIE",
       "outputTemplate": "username|password|cookie",
-      "lastSyncedAt": "2026-09-07T04:27:24.381Z",
+      "lastSyncedAt": "2026-09-10T01:39:32.803Z",
       "stockStatus": "OUT_OF_STOCK"
     }
   },
@@ -24497,9 +24444,9 @@
     "title": "level random + tiger",
     "description": "user:pass:cokie",
     "category": "GOD(warrantly sec 10day)",
-    "retailPrice": 11000,
-    "groupPrice": 9350,
-    "originalPrice": 13750,
+    "retailPrice": 26000,
+    "groupPrice": 22100,
+    "originalPrice": 32500,
     "stockAvailable": 0,
     "status": "OUT_OF_STOCK",
     "isAvailable": false,
@@ -24537,15 +24484,15 @@
       "supplierName": "G2UP.NET (Roblox & Game Accounts Gateway)",
       "connectionType": "API",
       "sourceProductId": "1899",
-      "supplierCost": 8400,
-      "calculatedPrice": 11000,
+      "supplierCost": 21000,
+      "calculatedPrice": 26000,
       "manualPriceOverride": false,
-      "markupAmount": 1680,
-      "projectedProfit": 2600,
+      "markupAmount": 4200,
+      "projectedProfit": 5000,
       "deliveryBranch": "ACCOUNT",
       "outputFormat": "USER_PASS_COOKIE",
       "outputTemplate": "username|password|cookie",
-      "lastSyncedAt": "2026-09-07T04:27:24.381Z",
+      "lastSyncedAt": "2026-09-10T01:39:32.803Z",
       "stockStatus": "OUT_OF_STOCK"
     }
   },
@@ -24554,9 +24501,9 @@
     "title": "god +  2 mythical fruit",
     "description": "user:pass:cokie",
     "category": "GOD MYTHICAL (warrantly sec 10day)",
-    "retailPrice": 13000,
-    "groupPrice": 11050,
-    "originalPrice": 16250,
+    "retailPrice": 23000,
+    "groupPrice": 19550,
+    "originalPrice": 28750,
     "stockAvailable": 0,
     "status": "OUT_OF_STOCK",
     "isAvailable": false,
@@ -24594,15 +24541,15 @@
       "supplierName": "G2UP.NET (Roblox & Game Accounts Gateway)",
       "connectionType": "API",
       "sourceProductId": "1756",
-      "supplierCost": 10500,
-      "calculatedPrice": 13000,
+      "supplierCost": 18900,
+      "calculatedPrice": 23000,
       "manualPriceOverride": false,
-      "markupAmount": 2100,
-      "projectedProfit": 2500,
+      "markupAmount": 3780,
+      "projectedProfit": 4100,
       "deliveryBranch": "ACCOUNT",
       "outputFormat": "USER_PASS_COOKIE",
       "outputTemplate": "username|password|cookie",
-      "lastSyncedAt": "2026-09-07T04:27:24.381Z",
+      "lastSyncedAt": "2026-09-10T01:39:32.803Z",
       "stockStatus": "OUT_OF_STOCK"
     }
   },
@@ -24659,7 +24606,7 @@
       "deliveryBranch": "ACCOUNT",
       "outputFormat": "USER_PASS_COOKIE",
       "outputTemplate": "username|password|cookie",
-      "lastSyncedAt": "2026-09-07T04:27:24.381Z",
+      "lastSyncedAt": "2026-09-10T01:39:32.804Z",
       "stockStatus": "OUT_OF_STOCK"
     }
   },
@@ -24668,9 +24615,9 @@
     "title": "God + 1 mythycal fruit",
     "description": "user:pass:cokie",
     "category": "GOD MYTHICAL (warrantly sec 10day)",
-    "retailPrice": 11000,
-    "groupPrice": 9350,
-    "originalPrice": 13750,
+    "retailPrice": 16000,
+    "groupPrice": 13600,
+    "originalPrice": 20000,
     "stockAvailable": 0,
     "status": "OUT_OF_STOCK",
     "isAvailable": false,
@@ -24708,21 +24655,78 @@
       "supplierName": "G2UP.NET (Roblox & Game Accounts Gateway)",
       "connectionType": "API",
       "sourceProductId": "1758",
-      "supplierCost": 8400,
-      "calculatedPrice": 11000,
+      "supplierCost": 12600,
+      "calculatedPrice": 16000,
       "manualPriceOverride": false,
-      "markupAmount": 1680,
-      "projectedProfit": 2600,
+      "markupAmount": 2520,
+      "projectedProfit": 3400,
       "deliveryBranch": "ACCOUNT",
       "outputFormat": "USER_PASS_COOKIE",
       "outputTemplate": "username|password|cookie",
-      "lastSyncedAt": "2026-09-07T04:27:24.381Z",
+      "lastSyncedAt": "2026-09-10T01:39:32.804Z",
       "stockStatus": "OUT_OF_STOCK"
     }
   },
   {
     "id": "prod-src-g2up_n-1759",
     "title": "god+ Tiger",
+    "description": "user:pass:cokie",
+    "category": "GOD MYTHICAL (warrantly sec 10day)",
+    "retailPrice": 32000,
+    "groupPrice": 27200,
+    "originalPrice": 40000,
+    "stockAvailable": 0,
+    "status": "OUT_OF_STOCK",
+    "isAvailable": false,
+    "outOfStockReason": "Sản phẩm đã bán hết tại shop API nguồn",
+    "images": [
+      "https://g2up.net/assets/storage/images/favicon_NQ3.png"
+    ],
+    "bannerImg": "https://g2up.net/assets/storage/images/favicon_NQ3.png",
+    "platform": "CYBER-SOURCE",
+    "tags": [
+      "SOURCE_SYNCED",
+      "API",
+      "ACCOUNT",
+      "OUT_OF_STOCK"
+    ],
+    "deliveryBranch": "ACCOUNT",
+    "productType": "account",
+    "minSlots": 5,
+    "deliveryType": "account_invite",
+    "deliveryEstimate": "Giao tài khoản tự động (User:Pass:Cookie)",
+    "outputFormat": "USER_PASS_COOKIE",
+    "outputTemplate": "username|password|cookie",
+    "seller": {
+      "id": "sup_g2up_net_api",
+      "name": "G2UP.NET (Roblox & Game Accounts Gateway)",
+      "avatar": "https://images.unsplash.com/photo-1563986768609-322da13575f3?auto=format&fit=crop&w=150&q=80",
+      "badge": "Supplier Direct",
+      "rating": 4.95,
+      "totalDeals": 1500,
+      "completedPools": 850,
+      "responseTime": "< 1 phút"
+    },
+    "source_info": {
+      "supplierId": "sup_g2up_net_api",
+      "supplierName": "G2UP.NET (Roblox & Game Accounts Gateway)",
+      "connectionType": "API",
+      "sourceProductId": "1759",
+      "supplierCost": 26300,
+      "calculatedPrice": 32000,
+      "manualPriceOverride": false,
+      "markupAmount": 5260,
+      "projectedProfit": 5700,
+      "deliveryBranch": "ACCOUNT",
+      "outputFormat": "USER_PASS_COOKIE",
+      "outputTemplate": "username|password|cookie",
+      "lastSyncedAt": "2026-09-10T01:39:32.804Z",
+      "stockStatus": "OUT_OF_STOCK"
+    }
+  },
+  {
+    "id": "prod-src-g2up_n-1760",
+    "title": "God dough",
     "description": "user:pass:cokie",
     "category": "GOD MYTHICAL (warrantly sec 10day)",
     "retailPrice": 26000,
@@ -24764,7 +24768,7 @@
       "supplierId": "sup_g2up_net_api",
       "supplierName": "G2UP.NET (Roblox & Game Accounts Gateway)",
       "connectionType": "API",
-      "sourceProductId": "1759",
+      "sourceProductId": "1760",
       "supplierCost": 21000,
       "calculatedPrice": 26000,
       "manualPriceOverride": false,
@@ -24773,64 +24777,7 @@
       "deliveryBranch": "ACCOUNT",
       "outputFormat": "USER_PASS_COOKIE",
       "outputTemplate": "username|password|cookie",
-      "lastSyncedAt": "2026-09-07T04:27:24.381Z",
-      "stockStatus": "OUT_OF_STOCK"
-    }
-  },
-  {
-    "id": "prod-src-g2up_n-1760",
-    "title": "God dough",
-    "description": "user:pass:cokie",
-    "category": "GOD MYTHICAL (warrantly sec 10day)",
-    "retailPrice": 13000,
-    "groupPrice": 11050,
-    "originalPrice": 16250,
-    "stockAvailable": 0,
-    "status": "OUT_OF_STOCK",
-    "isAvailable": false,
-    "outOfStockReason": "Sản phẩm đã bán hết tại shop API nguồn",
-    "images": [
-      "https://g2up.net/assets/storage/images/favicon_NQ3.png"
-    ],
-    "bannerImg": "https://g2up.net/assets/storage/images/favicon_NQ3.png",
-    "platform": "CYBER-SOURCE",
-    "tags": [
-      "SOURCE_SYNCED",
-      "API",
-      "ACCOUNT",
-      "OUT_OF_STOCK"
-    ],
-    "deliveryBranch": "ACCOUNT",
-    "productType": "account",
-    "minSlots": 5,
-    "deliveryType": "account_invite",
-    "deliveryEstimate": "Giao tài khoản tự động (User:Pass:Cookie)",
-    "outputFormat": "USER_PASS_COOKIE",
-    "outputTemplate": "username|password|cookie",
-    "seller": {
-      "id": "sup_g2up_net_api",
-      "name": "G2UP.NET (Roblox & Game Accounts Gateway)",
-      "avatar": "https://images.unsplash.com/photo-1563986768609-322da13575f3?auto=format&fit=crop&w=150&q=80",
-      "badge": "Supplier Direct",
-      "rating": 4.95,
-      "totalDeals": 1500,
-      "completedPools": 850,
-      "responseTime": "< 1 phút"
-    },
-    "source_info": {
-      "supplierId": "sup_g2up_net_api",
-      "supplierName": "G2UP.NET (Roblox & Game Accounts Gateway)",
-      "connectionType": "API",
-      "sourceProductId": "1760",
-      "supplierCost": 10500,
-      "calculatedPrice": 13000,
-      "manualPriceOverride": false,
-      "markupAmount": 2100,
-      "projectedProfit": 2500,
-      "deliveryBranch": "ACCOUNT",
-      "outputFormat": "USER_PASS_COOKIE",
-      "outputTemplate": "username|password|cookie",
-      "lastSyncedAt": "2026-09-07T04:27:24.381Z",
+      "lastSyncedAt": "2026-09-10T01:39:32.804Z",
       "stockStatus": "OUT_OF_STOCK"
     }
   },
@@ -24839,9 +24786,9 @@
     "title": "god (random cdk)+ Kitsune",
     "description": "user:pass:cokie",
     "category": "GOD MYTHICAL (warrantly sec 10day)",
-    "retailPrice": 76000,
-    "groupPrice": 64600,
-    "originalPrice": 95000,
+    "retailPrice": 101000,
+    "groupPrice": 85850,
+    "originalPrice": 126250,
     "stockAvailable": 0,
     "status": "OUT_OF_STOCK",
     "isAvailable": false,
@@ -24879,15 +24826,15 @@
       "supplierName": "G2UP.NET (Roblox & Game Accounts Gateway)",
       "connectionType": "API",
       "sourceProductId": "1761",
-      "supplierCost": 63000,
-      "calculatedPrice": 76000,
+      "supplierCost": 84000,
+      "calculatedPrice": 101000,
       "manualPriceOverride": false,
-      "markupAmount": 12600,
-      "projectedProfit": 13000,
+      "markupAmount": 16800,
+      "projectedProfit": 17000,
       "deliveryBranch": "ACCOUNT",
       "outputFormat": "USER_PASS_COOKIE",
       "outputTemplate": "username|password|cookie",
-      "lastSyncedAt": "2026-09-07T04:27:24.381Z",
+      "lastSyncedAt": "2026-09-10T01:39:32.804Z",
       "stockStatus": "OUT_OF_STOCK"
     }
   },
@@ -24944,7 +24891,7 @@
       "deliveryBranch": "ACCOUNT",
       "outputFormat": "USER_PASS_COOKIE",
       "outputTemplate": "username|password|cookie",
-      "lastSyncedAt": "2026-09-07T04:27:24.381Z",
+      "lastSyncedAt": "2026-09-10T01:39:32.804Z",
       "stockStatus": "OUT_OF_STOCK"
     }
   },
@@ -25001,7 +24948,7 @@
       "deliveryBranch": "ACCOUNT",
       "outputFormat": "USER_PASS_COOKIE",
       "outputTemplate": "username|password|cookie",
-      "lastSyncedAt": "2026-09-07T04:27:24.381Z",
+      "lastSyncedAt": "2026-09-10T01:39:32.804Z",
       "stockStatus": "OUT_OF_STOCK"
     }
   },
@@ -25010,9 +24957,9 @@
     "title": "god +3 myth",
     "description": "user:pass:cokie",
     "category": "GOD MYTHICAL (warrantly sec 10day)",
-    "retailPrice": 26000,
-    "groupPrice": 22100,
-    "originalPrice": 32500,
+    "retailPrice": 32000,
+    "groupPrice": 27200,
+    "originalPrice": 40000,
     "stockAvailable": 0,
     "status": "OUT_OF_STOCK",
     "isAvailable": false,
@@ -25050,15 +24997,15 @@
       "supplierName": "G2UP.NET (Roblox & Game Accounts Gateway)",
       "connectionType": "API",
       "sourceProductId": "1764",
-      "supplierCost": 21000,
-      "calculatedPrice": 26000,
+      "supplierCost": 26300,
+      "calculatedPrice": 32000,
       "manualPriceOverride": false,
-      "markupAmount": 4200,
-      "projectedProfit": 5000,
+      "markupAmount": 5260,
+      "projectedProfit": 5700,
       "deliveryBranch": "ACCOUNT",
       "outputFormat": "USER_PASS_COOKIE",
       "outputTemplate": "username|password|cookie",
-      "lastSyncedAt": "2026-09-07T04:27:24.381Z",
+      "lastSyncedAt": "2026-09-10T01:39:32.804Z",
       "stockStatus": "OUT_OF_STOCK"
     }
   },
@@ -25067,9 +25014,9 @@
     "title": "god +Yeti",
     "description": "user:pass:cokie",
     "category": "GOD MYTHICAL (warrantly sec 10day)",
-    "retailPrice": 26000,
-    "groupPrice": 22100,
-    "originalPrice": 32500,
+    "retailPrice": 32000,
+    "groupPrice": 27200,
+    "originalPrice": 40000,
     "stockAvailable": 0,
     "status": "OUT_OF_STOCK",
     "isAvailable": false,
@@ -25107,15 +25054,15 @@
       "supplierName": "G2UP.NET (Roblox & Game Accounts Gateway)",
       "connectionType": "API",
       "sourceProductId": "1765",
-      "supplierCost": 21000,
-      "calculatedPrice": 26000,
+      "supplierCost": 26300,
+      "calculatedPrice": 32000,
       "manualPriceOverride": false,
-      "markupAmount": 4200,
-      "projectedProfit": 5000,
+      "markupAmount": 5260,
+      "projectedProfit": 5700,
       "deliveryBranch": "ACCOUNT",
       "outputFormat": "USER_PASS_COOKIE",
       "outputTemplate": "username|password|cookie",
-      "lastSyncedAt": "2026-09-07T04:27:24.381Z",
+      "lastSyncedAt": "2026-09-10T01:39:32.804Z",
       "stockStatus": "OUT_OF_STOCK"
     }
   },
@@ -25124,9 +25071,9 @@
     "title": "GOD TREX",
     "description": "user:pass:cokie",
     "category": "GOD MYTHICAL (warrantly sec 10day)",
-    "retailPrice": 9000,
-    "groupPrice": 7650,
-    "originalPrice": 11250,
+    "retailPrice": 11000,
+    "groupPrice": 9350,
+    "originalPrice": 13750,
     "stockAvailable": 0,
     "status": "OUT_OF_STOCK",
     "isAvailable": false,
@@ -25164,15 +25111,15 @@
       "supplierName": "G2UP.NET (Roblox & Game Accounts Gateway)",
       "connectionType": "API",
       "sourceProductId": "1780",
-      "supplierCost": 7400,
-      "calculatedPrice": 9000,
+      "supplierCost": 8400,
+      "calculatedPrice": 11000,
       "manualPriceOverride": false,
-      "markupAmount": 1480,
-      "projectedProfit": 1600,
+      "markupAmount": 1680,
+      "projectedProfit": 2600,
       "deliveryBranch": "ACCOUNT",
       "outputFormat": "USER_PASS_COOKIE",
       "outputTemplate": "username|password|cookie",
-      "lastSyncedAt": "2026-09-07T04:27:24.381Z",
+      "lastSyncedAt": "2026-09-10T01:39:32.804Z",
       "stockStatus": "OUT_OF_STOCK"
     }
   },
@@ -25229,7 +25176,7 @@
       "deliveryBranch": "ACCOUNT",
       "outputFormat": "USER_PASS_COOKIE",
       "outputTemplate": "username|password|cookie",
-      "lastSyncedAt": "2026-09-07T04:27:24.381Z",
+      "lastSyncedAt": "2026-09-10T01:39:32.804Z",
       "stockStatus": "OUT_OF_STOCK"
     }
   },
@@ -25286,7 +25233,7 @@
       "deliveryBranch": "ACCOUNT",
       "outputFormat": "USER_PASS_COOKIE",
       "outputTemplate": "username|password|cookie",
-      "lastSyncedAt": "2026-09-07T04:27:24.381Z",
+      "lastSyncedAt": "2026-09-10T01:39:32.804Z",
       "stockStatus": "OUT_OF_STOCK"
     }
   },
@@ -25343,7 +25290,7 @@
       "deliveryBranch": "ACCOUNT",
       "outputFormat": "USER_PASS_COOKIE",
       "outputTemplate": "username|password|cookie",
-      "lastSyncedAt": "2026-09-07T04:27:24.381Z",
+      "lastSyncedAt": "2026-09-10T01:39:32.804Z",
       "stockStatus": "OUT_OF_STOCK"
     }
   },
@@ -25400,7 +25347,7 @@
       "deliveryBranch": "ACCOUNT",
       "outputFormat": "USER_PASS_COOKIE",
       "outputTemplate": "username|password|cookie",
-      "lastSyncedAt": "2026-09-07T04:27:24.381Z",
+      "lastSyncedAt": "2026-09-10T01:39:32.804Z",
       "stockStatus": "OUT_OF_STOCK"
     }
   },
@@ -25409,9 +25356,9 @@
     "title": "Kitsune random level",
     "description": "user:pass:cokie",
     "category": "GOD MYTHICAL (warrantly sec 10day)",
-    "retailPrice": 63000,
-    "groupPrice": 53550,
-    "originalPrice": 78750,
+    "retailPrice": 89000,
+    "groupPrice": 75650,
+    "originalPrice": 111250,
     "stockAvailable": 0,
     "status": "OUT_OF_STOCK",
     "isAvailable": false,
@@ -25449,15 +25396,15 @@
       "supplierName": "G2UP.NET (Roblox & Game Accounts Gateway)",
       "connectionType": "API",
       "sourceProductId": "1852",
-      "supplierCost": 52500,
-      "calculatedPrice": 63000,
+      "supplierCost": 73500,
+      "calculatedPrice": 89000,
       "manualPriceOverride": false,
-      "markupAmount": 10500,
-      "projectedProfit": 10500,
+      "markupAmount": 14700,
+      "projectedProfit": 15500,
       "deliveryBranch": "ACCOUNT",
       "outputFormat": "USER_PASS_COOKIE",
       "outputTemplate": "username|password|cookie",
-      "lastSyncedAt": "2026-09-07T04:27:24.381Z",
+      "lastSyncedAt": "2026-09-10T01:39:32.804Z",
       "stockStatus": "OUT_OF_STOCK"
     }
   },
@@ -25466,9 +25413,9 @@
     "title": "god Spirit",
     "description": "user:pass:cokie",
     "category": "GOD MYTHICAL (warrantly sec 10day)",
-    "retailPrice": 9000,
-    "groupPrice": 7650,
-    "originalPrice": 11250,
+    "retailPrice": 13000,
+    "groupPrice": 11050,
+    "originalPrice": 16250,
     "stockAvailable": 0,
     "status": "OUT_OF_STOCK",
     "isAvailable": false,
@@ -25506,15 +25453,15 @@
       "supplierName": "G2UP.NET (Roblox & Game Accounts Gateway)",
       "connectionType": "API",
       "sourceProductId": "1889",
-      "supplierCost": 7400,
-      "calculatedPrice": 9000,
+      "supplierCost": 10500,
+      "calculatedPrice": 13000,
       "manualPriceOverride": false,
-      "markupAmount": 1480,
-      "projectedProfit": 1600,
+      "markupAmount": 2100,
+      "projectedProfit": 2500,
       "deliveryBranch": "ACCOUNT",
       "outputFormat": "USER_PASS_COOKIE",
       "outputTemplate": "username|password|cookie",
-      "lastSyncedAt": "2026-09-07T04:27:24.381Z",
+      "lastSyncedAt": "2026-09-10T01:39:32.804Z",
       "stockStatus": "OUT_OF_STOCK"
     }
   },
@@ -25571,7 +25518,7 @@
       "deliveryBranch": "ACCOUNT",
       "outputFormat": "USER_PASS_COOKIE",
       "outputTemplate": "username|password|cookie",
-      "lastSyncedAt": "2026-09-07T04:27:24.381Z",
+      "lastSyncedAt": "2026-09-10T01:39:32.804Z",
       "stockStatus": "OUT_OF_STOCK"
     }
   },
@@ -25628,7 +25575,7 @@
       "deliveryBranch": "ACCOUNT",
       "outputFormat": "USER_PASS_COOKIE",
       "outputTemplate": "username|password|cookie",
-      "lastSyncedAt": "2026-09-07T04:27:24.381Z",
+      "lastSyncedAt": "2026-09-10T01:39:32.804Z",
       "stockStatus": "OUT_OF_STOCK"
     }
   },
@@ -25685,7 +25632,7 @@
       "deliveryBranch": "ACCOUNT",
       "outputFormat": "USER_PASS_COOKIE",
       "outputTemplate": "username|password|cookie",
-      "lastSyncedAt": "2026-09-07T04:27:24.382Z",
+      "lastSyncedAt": "2026-09-10T01:39:32.804Z",
       "stockStatus": "OUT_OF_STOCK"
     }
   },
@@ -25742,7 +25689,7 @@
       "deliveryBranch": "ACCOUNT",
       "outputFormat": "USER_PASS_COOKIE",
       "outputTemplate": "username|password|cookie",
-      "lastSyncedAt": "2026-09-07T04:27:24.382Z",
+      "lastSyncedAt": "2026-09-10T01:39:32.804Z",
       "stockStatus": "OUT_OF_STOCK"
     }
   },
@@ -25799,7 +25746,7 @@
       "deliveryBranch": "ACCOUNT",
       "outputFormat": "USER_PASS_COOKIE",
       "outputTemplate": "username|password|cookie",
-      "lastSyncedAt": "2026-09-07T04:27:24.382Z",
+      "lastSyncedAt": "2026-09-10T01:39:32.805Z",
       "stockStatus": "OUT_OF_STOCK"
     }
   },
@@ -25856,7 +25803,7 @@
       "deliveryBranch": "ACCOUNT",
       "outputFormat": "USER_PASS_COOKIE",
       "outputTemplate": "username|password|cookie",
-      "lastSyncedAt": "2026-09-07T04:27:24.382Z",
+      "lastSyncedAt": "2026-09-10T01:39:32.805Z",
       "stockStatus": "OUT_OF_STOCK"
     }
   },
@@ -25913,7 +25860,7 @@
       "deliveryBranch": "ACCOUNT",
       "outputFormat": "USER_PASS_COOKIE",
       "outputTemplate": "username|password|cookie",
-      "lastSyncedAt": "2026-09-07T04:27:24.382Z",
+      "lastSyncedAt": "2026-09-10T01:39:32.805Z",
       "stockStatus": "OUT_OF_STOCK"
     }
   },
@@ -25970,7 +25917,7 @@
       "deliveryBranch": "ACCOUNT",
       "outputFormat": "USER_PASS_COOKIE",
       "outputTemplate": "username|password|cookie",
-      "lastSyncedAt": "2026-09-07T04:27:24.382Z",
+      "lastSyncedAt": "2026-09-10T01:39:32.805Z",
       "stockStatus": "OUT_OF_STOCK"
     }
   },
@@ -25979,9 +25926,9 @@
     "title": "god gear 1",
     "description": "user:pass:cokie",
     "category": "Gear (warrantly sec 10day)",
-    "retailPrice": 32000,
-    "groupPrice": 27200,
-    "originalPrice": 40000,
+    "retailPrice": 38000,
+    "groupPrice": 32300,
+    "originalPrice": 47500,
     "stockAvailable": 0,
     "status": "OUT_OF_STOCK",
     "isAvailable": false,
@@ -26019,15 +25966,15 @@
       "supplierName": "G2UP.NET (Roblox & Game Accounts Gateway)",
       "connectionType": "API",
       "sourceProductId": "1773",
-      "supplierCost": 26300,
-      "calculatedPrice": 32000,
+      "supplierCost": 31500,
+      "calculatedPrice": 38000,
       "manualPriceOverride": false,
-      "markupAmount": 5260,
-      "projectedProfit": 5700,
+      "markupAmount": 6300,
+      "projectedProfit": 6500,
       "deliveryBranch": "ACCOUNT",
       "outputFormat": "USER_PASS_COOKIE",
       "outputTemplate": "username|password|cookie",
-      "lastSyncedAt": "2026-09-07T04:27:24.382Z",
+      "lastSyncedAt": "2026-09-10T01:39:32.805Z",
       "stockStatus": "OUT_OF_STOCK"
     }
   },
@@ -26084,7 +26031,7 @@
       "deliveryBranch": "ACCOUNT",
       "outputFormat": "USER_PASS_COOKIE",
       "outputTemplate": "username|password|cookie",
-      "lastSyncedAt": "2026-09-07T04:27:24.382Z",
+      "lastSyncedAt": "2026-09-10T01:39:32.805Z",
       "stockStatus": "OUT_OF_STOCK"
     }
   },
@@ -26141,7 +26088,7 @@
       "deliveryBranch": "ACCOUNT",
       "outputFormat": "USER_PASS_COOKIE",
       "outputTemplate": "username|password|cookie",
-      "lastSyncedAt": "2026-09-07T04:27:24.382Z",
+      "lastSyncedAt": "2026-09-10T01:39:32.805Z",
       "stockStatus": "OUT_OF_STOCK"
     }
   },
@@ -26150,9 +26097,9 @@
     "title": "god fullgear sky",
     "description": "user:pass:cokie",
     "category": "Gear (warrantly sec 10day)",
-    "retailPrice": 26000,
-    "groupPrice": 22100,
-    "originalPrice": 32500,
+    "retailPrice": 51000,
+    "groupPrice": 43350,
+    "originalPrice": 63750,
     "stockAvailable": 0,
     "status": "OUT_OF_STOCK",
     "isAvailable": false,
@@ -26190,15 +26137,15 @@
       "supplierName": "G2UP.NET (Roblox & Game Accounts Gateway)",
       "connectionType": "API",
       "sourceProductId": "1782",
-      "supplierCost": 21000,
-      "calculatedPrice": 26000,
+      "supplierCost": 42000,
+      "calculatedPrice": 51000,
       "manualPriceOverride": false,
-      "markupAmount": 4200,
-      "projectedProfit": 5000,
+      "markupAmount": 8400,
+      "projectedProfit": 9000,
       "deliveryBranch": "ACCOUNT",
       "outputFormat": "USER_PASS_COOKIE",
       "outputTemplate": "username|password|cookie",
-      "lastSyncedAt": "2026-09-07T04:27:24.382Z",
+      "lastSyncedAt": "2026-09-10T01:39:32.805Z",
       "stockStatus": "OUT_OF_STOCK"
     }
   },
@@ -26255,7 +26202,7 @@
       "deliveryBranch": "ACCOUNT",
       "outputFormat": "USER_PASS_COOKIE",
       "outputTemplate": "username|password|cookie",
-      "lastSyncedAt": "2026-09-07T04:27:24.382Z",
+      "lastSyncedAt": "2026-09-10T01:39:32.805Z",
       "stockStatus": "OUT_OF_STOCK"
     }
   },
@@ -26312,7 +26259,7 @@
       "deliveryBranch": "ACCOUNT",
       "outputFormat": "USER_PASS_COOKIE",
       "outputTemplate": "username|password|cookie",
-      "lastSyncedAt": "2026-09-07T04:27:24.382Z",
+      "lastSyncedAt": "2026-09-10T01:39:32.805Z",
       "stockStatus": "OUT_OF_STOCK"
     }
   },
@@ -26369,7 +26316,7 @@
       "deliveryBranch": "ACCOUNT",
       "outputFormat": "USER_PASS_COOKIE",
       "outputTemplate": "username|password|cookie",
-      "lastSyncedAt": "2026-09-07T04:27:24.382Z",
+      "lastSyncedAt": "2026-09-10T01:39:32.805Z",
       "stockStatus": "OUT_OF_STOCK"
     }
   },
@@ -26426,7 +26373,7 @@
       "deliveryBranch": "ACCOUNT",
       "outputFormat": "USER_PASS_COOKIE",
       "outputTemplate": "username|password|cookie",
-      "lastSyncedAt": "2026-09-07T04:27:24.382Z",
+      "lastSyncedAt": "2026-09-10T01:39:32.805Z",
       "stockStatus": "OUT_OF_STOCK"
     }
   },
@@ -26435,9 +26382,9 @@
     "title": "god fullgear ghoul",
     "description": "user:pass:cokie",
     "category": "Gear (warrantly sec 10day)",
-    "retailPrice": 32000,
-    "groupPrice": 27200,
-    "originalPrice": 40000,
+    "retailPrice": 57000,
+    "groupPrice": 48450,
+    "originalPrice": 71250,
     "stockAvailable": 0,
     "status": "OUT_OF_STOCK",
     "isAvailable": false,
@@ -26475,15 +26422,15 @@
       "supplierName": "G2UP.NET (Roblox & Game Accounts Gateway)",
       "connectionType": "API",
       "sourceProductId": "1822",
-      "supplierCost": 26300,
-      "calculatedPrice": 32000,
+      "supplierCost": 47300,
+      "calculatedPrice": 57000,
       "manualPriceOverride": false,
-      "markupAmount": 5260,
-      "projectedProfit": 5700,
+      "markupAmount": 9460,
+      "projectedProfit": 9700,
       "deliveryBranch": "ACCOUNT",
       "outputFormat": "USER_PASS_COOKIE",
       "outputTemplate": "username|password|cookie",
-      "lastSyncedAt": "2026-09-07T04:27:24.382Z",
+      "lastSyncedAt": "2026-09-10T01:39:32.805Z",
       "stockStatus": "OUT_OF_STOCK"
     }
   },
@@ -26540,7 +26487,7 @@
       "deliveryBranch": "ACCOUNT",
       "outputFormat": "USER_PASS_COOKIE",
       "outputTemplate": "username|password|cookie",
-      "lastSyncedAt": "2026-09-07T04:27:24.382Z",
+      "lastSyncedAt": "2026-09-10T01:39:32.805Z",
       "stockStatus": "OUT_OF_STOCK"
     }
   },
@@ -26597,7 +26544,7 @@
       "deliveryBranch": "ACCOUNT",
       "outputFormat": "USER_PASS_COOKIE",
       "outputTemplate": "username|password|cookie",
-      "lastSyncedAt": "2026-09-07T04:27:24.382Z",
+      "lastSyncedAt": "2026-09-10T01:39:32.805Z",
       "stockStatus": "OUT_OF_STOCK"
     }
   },
@@ -26654,7 +26601,7 @@
       "deliveryBranch": "ACCOUNT",
       "outputFormat": "USER_PASS_COOKIE",
       "outputTemplate": "username|password|cookie",
-      "lastSyncedAt": "2026-09-07T04:27:24.382Z",
+      "lastSyncedAt": "2026-09-10T01:39:32.805Z",
       "stockStatus": "OUT_OF_STOCK"
     }
   },
@@ -26711,7 +26658,7 @@
       "deliveryBranch": "ACCOUNT",
       "outputFormat": "USER_PASS_COOKIE",
       "outputTemplate": "username|password|cookie",
-      "lastSyncedAt": "2026-09-07T04:27:24.382Z",
+      "lastSyncedAt": "2026-09-10T01:39:32.805Z",
       "stockStatus": "OUT_OF_STOCK"
     }
   },
@@ -26768,7 +26715,7 @@
       "deliveryBranch": "ACCOUNT",
       "outputFormat": "USER_PASS_COOKIE",
       "outputTemplate": "username|password|cookie",
-      "lastSyncedAt": "2026-09-07T04:27:24.382Z",
+      "lastSyncedAt": "2026-09-10T01:39:32.805Z",
       "stockStatus": "OUT_OF_STOCK"
     }
   },
@@ -26825,7 +26772,7 @@
       "deliveryBranch": "ACCOUNT",
       "outputFormat": "USER_PASS_COOKIE",
       "outputTemplate": "username|password|cookie",
-      "lastSyncedAt": "2026-09-07T04:27:24.382Z",
+      "lastSyncedAt": "2026-09-10T01:39:32.805Z",
       "stockStatus": "OUT_OF_STOCK"
     }
   },
@@ -26882,7 +26829,7 @@
       "deliveryBranch": "ACCOUNT",
       "outputFormat": "USER_PASS_COOKIE",
       "outputTemplate": "username|password|cookie",
-      "lastSyncedAt": "2026-09-07T04:27:24.382Z",
+      "lastSyncedAt": "2026-09-10T01:39:32.805Z",
       "stockStatus": "OUT_OF_STOCK"
     }
   },
@@ -26939,7 +26886,7 @@
       "deliveryBranch": "ACCOUNT",
       "outputFormat": "USER_PASS_COOKIE",
       "outputTemplate": "username|password|cookie",
-      "lastSyncedAt": "2026-09-07T04:27:24.382Z",
+      "lastSyncedAt": "2026-09-10T01:39:32.805Z",
       "stockStatus": "OUT_OF_STOCK"
     }
   },
@@ -26996,7 +26943,7 @@
       "deliveryBranch": "ACCOUNT",
       "outputFormat": "USER_PASS_COOKIE",
       "outputTemplate": "username|password|cookie",
-      "lastSyncedAt": "2026-09-07T04:27:24.382Z",
+      "lastSyncedAt": "2026-09-10T01:39:32.805Z",
       "stockStatus": "OUT_OF_STOCK"
     }
   },
@@ -27051,7 +26998,7 @@
       "deliveryBranch": "ACCOUNT",
       "outputFormat": "USER_PASS_COOKIE",
       "outputTemplate": "username|password|cookie",
-      "lastSyncedAt": "2026-09-07T04:27:24.382Z",
+      "lastSyncedAt": "2026-09-10T01:39:32.805Z",
       "stockStatus": "IN_STOCK"
     }
   },
@@ -27063,7 +27010,7 @@
     "retailPrice": 24000,
     "groupPrice": 20400,
     "originalPrice": 30000,
-    "stockAvailable": 50,
+    "stockAvailable": 38,
     "status": "AVAILABLE",
     "isAvailable": true,
     "images": [
@@ -27106,8 +27053,293 @@
       "deliveryBranch": "ACCOUNT",
       "outputFormat": "USER_PASS_COOKIE",
       "outputTemplate": "username|password|cookie",
-      "lastSyncedAt": "2026-09-07T04:27:24.382Z",
+      "lastSyncedAt": "2026-09-10T01:39:32.805Z",
       "stockStatus": "IN_STOCK"
+    }
+  },
+  {
+    "id": "prod-src-g2up_n-1943",
+    "title": "level + buddha",
+    "description": "user:pass:cokie",
+    "category": "GOD(warrantly sec 10day)",
+    "retailPrice": 9000,
+    "groupPrice": 7650,
+    "originalPrice": 11250,
+    "stockAvailable": 0,
+    "status": "OUT_OF_STOCK",
+    "isAvailable": false,
+    "outOfStockReason": "Sản phẩm đã bán hết tại shop API nguồn",
+    "images": [
+      "https://g2up.net/assets/storage/images/favicon_NQ3.png"
+    ],
+    "bannerImg": "https://g2up.net/assets/storage/images/favicon_NQ3.png",
+    "platform": "CYBER-SOURCE",
+    "tags": [
+      "SOURCE_SYNCED",
+      "API",
+      "ACCOUNT",
+      "OUT_OF_STOCK"
+    ],
+    "deliveryBranch": "ACCOUNT",
+    "productType": "account",
+    "minSlots": 5,
+    "deliveryType": "account_invite",
+    "deliveryEstimate": "Giao tài khoản tự động (User:Pass:Cookie)",
+    "outputFormat": "USER_PASS_COOKIE",
+    "outputTemplate": "username|password|cookie",
+    "seller": {
+      "id": "sup_g2up_net_api",
+      "name": "G2UP.NET (Roblox & Game Accounts Gateway)",
+      "avatar": "https://images.unsplash.com/photo-1563986768609-322da13575f3?auto=format&fit=crop&w=150&q=80",
+      "badge": "Supplier Direct",
+      "rating": 4.95,
+      "totalDeals": 1500,
+      "completedPools": 850,
+      "responseTime": "< 1 phút"
+    },
+    "source_info": {
+      "supplierId": "sup_g2up_net_api",
+      "supplierName": "G2UP.NET (Roblox & Game Accounts Gateway)",
+      "connectionType": "API",
+      "sourceProductId": "1943",
+      "supplierCost": 7400,
+      "calculatedPrice": 9000,
+      "manualPriceOverride": false,
+      "markupAmount": 1480,
+      "projectedProfit": 1600,
+      "deliveryBranch": "ACCOUNT",
+      "outputFormat": "USER_PASS_COOKIE",
+      "outputTemplate": "username|password|cookie",
+      "lastSyncedAt": "2026-09-10T01:39:32.803Z",
+      "stockStatus": "OUT_OF_STOCK"
+    }
+  },
+  {
+    "id": "prod-src-g2up_n-1944",
+    "title": "level + portal",
+    "description": "user:pass:cokie",
+    "category": "GOD(warrantly sec 10day)",
+    "retailPrice": 9000,
+    "groupPrice": 7650,
+    "originalPrice": 11250,
+    "stockAvailable": 0,
+    "status": "OUT_OF_STOCK",
+    "isAvailable": false,
+    "outOfStockReason": "Sản phẩm đã bán hết tại shop API nguồn",
+    "images": [
+      "https://g2up.net/assets/storage/images/favicon_NQ3.png"
+    ],
+    "bannerImg": "https://g2up.net/assets/storage/images/favicon_NQ3.png",
+    "platform": "CYBER-SOURCE",
+    "tags": [
+      "SOURCE_SYNCED",
+      "API",
+      "ACCOUNT",
+      "OUT_OF_STOCK"
+    ],
+    "deliveryBranch": "ACCOUNT",
+    "productType": "account",
+    "minSlots": 5,
+    "deliveryType": "account_invite",
+    "deliveryEstimate": "Giao tài khoản tự động (User:Pass:Cookie)",
+    "outputFormat": "USER_PASS_COOKIE",
+    "outputTemplate": "username|password|cookie",
+    "seller": {
+      "id": "sup_g2up_net_api",
+      "name": "G2UP.NET (Roblox & Game Accounts Gateway)",
+      "avatar": "https://images.unsplash.com/photo-1563986768609-322da13575f3?auto=format&fit=crop&w=150&q=80",
+      "badge": "Supplier Direct",
+      "rating": 4.95,
+      "totalDeals": 1500,
+      "completedPools": 850,
+      "responseTime": "< 1 phút"
+    },
+    "source_info": {
+      "supplierId": "sup_g2up_net_api",
+      "supplierName": "G2UP.NET (Roblox & Game Accounts Gateway)",
+      "connectionType": "API",
+      "sourceProductId": "1944",
+      "supplierCost": 7400,
+      "calculatedPrice": 9000,
+      "manualPriceOverride": false,
+      "markupAmount": 1480,
+      "projectedProfit": 1600,
+      "deliveryBranch": "ACCOUNT",
+      "outputFormat": "USER_PASS_COOKIE",
+      "outputTemplate": "username|password|cookie",
+      "lastSyncedAt": "2026-09-10T01:39:32.803Z",
+      "stockStatus": "OUT_OF_STOCK"
+    }
+  },
+  {
+    "id": "prod-src-g2up_n-1942",
+    "title": "level + 1 mythycal fruit",
+    "description": "user:pass:cokie",
+    "category": "GOD MYTHICAL (warrantly sec 10day)",
+    "retailPrice": 9000,
+    "groupPrice": 7650,
+    "originalPrice": 11250,
+    "stockAvailable": 0,
+    "status": "OUT_OF_STOCK",
+    "isAvailable": false,
+    "outOfStockReason": "Sản phẩm đã bán hết tại shop API nguồn",
+    "images": [
+      "https://g2up.net/assets/storage/images/favicon_NQ3.png"
+    ],
+    "bannerImg": "https://g2up.net/assets/storage/images/favicon_NQ3.png",
+    "platform": "CYBER-SOURCE",
+    "tags": [
+      "SOURCE_SYNCED",
+      "API",
+      "ACCOUNT",
+      "OUT_OF_STOCK"
+    ],
+    "deliveryBranch": "ACCOUNT",
+    "productType": "account",
+    "minSlots": 5,
+    "deliveryType": "account_invite",
+    "deliveryEstimate": "Giao tài khoản tự động (User:Pass:Cookie)",
+    "outputFormat": "USER_PASS_COOKIE",
+    "outputTemplate": "username|password|cookie",
+    "seller": {
+      "id": "sup_g2up_net_api",
+      "name": "G2UP.NET (Roblox & Game Accounts Gateway)",
+      "avatar": "https://images.unsplash.com/photo-1563986768609-322da13575f3?auto=format&fit=crop&w=150&q=80",
+      "badge": "Supplier Direct",
+      "rating": 4.95,
+      "totalDeals": 1500,
+      "completedPools": 850,
+      "responseTime": "< 1 phút"
+    },
+    "source_info": {
+      "supplierId": "sup_g2up_net_api",
+      "supplierName": "G2UP.NET (Roblox & Game Accounts Gateway)",
+      "connectionType": "API",
+      "sourceProductId": "1942",
+      "supplierCost": 7400,
+      "calculatedPrice": 9000,
+      "manualPriceOverride": false,
+      "markupAmount": 1480,
+      "projectedProfit": 1600,
+      "deliveryBranch": "ACCOUNT",
+      "outputFormat": "USER_PASS_COOKIE",
+      "outputTemplate": "username|password|cookie",
+      "lastSyncedAt": "2026-09-10T01:39:32.804Z",
+      "stockStatus": "OUT_OF_STOCK"
+    }
+  },
+  {
+    "id": "prod-src-g2up_n-1945",
+    "title": "level + 3 mythic",
+    "description": "user:pass:cokie",
+    "category": "GOD MYTHICAL (warrantly sec 10day)",
+    "retailPrice": 19000,
+    "groupPrice": 16150,
+    "originalPrice": 23750,
+    "stockAvailable": 0,
+    "status": "OUT_OF_STOCK",
+    "isAvailable": false,
+    "outOfStockReason": "Sản phẩm đã bán hết tại shop API nguồn",
+    "images": [
+      "https://g2up.net/assets/storage/images/favicon_NQ3.png"
+    ],
+    "bannerImg": "https://g2up.net/assets/storage/images/favicon_NQ3.png",
+    "platform": "CYBER-SOURCE",
+    "tags": [
+      "SOURCE_SYNCED",
+      "API",
+      "ACCOUNT",
+      "OUT_OF_STOCK"
+    ],
+    "deliveryBranch": "ACCOUNT",
+    "productType": "account",
+    "minSlots": 5,
+    "deliveryType": "account_invite",
+    "deliveryEstimate": "Giao tài khoản tự động (User:Pass:Cookie)",
+    "outputFormat": "USER_PASS_COOKIE",
+    "outputTemplate": "username|password|cookie",
+    "seller": {
+      "id": "sup_g2up_net_api",
+      "name": "G2UP.NET (Roblox & Game Accounts Gateway)",
+      "avatar": "https://images.unsplash.com/photo-1563986768609-322da13575f3?auto=format&fit=crop&w=150&q=80",
+      "badge": "Supplier Direct",
+      "rating": 4.95,
+      "totalDeals": 1500,
+      "completedPools": 850,
+      "responseTime": "< 1 phút"
+    },
+    "source_info": {
+      "supplierId": "sup_g2up_net_api",
+      "supplierName": "G2UP.NET (Roblox & Game Accounts Gateway)",
+      "connectionType": "API",
+      "sourceProductId": "1945",
+      "supplierCost": 15800,
+      "calculatedPrice": 19000,
+      "manualPriceOverride": false,
+      "markupAmount": 3160,
+      "projectedProfit": 3200,
+      "deliveryBranch": "ACCOUNT",
+      "outputFormat": "USER_PASS_COOKIE",
+      "outputTemplate": "username|password|cookie",
+      "lastSyncedAt": "2026-09-10T01:39:32.804Z",
+      "stockStatus": "OUT_OF_STOCK"
+    }
+  },
+  {
+    "id": "prod-src-g2up_n-1946",
+    "title": "level + 2 mythic",
+    "description": "user:pass:cokie",
+    "category": "GOD MYTHICAL (warrantly sec 10day)",
+    "retailPrice": 13000,
+    "groupPrice": 11050,
+    "originalPrice": 16250,
+    "stockAvailable": 0,
+    "status": "OUT_OF_STOCK",
+    "isAvailable": false,
+    "outOfStockReason": "Sản phẩm đã bán hết tại shop API nguồn",
+    "images": [
+      "https://g2up.net/assets/storage/images/favicon_NQ3.png"
+    ],
+    "bannerImg": "https://g2up.net/assets/storage/images/favicon_NQ3.png",
+    "platform": "CYBER-SOURCE",
+    "tags": [
+      "SOURCE_SYNCED",
+      "API",
+      "ACCOUNT",
+      "OUT_OF_STOCK"
+    ],
+    "deliveryBranch": "ACCOUNT",
+    "productType": "account",
+    "minSlots": 5,
+    "deliveryType": "account_invite",
+    "deliveryEstimate": "Giao tài khoản tự động (User:Pass:Cookie)",
+    "outputFormat": "USER_PASS_COOKIE",
+    "outputTemplate": "username|password|cookie",
+    "seller": {
+      "id": "sup_g2up_net_api",
+      "name": "G2UP.NET (Roblox & Game Accounts Gateway)",
+      "avatar": "https://images.unsplash.com/photo-1563986768609-322da13575f3?auto=format&fit=crop&w=150&q=80",
+      "badge": "Supplier Direct",
+      "rating": 4.95,
+      "totalDeals": 1500,
+      "completedPools": 850,
+      "responseTime": "< 1 phút"
+    },
+    "source_info": {
+      "supplierId": "sup_g2up_net_api",
+      "supplierName": "G2UP.NET (Roblox & Game Accounts Gateway)",
+      "connectionType": "API",
+      "sourceProductId": "1946",
+      "supplierCost": 10500,
+      "calculatedPrice": 13000,
+      "manualPriceOverride": false,
+      "markupAmount": 2100,
+      "projectedProfit": 2500,
+      "deliveryBranch": "ACCOUNT",
+      "outputFormat": "USER_PASS_COOKIE",
+      "outputTemplate": "username|password|cookie",
+      "lastSyncedAt": "2026-09-10T01:39:32.804Z",
+      "stockStatus": "OUT_OF_STOCK"
     }
   }
 ]

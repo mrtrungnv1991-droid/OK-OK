@@ -12,16 +12,20 @@ import {
   Info,
   DollarSign
 } from 'lucide-react';
-import { TelcoCardSubmission, UserProfile } from '../types';
+import { TelcoCardSubmission, UserProfile, CurrencyCode, SystemConfig } from '../types';
 import { formatCurrency } from '../utils/formatters';
 import { useTranslation } from '../i18n';
 
 interface TelcoCardModalProps {
   isOpen: boolean;
   onClose: () => void;
-  user: UserProfile;
-  onCardSubmit: (submission: TelcoCardSubmission) => void;
-  cardHistory: TelcoCardSubmission[];
+  user?: UserProfile;
+  currency?: CurrencyCode;
+  onCardSubmit?: (submission: TelcoCardSubmission) => void;
+  onSubmitCard?: (submission: TelcoCardSubmission) => void;
+  cardHistory?: TelcoCardSubmission[];
+  telcoCards?: TelcoCardSubmission[];
+  systemConfig?: SystemConfig;
 }
 
 const TELCO_LIST = [
@@ -42,11 +46,20 @@ export const TelcoCardModal: React.FC<TelcoCardModalProps> = ({
   isOpen,
   onClose,
   user,
+  currency,
   onCardSubmit,
-  cardHistory
+  onSubmitCard,
+  cardHistory = [],
+  telcoCards = [],
+  systemConfig
 }) => {
+  const effectiveHistory = telcoCards.length > 0 ? telcoCards : cardHistory;
+  const effectiveSubmit = onSubmitCard || onCardSubmit || (() => {});
   const { t } = useTranslation();
-  if (!isOpen) return null;
+
+  const isTelcoEnabled = systemConfig?.depositModulesConfig?.telco?.enabled ?? true;
+  const telcoMaintenanceMsg = systemConfig?.depositModulesConfig?.telco?.maintenanceMessage ||
+    'Cổng đổi thẻ cào điện thoại Card24h đang tạm dừng để bảo trì API đối tác.';
 
   const [selectedTelco, setSelectedTelco] = useState<typeof TELCO_LIST[number]['id']>('VIETTEL');
   const [selectedAmount, setSelectedAmount] = useState<number>(100000);
@@ -54,6 +67,8 @@ export const TelcoCardModal: React.FC<TelcoCardModalProps> = ({
   const [pin, setPin] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [activeTab, setActiveTab] = useState<'form' | 'history'>('form');
+
+  if (!isOpen) return null;
 
   const currentTelcoInfo = TELCO_LIST.find(t => t.id === selectedTelco) || TELCO_LIST[0];
   const feePercent = currentTelcoInfo.fee;
@@ -153,6 +168,25 @@ export const TelcoCardModal: React.FC<TelcoCardModalProps> = ({
         {/* Modal Body */}
         <div className="p-4 sm:p-6 overflow-y-auto flex-1 space-y-6">
           {activeTab === 'form' ? (
+            !isTelcoEnabled ? (
+              <div className="p-8 rounded-2xl bg-amber-950/20 border border-amber-500/30 text-center space-y-4 my-4">
+                <div className="w-14 h-14 mx-auto rounded-2xl bg-amber-900/30 border border-amber-500/40 text-amber-400 flex items-center justify-center shadow-[0_0_20px_rgba(245,158,11,0.2)]">
+                  <AlertTriangle className="w-7 h-7 animate-pulse" />
+                </div>
+                <div className="space-y-1">
+                  <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-amber-500/10 text-amber-400 border border-amber-500/30 text-[11px] font-bold uppercase tracking-wider">
+                    Cổng Đang Tạm Dừng Nạp
+                  </div>
+                  <h3 className="text-base font-bold text-white mt-2">Cổng Gạch Thẻ Cào (Card24h / Telco)</h3>
+                  <p className="text-xs text-amber-200/90 max-w-md mx-auto leading-relaxed">
+                    {telcoMaintenanceMsg}
+                  </p>
+                </div>
+                <div className="pt-2 text-[11px] text-slate-400">
+                  Vui lòng chuyển qua kênh nạp Ngân hàng VietQR 24/7 hoặc Crypto để được xử lý tự động trong giây lát.
+                </div>
+              </div>
+            ) : (
             <form onSubmit={handleSubmit} className="space-y-5">
               {/* Select Telco */}
               <div className="space-y-2">
@@ -271,6 +305,7 @@ export const TelcoCardModal: React.FC<TelcoCardModalProps> = ({
                 )}
               </button>
             </form>
+            )
           ) : (
             /* History Tab */
             <div className="space-y-3">

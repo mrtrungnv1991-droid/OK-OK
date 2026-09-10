@@ -44,7 +44,9 @@ export const AdminPromotionsTab: React.FC<AdminPromotionsTabProps> = ({
   onToggleFlashSale
 }) => {
   const [activeSubTab, setActiveSubTab] = useState<'vouchers' | 'product_discounts' | 'deposit_promotions' | 'lucky_wheel'>('vouchers');
-  const [vouchers, setVouchers] = useState<VoucherCoupon[]>(INITIAL_VOUCHERS);
+  const [vouchers, setVouchers] = useState<VoucherCoupon[]>(
+    systemConfig?.vouchers || INITIAL_VOUCHERS
+  );
   const [wheelPrizes, setWheelPrizes] = useState<WheelPrize[]>(INITIAL_WHEEL_PRIZES);
   const [depositPromotions, setDepositPromotions] = useState<DepositPromotionRule[]>(
     systemConfig?.depositPromotions || INITIAL_DEPOSIT_PROMOTIONS
@@ -53,6 +55,8 @@ export const AdminPromotionsTab: React.FC<AdminPromotionsTabProps> = ({
   const productsList = products || localProductsList;
   const [isAddingVoucher, setIsAddingVoucher] = useState(false);
   const [isAddingDepositPromo, setIsAddingDepositPromo] = useState(false);
+  const [voucherToDelete, setVoucherToDelete] = useState<VoucherCoupon | null>(null);
+  const [depositPromoToDelete, setDepositPromoToDelete] = useState<DepositPromotionRule | null>(null);
   const [saveNotice, setSaveNotice] = useState<string | null>(null);
 
   // Lucky wheel config
@@ -96,7 +100,9 @@ export const AdminPromotionsTab: React.FC<AdminPromotionsTabProps> = ({
       expiresAt: newVoucher.expiresAt,
       status: 'active'
     };
-    setVouchers([item, ...vouchers]);
+    const updated = [item, ...vouchers];
+    setVouchers(updated);
+    onUpdateSystemConfig({ vouchers: updated });
     setIsAddingVoucher(false);
     setNewVoucher({
       code: '',
@@ -109,6 +115,26 @@ export const AdminPromotionsTab: React.FC<AdminPromotionsTabProps> = ({
       status: 'active'
     });
     setSaveNotice('Đã tạo mã giảm giá mới thành công!');
+    setTimeout(() => setSaveNotice(null), 3000);
+  };
+
+  const handleConfirmDeleteVoucher = () => {
+    if (!voucherToDelete) return;
+    const updated = vouchers.filter(item => item.id !== voucherToDelete.id);
+    setVouchers(updated);
+    onUpdateSystemConfig({ vouchers: updated });
+    setSaveNotice(`Đã xóa mã giảm giá "${voucherToDelete.code}" thành công!`);
+    setVoucherToDelete(null);
+    setTimeout(() => setSaveNotice(null), 3000);
+  };
+
+  const handleConfirmDeleteDepositPromo = () => {
+    if (!depositPromoToDelete) return;
+    const updated = depositPromotions.filter(r => r.id !== depositPromoToDelete.id);
+    setDepositPromotions(updated);
+    onUpdateSystemConfig({ depositPromotions: updated });
+    setSaveNotice(`Đã xóa mốc khuyến mãi "${depositPromoToDelete.title}" thành công!`);
+    setDepositPromoToDelete(null);
     setTimeout(() => setSaveNotice(null), 3000);
   };
 
@@ -398,8 +424,10 @@ export const AdminPromotionsTab: React.FC<AdminPromotionsTabProps> = ({
                     </td>
                     <td className="p-3 text-right">
                       <button
-                        onClick={() => setVouchers(vouchers.filter(item => item.id !== v.id))}
-                        className="text-rose-400 hover:text-rose-300 p-1"
+                        type="button"
+                        onClick={() => setVoucherToDelete(v)}
+                        className="text-rose-400 hover:text-rose-300 p-1.5 hover:bg-rose-950/40 rounded transition-colors cursor-pointer"
+                        title="Xóa mã giảm giá này"
                       >
                         <Trash2 className="w-3.5 h-3.5" />
                       </button>
@@ -608,12 +636,10 @@ export const AdminPromotionsTab: React.FC<AdminPromotionsTabProps> = ({
 
                     <td className="p-3 text-right">
                       <button
-                        onClick={() => {
-                          const updated = depositPromotions.filter(r => r.id !== rule.id);
-                          setDepositPromotions(updated);
-                          onUpdateSystemConfig({ depositPromotions: updated });
-                        }}
-                        className="text-rose-400 hover:text-rose-300 p-1 cursor-pointer"
+                        type="button"
+                        onClick={() => setDepositPromoToDelete(rule)}
+                        className="text-rose-400 hover:text-rose-300 p-1.5 hover:bg-rose-950/40 rounded transition-colors cursor-pointer"
+                        title="Xóa mốc thưởng nạp này"
                       >
                         <Trash2 className="w-3.5 h-3.5" />
                       </button>
@@ -722,6 +748,93 @@ export const AdminPromotionsTab: React.FC<AdminPromotionsTabProps> = ({
                   ))}
                 </tbody>
               </table>
+            </div>
+          </div>
+        </div>
+      )}
+      {/* MODAL: CONFIRM DELETE VOUCHER */}
+      {voucherToDelete && (
+        <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4">
+          <div className="w-full max-w-md bg-slate-900 border border-red-500/40 rounded-2xl p-6 space-y-4 text-white shadow-2xl">
+            <div className="flex items-center gap-3 border-b border-slate-800 pb-3">
+              <div className="p-2.5 rounded-xl bg-red-500/20 text-red-400 border border-red-500/30">
+                <Trash2 className="w-5 h-5" />
+              </div>
+              <div>
+                <h3 className="text-sm font-bold text-white uppercase tracking-wider">Xác Nhận Xóa Mã Giảm Giá</h3>
+                <p className="text-xs text-slate-400">Hành động này không thể hoàn tác</p>
+              </div>
+            </div>
+
+            <div className="p-3.5 bg-slate-950 rounded-xl border border-slate-800 space-y-2 text-xs">
+              <div className="text-slate-300">
+                Bạn có chắc muốn xóa mã giảm giá: <strong className="text-pink-400 font-mono text-sm">{voucherToDelete.code}</strong>?
+              </div>
+              <div className="text-slate-400 text-[11px]">
+                Mức giảm: <span className="text-emerald-400 font-bold">{voucherToDelete.discountType === 'percent' ? `${voucherToDelete.discountValue}%` : formatCurrency(voucherToDelete.discountValue, currency)}</span> • Đã dùng: <span className="text-white">{voucherToDelete.usedCount}/{voucherToDelete.usageLimit}</span>
+              </div>
+            </div>
+
+            <div className="flex items-center justify-end gap-2.5 pt-2">
+              <button
+                type="button"
+                onClick={() => setVoucherToDelete(null)}
+                className="px-4 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs font-semibold cursor-pointer transition-colors"
+              >
+                Hủy Bỏ
+              </button>
+              <button
+                type="button"
+                onClick={handleConfirmDeleteVoucher}
+                className="px-4 py-2 rounded-xl bg-red-600 hover:bg-red-500 text-white text-xs font-bold flex items-center gap-2 cursor-pointer shadow-lg shadow-red-600/30 transition-all"
+              >
+                <Trash2 className="w-4 h-4" />
+                <span>Xác Nhận Xóa</span>
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* MODAL: CONFIRM DELETE DEPOSIT PROMO */}
+      {depositPromoToDelete && (
+        <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4">
+          <div className="w-full max-w-md bg-slate-900 border border-red-500/40 rounded-2xl p-6 space-y-4 text-white shadow-2xl">
+            <div className="flex items-center gap-3 border-b border-slate-800 pb-3">
+              <div className="p-2.5 rounded-xl bg-red-500/20 text-red-400 border border-red-500/30">
+                <Trash2 className="w-5 h-5" />
+              </div>
+              <div>
+                <h3 className="text-sm font-bold text-white uppercase tracking-wider">Xóa Mốc Thưởng Nạp</h3>
+                <p className="text-xs text-slate-400">Hành động này sẽ gỡ bỏ ưu đãi nạp tiền</p>
+              </div>
+            </div>
+
+            <div className="p-3.5 bg-slate-950 rounded-xl border border-slate-800 space-y-2 text-xs">
+              <div className="text-slate-300">
+                Bạn có chắc muốn xóa mốc khuyến mãi: <strong className="text-white font-bold">{depositPromoToDelete.title}</strong>?
+              </div>
+              <div className="text-slate-400 text-[11px]">
+                Mốc nạp tối thiểu: <span className="text-cyan-300">{formatCurrency(depositPromoToDelete.minDepositAmount, currency)}</span> • Thưởng thêm: <span className="text-emerald-400 font-bold">+{depositPromoToDelete.bonusPercent}%</span>
+              </div>
+            </div>
+
+            <div className="flex items-center justify-end gap-2.5 pt-2">
+              <button
+                type="button"
+                onClick={() => setDepositPromoToDelete(null)}
+                className="px-4 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs font-semibold cursor-pointer transition-colors"
+              >
+                Hủy Bỏ
+              </button>
+              <button
+                type="button"
+                onClick={handleConfirmDeleteDepositPromo}
+                className="px-4 py-2 rounded-xl bg-red-600 hover:bg-red-500 text-white text-xs font-bold flex items-center gap-2 cursor-pointer shadow-lg shadow-red-600/30 transition-all"
+              >
+                <Trash2 className="w-4 h-4" />
+                <span>Xác Nhận Xóa</span>
+              </button>
             </div>
           </div>
         </div>

@@ -1,15 +1,18 @@
-import React, { useState, useEffect, useRef } from 'react';
-import { Flame, Clock, Zap, ChevronRight, ChevronLeft, LayoutGrid, SlidersHorizontal } from 'lucide-react';
-import { Product, GroupPool } from '../types';
+import React, { useState, useEffect, useRef, useMemo, useCallback } from 'react';
+import { Flame, Clock, Zap, ChevronRight, ChevronLeft, LayoutGrid, SlidersHorizontal, Type } from 'lucide-react';
+import { Product, GroupPool, SectionHeaderItemConfig, CurrencyCode } from '../types';
 import { formatCurrency } from '../utils/formatters';
 import { useTranslation } from '../i18n';
 
 interface FlashSalesSectionProps {
   products: Product[];
-  currency: 'VND' | 'USD';
+  currency: CurrencyCode;
   onSelectProduct?: (product: Product) => void;
   onOpenPool?: (product: Product, pool?: GroupPool) => void;
   onInstantBuy?: (product: Product) => void;
+  headerConfig?: SectionHeaderItemConfig;
+  onEditHeader?: () => void;
+  canEditHeader?: boolean;
 }
 
 export const FlashSalesSection: React.FC<FlashSalesSectionProps> = ({
@@ -17,10 +20,13 @@ export const FlashSalesSection: React.FC<FlashSalesSectionProps> = ({
   currency,
   onSelectProduct,
   onOpenPool,
-  onInstantBuy
+  onInstantBuy,
+  headerConfig,
+  onEditHeader,
+  canEditHeader = true
 }) => {
   const { t } = useTranslation();
-  const flashProducts = products.filter(p => p.isFlashSale);
+  const flashProducts = useMemo(() => products.filter(p => p.isFlashSale), [products]);
   const scrollContainerRef = useRef<HTMLDivElement>(null);
   const [canScrollLeft, setCanScrollLeft] = useState(false);
   const [canScrollRight, setCanScrollRight] = useState(true);
@@ -50,22 +56,34 @@ export const FlashSalesSection: React.FC<FlashSalesSectionProps> = ({
     return () => clearInterval(timer);
   }, []);
 
-  const checkScroll = () => {
-    if (scrollContainerRef.current) {
-      const { scrollLeft, scrollWidth, clientWidth } = scrollContainerRef.current;
-      setCanScrollLeft(scrollLeft > 10);
-      setCanScrollRight(scrollLeft < scrollWidth - clientWidth - 10);
-      const totalScrollable = scrollWidth - clientWidth;
-      setScrollProgress(totalScrollable > 0 ? (scrollLeft / totalScrollable) * 100 : 0);
-    }
-  };
+  const checkScroll = useCallback(() => {
+    const el = scrollContainerRef.current;
+    if (!el) return;
+    const { scrollLeft, scrollWidth, clientWidth } = el;
+    const nextLeft = scrollLeft > 15;
+    const nextRight = scrollLeft < scrollWidth - clientWidth - 15;
+    const totalScrollable = scrollWidth - clientWidth;
+    const nextProgress = totalScrollable > 0 ? Math.min(100, Math.max(0, Math.round((scrollLeft / totalScrollable) * 100))) : 0;
+
+    setCanScrollLeft(prev => (prev !== nextLeft ? nextLeft : prev));
+    setCanScrollRight(prev => (prev !== nextRight ? nextRight : prev));
+    setScrollProgress(prev => (prev !== nextProgress ? nextProgress : prev));
+  }, []);
 
   useEffect(() => {
-    checkScroll();
-    const handleResize = () => checkScroll();
-    window.addEventListener('resize', handleResize);
-    return () => window.removeEventListener('resize', handleResize);
-  }, [flashProducts]);
+    let animId: number;
+    const scheduleCheck = () => {
+      cancelAnimationFrame(animId);
+      animId = requestAnimationFrame(checkScroll);
+    };
+
+    scheduleCheck();
+    window.addEventListener('resize', scheduleCheck);
+    return () => {
+      cancelAnimationFrame(animId);
+      window.removeEventListener('resize', scheduleCheck);
+    };
+  }, [checkScroll, flashProducts.length, mobileView]);
 
   const handleScroll = (direction: 'left' | 'right') => {
     if (scrollContainerRef.current) {
@@ -92,16 +110,29 @@ export const FlashSalesSection: React.FC<FlashSalesSectionProps> = ({
             <Flame className="w-4 h-4 sm:w-5 sm:h-5 animate-pulse" />
           </div>
           <div className="min-w-0">
-            <h2 className="text-sm sm:text-base md:text-lg font-black font-mono text-white tracking-wide flex items-center gap-1.5 flex-wrap">
-              <span>{t('flash_sale.title')}</span>
-              <span className="px-1.5 py-0.5 rounded text-[9px] sm:text-[10px] bg-red-600 text-white font-bold uppercase shadow-sm">
-                -81%
+            <h2 className={`tracking-wide flex items-center gap-1.5 flex-wrap ${headerConfig?.fontSize || 'text-sm sm:text-base md:text-lg'} ${headerConfig?.fontWeight || 'font-black'} ${headerConfig?.fontFamily || 'font-mono'} ${headerConfig?.letterSpacing || 'tracking-wide'} ${headerConfig?.textTransform || 'uppercase'} ${headerConfig?.titleColor || 'text-white'}`}>
+              <span>{headerConfig?.title || t('flash_sale.title')}</span>
+              <span className={`px-1.5 py-0.5 rounded text-[9px] sm:text-[10px] ${headerConfig?.badgeColor || 'bg-red-600 text-white'} font-bold uppercase shadow-sm`}>
+                {headerConfig?.badge || '-81%'}
               </span>
               <span className="px-1.5 py-0.5 rounded text-[9px] sm:text-[10px] bg-orange-950/80 border border-orange-500/40 text-orange-300 font-mono hidden xs:inline">
                 {t('flash_sale.deals_count', { count: flashProducts.length })}
               </span>
+              {canEditHeader && onEditHeader && (
+                <button
+                  type="button"
+                  onClick={onEditHeader}
+                  title="Chỉnh sửa nội dung & font chữ mục Flash Sale"
+                  className="px-2 py-0.5 rounded-md bg-orange-500/20 hover:bg-orange-500 hover:text-black text-orange-400 hover:border-orange-500 border border-orange-500/40 transition-all text-[10px] font-mono font-bold flex items-center gap-1 cursor-pointer shrink-0 ml-1 shadow-sm"
+                >
+                  <Type className="w-3 h-3" />
+                  <span>Sửa chữ & font</span>
+                </button>
+              )}
             </h2>
-            <p className="text-[10px] sm:text-xs text-slate-400 font-mono truncate">{t('flash_sale.limited_time_slots')}</p>
+            <p className={`text-[10px] sm:text-xs ${headerConfig?.subtitleColor || 'text-slate-400'} font-mono truncate`}>
+              {headerConfig?.subtitle || t('flash_sale.limited_time_slots')}
+            </p>
           </div>
         </div>
 

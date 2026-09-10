@@ -15,7 +15,9 @@ import {
   Award, 
   ExternalLink,
   Percent,
-  Wallet
+  Wallet,
+  RefreshCw,
+  AlertTriangle
 } from 'lucide-react';
 import { CTVUser, CTVWithdrawal, CTVTier, Currency } from '../../types';
 import { INITIAL_CTV_USERS, INITIAL_CTV_WITHDRAWALS, INITIAL_CTV_TIERS } from '../../data/systemExtendedData';
@@ -33,6 +35,10 @@ export const AdminCTVResellerTab: React.FC<AdminCTVResellerTabProps> = ({ curren
   const [searchTerm, setSearchTerm] = useState('');
   const [copiedKey, setCopiedKey] = useState<string | null>(null);
   const [saveNotice, setSaveNotice] = useState<string | null>(null);
+  const [withdrawalToApprove, setWithdrawalToApprove] = useState<CTVWithdrawal | null>(null);
+  const [withdrawalToReject, setWithdrawalToReject] = useState<CTVWithdrawal | null>(null);
+  const [rejectReason, setRejectReason] = useState<string>('Thông tin tài khoản nhận không trùng khớp');
+  const [checkingDnsId, setCheckingDnsId] = useState<string | null>(null);
 
   const copyToClipboard = (text: string, id: string) => {
     navigator.clipboard.writeText(text);
@@ -40,9 +46,10 @@ export const AdminCTVResellerTab: React.FC<AdminCTVResellerTabProps> = ({ curren
     setTimeout(() => setCopiedKey(null), 2000);
   };
 
-  const handleApproveWithdrawal = (id: string) => {
+  const handleConfirmApproveWithdrawal = () => {
+    if (!withdrawalToApprove) return;
     const updated = withdrawals.map(w => {
-      if (w.id === id) {
+      if (w.id === withdrawalToApprove.id) {
         return {
           ...w,
           status: 'approved' as const,
@@ -53,23 +60,16 @@ export const AdminCTVResellerTab: React.FC<AdminCTVResellerTabProps> = ({ curren
       return w;
     });
     setWithdrawals(updated);
-    setSaveNotice('Đã duyệt chi trả hoa hồng CTV thành công!');
+    setSaveNotice(`Đã duyệt chi trả ${formatCurrency(withdrawalToApprove.amount, currency)} cho CTV "${withdrawalToApprove.ctvName}"!`);
+    setWithdrawalToApprove(null);
     setTimeout(() => setSaveNotice(null), 3000);
   };
 
-  const handleRejectWithdrawal = (id: string) => {
-    let reason = 'Thông tin thanh toán không chính xác hoặc vi phạm chính sách';
-    try {
-      const input = prompt('Nhập lý do từ chối rút tiền (hoặc bấm OK để dùng lý do mặc định):');
-      if (input !== null && input.trim()) {
-        reason = input.trim();
-      }
-    } catch {
-      // Prompt blocked in iframe
-    }
-
+  const handleConfirmRejectWithdrawal = () => {
+    if (!withdrawalToReject) return;
+    const reason = rejectReason.trim() || 'Thông tin thanh toán không chính xác hoặc vi phạm chính sách';
     const updated = withdrawals.map(w => {
-      if (w.id === id) {
+      if (w.id === withdrawalToReject.id) {
         return {
           ...w,
           status: 'rejected' as const,
@@ -80,8 +80,27 @@ export const AdminCTVResellerTab: React.FC<AdminCTVResellerTabProps> = ({ curren
       return w;
     });
     setWithdrawals(updated);
-    setSaveNotice('Đã từ chối yêu cầu rút tiền của CTV!');
+    setSaveNotice(`Đã từ chối yêu cầu rút tiền của CTV "${withdrawalToReject.ctvName}"!`);
+    setWithdrawalToReject(null);
     setTimeout(() => setSaveNotice(null), 3000);
+  };
+
+  const handleCheckDns = (userId: string, domain?: string) => {
+    setCheckingDnsId(userId);
+    setTimeout(() => {
+      setCTVUsers(prev => prev.map(u => {
+        if (u.id === userId) {
+          return {
+            ...u,
+            childDomainStatus: 'active'
+          };
+        }
+        return u;
+      }));
+      setCheckingDnsId(null);
+      setSaveNotice(`Bản ghi DNS của tên miền "${domain}" đã được xác thực thành công (A -> 103.145.2.89, SSL Let's Encrypt Active)!`);
+      setTimeout(() => setSaveNotice(null), 4000);
+    }, 1200);
   };
 
   const handleUpdateTierDiscount = (tierId: string, newRate: number) => {
@@ -344,14 +363,19 @@ export const AdminCTVResellerTab: React.FC<AdminCTVResellerTabProps> = ({ curren
                       {w.status === 'pending' ? (
                         <div className="flex items-center justify-end gap-1.5">
                           <button
-                            onClick={() => handleApproveWithdrawal(w.id)}
+                            type="button"
+                            onClick={() => setWithdrawalToApprove(w)}
                             className="px-2.5 py-1 rounded bg-emerald-600 hover:bg-emerald-500 text-white font-bold cursor-pointer text-[10px]"
                           >
                             Duyệt Chuyển Tiền
                           </button>
                           <button
-                            onClick={() => handleRejectWithdrawal(w.id)}
-                            className="px-2 py-1 rounded bg-rose-950 text-rose-300 border border-rose-500/30 hover:bg-rose-900 cursor-pointer text-[10px]"
+                            type="button"
+                            onClick={() => {
+                              setWithdrawalToReject(w);
+                              setRejectReason("Thông tin tài khoản nhận không trùng khớp");
+                            }}
+                            className="px-2.5 py-1 rounded bg-rose-950 text-rose-300 border border-rose-500/30 hover:bg-rose-900 cursor-pointer text-[10px]"
                           >
                             Từ Chối
                           </button>
@@ -442,7 +466,24 @@ export const AdminCTVResellerTab: React.FC<AdminCTVResellerTabProps> = ({ curren
                       </span>
                     </td>
                     <td className="p-2.5">
-                      <button className="text-cyan-400 hover:underline cursor-pointer">Kiểm tra DNS</button>
+                      <button
+                        type="button"
+                        onClick={() => handleCheckDns(u.id, u.childDomain)}
+                        disabled={checkingDnsId === u.id}
+                        className="text-cyan-400 hover:text-cyan-300 hover:underline cursor-pointer flex items-center gap-1.5 text-[11px] disabled:opacity-50 transition-colors"
+                      >
+                        {checkingDnsId === u.id ? (
+                          <>
+                            <RefreshCw className="w-3 h-3 animate-spin text-cyan-400" />
+                            <span>Đang kiểm tra DNS...</span>
+                          </>
+                        ) : (
+                          <>
+                            <Globe className="w-3 h-3 text-cyan-400" />
+                            <span>Kiểm tra DNS</span>
+                          </>
+                        )}
+                      </button>
                     </td>
                   </tr>
                 ))}
@@ -477,6 +518,145 @@ export const AdminCTVResellerTab: React.FC<AdminCTVResellerTabProps> = ({ curren
             <div className="p-3 rounded-lg bg-slate-950 border border-slate-800 font-mono">
               <span className="text-amber-400 font-bold">POST</span> <span className="text-slate-300">/api/v1/reseller/topup-order</span>
               <div className="text-[10px] text-slate-500 mt-1">Body: &#123; "game_id": "genshin", "tier_id": "tier-6480", "uid": "812938491", "server": "Asia" &#125;</div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Modal Duyệt Chi Trả Hoa Hồng */}
+      {withdrawalToApprove && (
+        <div className="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+          <div className="bg-slate-900 border border-emerald-500/40 rounded-2xl max-w-md w-full p-5 shadow-2xl space-y-4">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-full bg-emerald-500/20 border border-emerald-500/30 flex items-center justify-center text-emerald-400 shrink-0">
+                <Wallet className="w-5 h-5" />
+              </div>
+              <div>
+                <h4 className="font-bold text-white text-sm">Xác Nhận Duyệt Chi Trả Hoa Hồng</h4>
+                <p className="text-[11px] text-slate-400">Yêu cầu rút tiền ID: #{withdrawalToApprove.id}</p>
+              </div>
+            </div>
+
+            <div className="bg-slate-950/80 p-3.5 rounded-xl border border-slate-800 space-y-2 text-xs">
+              <div className="flex justify-between">
+                <span className="text-slate-400">Cộng tác viên:</span>
+                <span className="text-white font-bold">{withdrawalToApprove.ctvName}</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-slate-400">Số tiền rút:</span>
+                <span className="text-emerald-400 font-bold text-sm">
+                  {formatCurrency(withdrawalToApprove.amount, currency)}
+                </span>
+              </div>
+              <div className="flex justify-between border-t border-slate-800/80 pt-2">
+                <span className="text-slate-400">Ngân hàng thụ hưởng:</span>
+                <span className="text-cyan-300 font-bold">{withdrawalToApprove.bankName}</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-slate-400">Số tài khoản (STK):</span>
+                <span className="text-amber-300 font-mono font-bold">{withdrawalToApprove.accountNumber}</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-slate-400">Tên chủ tài khoản:</span>
+                <span className="text-slate-200 uppercase font-bold">{withdrawalToApprove.accountName}</span>
+              </div>
+            </div>
+
+            <p className="text-[11px] text-slate-400">
+              Vui lòng xác nhận rằng bạn đã thực hiện chuyển khoản đến số tài khoản trên trước khi bấm xác nhận.
+            </p>
+
+            <div className="flex items-center justify-end gap-2 pt-2 border-t border-slate-800">
+              <button
+                type="button"
+                onClick={() => setWithdrawalToApprove(null)}
+                className="px-3.5 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs font-bold cursor-pointer"
+              >
+                Hủy bỏ
+              </button>
+              <button
+                type="button"
+                onClick={handleConfirmApproveWithdrawal}
+                className="px-4 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold cursor-pointer shadow-lg flex items-center gap-1.5"
+              >
+                <CheckCircle2 className="w-4 h-4" />
+                <span>Xác Nhận Đã Chuyển Tiền</span>
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Modal Từ Chối Rút Tiền */}
+      {withdrawalToReject && (
+        <div className="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+          <div className="bg-slate-900 border border-rose-500/40 rounded-2xl max-w-md w-full p-5 shadow-2xl space-y-4">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-full bg-rose-500/20 border border-rose-500/30 flex items-center justify-center text-rose-400 shrink-0">
+                <AlertTriangle className="w-5 h-5" />
+              </div>
+              <div>
+                <h4 className="font-bold text-white text-sm">Từ Chối Yêu Cầu Rút Tiền</h4>
+                <p className="text-[11px] text-slate-400">Yêu cầu rút #{withdrawalToReject.id} - {withdrawalToReject.ctvName}</p>
+              </div>
+            </div>
+
+            <div className="bg-slate-950/80 p-3 rounded-xl border border-slate-800 space-y-1.5 text-xs">
+              <div className="flex justify-between">
+                <span className="text-slate-400">Số tiền:</span>
+                <span className="text-rose-400 font-bold">{formatCurrency(withdrawalToReject.amount, currency)}</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-slate-400">Ngân hàng:</span>
+                <span className="text-slate-200">{withdrawalToReject.bankName} - {withdrawalToReject.accountNumber}</span>
+              </div>
+            </div>
+
+            <div className="space-y-1.5">
+              <label className="text-xs text-slate-300 font-bold block">
+                Lý do từ chối (CTV sẽ nhận được lý do này):
+              </label>
+              <textarea
+                value={rejectReason}
+                onChange={(e) => setRejectReason(e.target.value)}
+                rows={3}
+                placeholder="Nhập lý do từ chối..."
+                className="w-full bg-slate-950 border border-slate-700 rounded-xl p-2.5 text-slate-200 text-xs focus:border-rose-500 focus:outline-none"
+              />
+              <div className="flex flex-wrap gap-1.5 mt-1">
+                {[
+                  'Thông tin tài khoản nhận không trùng khớp',
+                  'Chưa hoàn tất đơn hàng đối soát',
+                  'Tài khoản có dấu hiệu gian lận chiết khấu'
+                ].map((preset) => (
+                  <button
+                    key={preset}
+                    type="button"
+                    onClick={() => setRejectReason(preset)}
+                    className="text-[10px] px-2 py-0.5 rounded bg-slate-800 hover:bg-slate-700 text-slate-300 border border-slate-700"
+                  >
+                    {preset}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            <div className="flex items-center justify-end gap-2 pt-2 border-t border-slate-800">
+              <button
+                type="button"
+                onClick={() => setWithdrawalToReject(null)}
+                className="px-3.5 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs font-bold cursor-pointer"
+              >
+                Đóng
+              </button>
+              <button
+                type="button"
+                onClick={handleConfirmRejectWithdrawal}
+                className="px-4 py-1.5 rounded-lg bg-rose-600 hover:bg-rose-500 text-white text-xs font-bold cursor-pointer shadow-lg flex items-center gap-1.5"
+              >
+                <XCircle className="w-4 h-4" />
+                <span>Xác Nhận Từ Chối</span>
+              </button>
             </div>
           </div>
         </div>

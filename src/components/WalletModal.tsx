@@ -18,7 +18,7 @@ import {
   Smartphone,
   Zap
 } from 'lucide-react';
-import { UserProfile, CTVWithdrawal } from '../types';
+import { UserProfile, CTVWithdrawal, CurrencyCode } from '../types';
 import { formatCurrency, generateTxHash } from '../utils/formatters';
 import { useTranslation } from '../i18n';
 import { useUI } from '../contexts/UIContext';
@@ -27,7 +27,12 @@ interface WalletModalProps {
   user: UserProfile;
   isOpen: boolean;
   onClose: () => void;
-  onDeposit: (amount: number) => void;
+  onDeposit: (amount: number, methodTitle?: string) => any;
+  currency?: CurrencyCode;
+  onOpenDepositHub?: () => void;
+  onOpenTelcoCard?: () => void;
+  onOpenLedger?: () => void;
+  onOpenAffiliate?: () => void;
   onRequestWithdrawal?: (req: {
     amount: number;
     bankName: string;

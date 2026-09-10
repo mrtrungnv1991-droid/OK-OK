@@ -3,6 +3,7 @@ import crypto from 'crypto';
 import { db } from '../../../db/store';
 import { requireAuth, requireRole, AuthenticatedRequest } from '../../../middleware/authMiddleware';
 import { LedgerService } from '../../../services/ledgerService';
+import { GatewayVerificationService } from '../../../services/gatewayVerificationService';
 
 export const walletRouter = Router();
 
@@ -44,6 +45,111 @@ walletRouter.post('/deposit', requireAuth, async (req: AuthenticatedRequest, res
     newBalance: req.user!.walletBalance,
     transaction: result.transaction
   });
+});
+
+// POST /api/v1/wallet/verify-binance - Verify Binance Pay Transaction via Official OpenAPI
+walletRouter.post('/verify-binance', requireAuth, async (req: AuthenticatedRequest, res) => {
+  try {
+    const { orderId, amount, memo } = req.body;
+    const result = await GatewayVerificationService.verifyBinancePay({
+      userId: req.user!.id,
+      orderId,
+      declaredAmount: amount,
+      memo,
+      ipAddress: req.ip
+    });
+
+    if (!result.success) {
+      return res.status(400).json(result);
+    }
+    return res.json(result);
+  } catch (err: any) {
+    return res.status(500).json({ success: false, message: err?.message || 'Lỗi hệ thống xác minh Binance' });
+  }
+});
+
+// POST /api/v1/wallet/verify-crypto-usdt - Verify USDT TRC20 / BEP20 On-Chain Blockchain API
+walletRouter.post('/verify-crypto-usdt', requireAuth, async (req: AuthenticatedRequest, res) => {
+  try {
+    const { txHash, network = 'TRC20', expectedUsdt, memo } = req.body;
+    const result = await GatewayVerificationService.verifyCryptoUsdt({
+      userId: req.user!.id,
+      txHash,
+      network,
+      expectedUsdt,
+      memo,
+      ipAddress: req.ip
+    });
+
+    if (!result.success) {
+      return res.status(400).json(result);
+    }
+    return res.json(result);
+  } catch (err: any) {
+    return res.status(500).json({ success: false, message: err?.message || 'Lỗi hệ thống xác minh USDT' });
+  }
+});
+
+// POST /api/v1/wallet/verify-ltc - Verify Litecoin (LTC Mainnet Core) Blockchain API
+walletRouter.post('/verify-ltc', requireAuth, async (req: AuthenticatedRequest, res) => {
+  try {
+    const { txHash, expectedLtc, memo } = req.body;
+    const result = await GatewayVerificationService.verifyCryptoLtc({
+      userId: req.user!.id,
+      txHash,
+      expectedLtc,
+      memo,
+      ipAddress: req.ip
+    });
+
+    if (!result.success) {
+      return res.status(400).json(result);
+    }
+    return res.json(result);
+  } catch (err: any) {
+    return res.status(500).json({ success: false, message: err?.message || 'Lỗi hệ thống xác minh Litecoin' });
+  }
+});
+
+// POST /api/v1/wallet/verify-momo - Verify MoMo E-Wallet Transaction
+walletRouter.post('/verify-momo', requireAuth, async (req: AuthenticatedRequest, res) => {
+  try {
+    const { transId, amount, memo } = req.body;
+    const result = await GatewayVerificationService.verifyMoMo({
+      userId: req.user!.id,
+      transId,
+      declaredAmount: amount,
+      memo,
+      ipAddress: req.ip
+    });
+
+    if (!result.success) {
+      return res.status(400).json(result);
+    }
+    return res.json(result);
+  } catch (err: any) {
+    return res.status(500).json({ success: false, message: err?.message || 'Lỗi hệ thống xác minh MoMo' });
+  }
+});
+
+// POST /api/v1/wallet/verify-vietqr - Verify VietQR Napas 24/7 Transfer
+walletRouter.post('/verify-vietqr', requireAuth, async (req: AuthenticatedRequest, res) => {
+  try {
+    const { transferCode, amount } = req.body;
+    const result = await GatewayVerificationService.verifyVietQr({
+      userId: req.user!.id,
+      transferCode,
+      amount,
+      ipAddress: req.ip
+    });
+
+    if (!result.success) {
+      return res.status(400).json(result);
+    }
+    return res.json(result);
+  } catch (err: any) {
+    return res.status(500).json({ success: false, message: err?.message || 'Lỗi xác minh VietQR' });
+  }
 });
 
 // GET /api/v1/wallet/telco-cards - Get user's submitted scratch cards history

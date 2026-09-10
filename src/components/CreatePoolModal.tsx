@@ -64,14 +64,13 @@ export const CreatePoolModal: React.FC<CreatePoolModalProps> = ({
   // Update selected product if initialProduct changes
   useEffect(() => {
     if (initialProduct) {
-      setSelectedProduct(initialProduct);
+      setSelectedProduct(prev => (prev?.id === initialProduct.id ? prev : initialProduct));
       setTargetSlots(initialProduct.minSlots || 4);
       setIsCustomMode(false);
-    } else if (!selectedProduct && products.length > 0) {
-      setSelectedProduct(products[0]);
-      setTargetSlots(products[0].minSlots || 4);
+    } else if (products.length > 0) {
+      setSelectedProduct(prev => prev || products[0]);
     }
-  }, [initialProduct, products]);
+  }, [initialProduct?.id, products.length]);
 
   // When selectedProduct changes, update default targetSlots
   useEffect(() => {
@@ -79,7 +78,7 @@ export const CreatePoolModal: React.FC<CreatePoolModalProps> = ({
       setTargetSlots(Math.max(2, selectedProduct.minSlots || 4));
       setCustomPoolTitle(`Pool: ${selectedProduct.title}`);
     }
-  }, [selectedProduct]);
+  }, [selectedProduct?.id]);
 
   if (!isOpen) return null;
 
@@ -161,7 +160,7 @@ export const CreatePoolModal: React.FC<CreatePoolModalProps> = ({
         id: 'seller-official',
         name: 'Official CyberPool Partner',
         avatar: 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?auto=format&fit=crop&w=150&q=80',
-        badge: 'Verified',
+        badge: 'Official Partner',
         rating: 5.0,
         totalDeals: 120,
         completedPools: 98,

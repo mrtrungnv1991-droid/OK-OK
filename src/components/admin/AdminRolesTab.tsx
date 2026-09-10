@@ -27,6 +27,77 @@ export const AdminRolesTab: React.FC<AdminRolesTabProps> = () => {
   const [staffUsers, setStaffUsers] = useState<AdminStaffUser[]>(INITIAL_ADMIN_STAFF);
   const [selectedRole, setSelectedRole] = useState<AdminRoleItem>(INITIAL_ADMIN_ROLES[0]);
   const [saveNotice, setSaveNotice] = useState<string | null>(null);
+  const [userToChangeRole, setUserToChangeRole] = useState<AdminStaffUser | null>(null);
+  const [newRoleForUser, setNewRoleForUser] = useState<string>('');
+  const [userToDelete, setUserToDelete] = useState<AdminStaffUser | null>(null);
+  const [isAddingStaff, setIsAddingStaff] = useState(false);
+  const [newStaffForm, setNewStaffForm] = useState({
+    fullName: '',
+    username: '',
+    email: '',
+    roleId: INITIAL_ADMIN_ROLES[1]?.id || 'role_warehouse'
+  });
+
+  const handleSaveUserRole = () => {
+    if (!userToChangeRole) return;
+    const targetRole = roles.find(r => r.id === newRoleForUser);
+    const updated = staffUsers.map(u => {
+      if (u.id === userToChangeRole.id) {
+        return {
+          ...u,
+          roleId: newRoleForUser,
+          roleName: targetRole?.name || u.roleName
+        };
+      }
+      return u;
+    });
+    setStaffUsers(updated);
+    setSaveNotice(`Đã đổi vai trò của "${userToChangeRole.fullName}" thành "${targetRole?.name}"!`);
+    setUserToChangeRole(null);
+    setTimeout(() => setSaveNotice(null), 3000);
+  };
+
+  const handleConfirmDeleteStaff = () => {
+    if (!userToDelete) return;
+    if (userToDelete.roleId === 'role_super_admin' || userToDelete.username === 'root_admin') {
+      setSaveNotice('⚠️ Không thể xóa Quản Trị Viên Tối Cao (Root Admin)!');
+      setUserToDelete(null);
+      setTimeout(() => setSaveNotice(null), 3000);
+      return;
+    }
+    setStaffUsers(staffUsers.filter(u => u.id !== userToDelete.id));
+    setSaveNotice(`Đã xóa tài khoản nhân sự "${userToDelete.fullName}"!`);
+    setUserToDelete(null);
+    setTimeout(() => setSaveNotice(null), 3000);
+  };
+
+  const handleCreateStaff = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!newStaffForm.fullName.trim() || !newStaffForm.username.trim()) return;
+    const targetRole = roles.find(r => r.id === newStaffForm.roleId);
+    const newUser: AdminStaffUser = {
+      id: `staff_${Date.now()}`,
+      username: newStaffForm.username.trim().toLowerCase(),
+      fullName: newStaffForm.fullName.trim(),
+      email: newStaffForm.email.trim() || `${newStaffForm.username}@system.local`,
+      roleId: newStaffForm.roleId,
+      roleName: targetRole?.name || 'Nhân Viên',
+      status: 'active',
+      lastLogin: 'Chưa đăng nhập',
+      createdAt: new Date().toISOString().split('T')[0],
+      avatar: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=100&auto=format&fit=crop&q=80'
+    };
+    setStaffUsers([...staffUsers, newUser]);
+    setIsAddingStaff(false);
+    setNewStaffForm({
+      fullName: '',
+      username: '',
+      email: '',
+      roleId: INITIAL_ADMIN_ROLES[1]?.id || 'role_warehouse'
+    });
+    setSaveNotice(`Đã cấp tài khoản quản trị mới cho "${newUser.fullName}"!`);
+    setTimeout(() => setSaveNotice(null), 3000);
+  };
 
   const modulesList: { id: AdminPermission['module']; label: string }[] = [
     { id: 'products', label: '1. Sản Phẩm & Kho Key' },
@@ -235,61 +306,285 @@ export const AdminRolesTab: React.FC<AdminRolesTabProps> = () => {
 
       {/* SUBTAB 2: STAFF USERS */}
       {subTab === 'staff_users' && (
-        <div className="overflow-x-auto rounded-xl border border-slate-800 bg-slate-950">
-          <table className="w-full text-left border-collapse text-xs">
-            <thead>
-              <tr className="bg-slate-900 text-slate-400 border-b border-slate-800 uppercase text-[11px] font-semibold tracking-wider">
-                <th className="py-3 px-4 whitespace-nowrap w-52">Tài Khoản / Họ Tên</th>
-                <th className="py-3 px-4 whitespace-nowrap w-48">Email Liên Hệ</th>
-                <th className="py-3 px-4 whitespace-nowrap w-40">Vai Trò Phân Quyền</th>
-                <th className="py-3 px-4 whitespace-nowrap w-44">Lần Đăng Nhập Gần Nhất</th>
-                <th className="py-3 px-4 whitespace-nowrap w-36">Trạng Thái</th>
-                <th className="py-3 px-4 whitespace-nowrap w-32 text-right">Thao Tác</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-slate-800/60">
-              {staffUsers.map((user) => (
-                <tr key={user.id} className="hover:bg-slate-900/40 transition-colors">
-                  <td className="py-3 px-4">
-                    <div className="flex items-center gap-2.5">
-                      <img src={user.avatar} alt="" className="w-8 h-8 rounded-full object-cover border border-slate-700 shrink-0" />
-                      <div>
-                        <div className="font-semibold text-white">{user.fullName}</div>
-                        <div className="text-[11px] text-slate-400 font-mono">@{user.username}</div>
-                      </div>
-                    </div>
-                  </td>
+        <div className="space-y-3">
+          <div className="flex items-center justify-between gap-3">
+            <p className="text-xs text-slate-400">
+              Danh sách tài khoản nhân viên được cấp quyền truy cập hệ thống quản trị Dispatch Master Suite.
+            </p>
+            <button
+              type="button"
+              onClick={() => setIsAddingStaff(true)}
+              className="px-3 py-1.5 rounded-lg bg-rose-600 hover:bg-rose-500 text-white font-bold text-xs flex items-center gap-1.5 cursor-pointer shadow-md transition-all"
+            >
+              <Plus className="w-4 h-4" />
+              <span>Cấp Tài Khoản Mới</span>
+            </button>
+          </div>
 
-                  <td className="py-3 px-4 text-cyan-400 font-mono text-xs">
-                    {user.email}
-                  </td>
-
-                  <td className="py-3 px-4 whitespace-nowrap">
-                    <span className="px-2.5 py-1 rounded-md bg-rose-950 text-rose-300 border border-rose-500/30 font-semibold text-xs whitespace-nowrap">
-                      {user.roleName}
-                    </span>
-                  </td>
-
-                  <td className="py-3 px-4 text-slate-300 font-mono text-xs whitespace-nowrap">
-                    {user.lastLogin}
-                  </td>
-
-                  <td className="py-3 px-4 whitespace-nowrap">
-                    <span className="text-emerald-400 font-semibold flex items-center gap-1.5 text-xs whitespace-nowrap">
-                      <Check className="w-3.5 h-3.5" />
-                      <span>Đang Hoạt Động</span>
-                    </span>
-                  </td>
-
-                  <td className="py-3 px-4 text-right whitespace-nowrap">
-                    <button className="px-3 py-1.5 rounded-lg bg-slate-900 border border-slate-800 text-slate-300 hover:text-white font-semibold text-xs cursor-pointer transition-colors">
-                      Đổi Vai Trò
-                    </button>
-                  </td>
+          <div className="overflow-x-auto rounded-xl border border-slate-800 bg-slate-950">
+            <table className="w-full text-left border-collapse text-xs">
+              <thead>
+                <tr className="bg-slate-900 text-slate-400 border-b border-slate-800 uppercase text-[11px] font-semibold tracking-wider">
+                  <th className="py-3 px-4 whitespace-nowrap w-52">Tài Khoản / Họ Tên</th>
+                  <th className="py-3 px-4 whitespace-nowrap w-48">Email Liên Hệ</th>
+                  <th className="py-3 px-4 whitespace-nowrap w-40">Vai Trò Phân Quyền</th>
+                  <th className="py-3 px-4 whitespace-nowrap w-44">Lần Đăng Nhập Gần Nhất</th>
+                  <th className="py-3 px-4 whitespace-nowrap w-36">Trạng Thái</th>
+                  <th className="py-3 px-4 whitespace-nowrap w-44 text-right">Thao Tác</th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
+              </thead>
+              <tbody className="divide-y divide-slate-800/60">
+                {staffUsers.map((user) => (
+                  <tr key={user.id} className="hover:bg-slate-900/40 transition-colors">
+                    <td className="py-3 px-4">
+                      <div className="flex items-center gap-2.5">
+                        <img src={user.avatar} alt="" className="w-8 h-8 rounded-full object-cover border border-slate-700 shrink-0" />
+                        <div>
+                          <div className="font-semibold text-white">{user.fullName}</div>
+                          <div className="text-[11px] text-slate-400 font-mono">@{user.username}</div>
+                        </div>
+                      </div>
+                    </td>
+
+                    <td className="py-3 px-4 text-cyan-400 font-mono text-xs">
+                      {user.email}
+                    </td>
+
+                    <td className="py-3 px-4 whitespace-nowrap">
+                      <span className="px-2.5 py-1 rounded-md bg-rose-950 text-rose-300 border border-rose-500/30 font-semibold text-xs whitespace-nowrap">
+                        {user.roleName}
+                      </span>
+                    </td>
+
+                    <td className="py-3 px-4 text-slate-300 font-mono text-xs whitespace-nowrap">
+                      {user.lastLogin}
+                    </td>
+
+                    <td className="py-3 px-4 whitespace-nowrap">
+                      <span className="text-emerald-400 font-semibold flex items-center gap-1.5 text-xs whitespace-nowrap">
+                        <Check className="w-3.5 h-3.5" />
+                        <span>Đang Hoạt Động</span>
+                      </span>
+                    </td>
+
+                    <td className="py-3 px-4 text-right whitespace-nowrap">
+                      <div className="flex items-center justify-end gap-1.5">
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setUserToChangeRole(user);
+                            setNewRoleForUser(user.roleId);
+                          }}
+                          className="px-2.5 py-1.5 rounded-lg bg-slate-900 border border-slate-800 text-slate-300 hover:text-white font-semibold text-xs cursor-pointer hover:border-slate-700 transition-colors"
+                        >
+                          Đổi Vai Trò
+                        </button>
+                        {user.roleId !== 'role_super_admin' && user.username !== 'root_admin' && (
+                          <button
+                            type="button"
+                            onClick={() => setUserToDelete(user)}
+                            className="p-1.5 rounded-lg bg-rose-950/40 text-rose-400 hover:text-rose-300 border border-rose-500/30 hover:bg-rose-900/50 transition-colors cursor-pointer"
+                            title="Xóa nhân viên này"
+                          >
+                            <Trash2 className="w-3.5 h-3.5" />
+                          </button>
+                        )}
+                      </div>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      )}
+
+      {/* MODAL: CHANGE USER ROLE */}
+      {userToChangeRole && (
+        <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4">
+          <div className="w-full max-w-md bg-slate-900 border border-rose-500/40 rounded-2xl p-6 space-y-4 text-white shadow-2xl">
+            <div className="flex items-center gap-3 border-b border-slate-800 pb-3">
+              <div className="p-2.5 rounded-xl bg-rose-500/20 text-rose-400 border border-rose-500/30">
+                <Sliders className="w-5 h-5" />
+              </div>
+              <div>
+                <h3 className="text-sm font-bold text-white uppercase tracking-wider">Đổi Vai Trò Quản Trị</h3>
+                <p className="text-xs text-slate-400">Gán nhóm quyền phân hệ mới cho nhân viên</p>
+              </div>
+            </div>
+
+            <div className="p-3.5 bg-slate-950 rounded-xl border border-slate-800 space-y-3 text-xs">
+              <div>
+                <span className="text-slate-400">Nhân viên:</span>{' '}
+                <strong className="text-white">{userToChangeRole.fullName}</strong>{' '}
+                <span className="text-slate-500">(@{userToChangeRole.username})</span>
+              </div>
+
+              <div>
+                <label className="text-slate-300 block font-semibold mb-1.5">Chọn Nhóm Vai Trò Mới:</label>
+                <select
+                  value={newRoleForUser}
+                  onChange={(e) => setNewRoleForUser(e.target.value)}
+                  className="w-full bg-slate-900 border border-slate-700 rounded-xl p-2.5 text-white font-medium text-xs focus:border-rose-500 outline-none"
+                >
+                  {roles.map(r => (
+                    <option key={r.id} value={r.id}>
+                      {r.name} {r.isSuperAdmin ? '(Tối Cao - Toàn Quyền)' : ''}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            </div>
+
+            <div className="flex items-center justify-end gap-2.5 pt-2">
+              <button
+                type="button"
+                onClick={() => setUserToChangeRole(null)}
+                className="px-4 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs font-semibold cursor-pointer transition-colors"
+              >
+                Hủy Bỏ
+              </button>
+              <button
+                type="button"
+                onClick={handleSaveUserRole}
+                className="px-4 py-2 rounded-xl bg-rose-600 hover:bg-rose-500 text-white text-xs font-bold flex items-center gap-2 cursor-pointer shadow-lg shadow-rose-600/30 transition-all"
+              >
+                <Check className="w-4 h-4" />
+                <span>Lưu Thay Đổi</span>
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* MODAL: CONFIRM DELETE STAFF */}
+      {userToDelete && (
+        <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4">
+          <div className="w-full max-w-md bg-slate-900 border border-red-500/40 rounded-2xl p-6 space-y-4 text-white shadow-2xl">
+            <div className="flex items-center gap-3 border-b border-slate-800 pb-3">
+              <div className="p-2.5 rounded-xl bg-red-500/20 text-red-400 border border-red-500/30">
+                <Trash2 className="w-5 h-5" />
+              </div>
+              <div>
+                <h3 className="text-sm font-bold text-white uppercase tracking-wider">Xác Nhận Xóa Nhân Viên</h3>
+                <p className="text-xs text-slate-400">Thu hồi quyền truy cập quản trị viên vĩnh viễn</p>
+              </div>
+            </div>
+
+            <div className="p-3.5 bg-slate-950 rounded-xl border border-slate-800 space-y-2 text-xs">
+              <div className="text-slate-300">
+                Bạn có chắc muốn xóa nhân viên: <strong className="text-white font-bold">{userToDelete.fullName}</strong> (@{userToDelete.username})?
+              </div>
+              <div className="text-slate-400 text-[11px]">
+                Vai trò hiện tại: <span className="text-rose-400 font-semibold">{userToDelete.roleName}</span> • Email: <span className="text-cyan-300">{userToDelete.email}</span>
+              </div>
+            </div>
+
+            <div className="flex items-center justify-end gap-2.5 pt-2">
+              <button
+                type="button"
+                onClick={() => setUserToDelete(null)}
+                className="px-4 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs font-semibold cursor-pointer transition-colors"
+              >
+                Hủy Bỏ
+              </button>
+              <button
+                type="button"
+                onClick={handleConfirmDeleteStaff}
+                className="px-4 py-2 rounded-xl bg-red-600 hover:bg-red-500 text-white text-xs font-bold flex items-center gap-2 cursor-pointer shadow-lg shadow-red-600/30 transition-all"
+              >
+                <Trash2 className="w-4 h-4" />
+                <span>Xác Nhận Xóa</span>
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* MODAL: ADD NEW STAFF */}
+      {isAddingStaff && (
+        <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4">
+          <div className="w-full max-w-md bg-slate-900 border border-rose-500/40 rounded-2xl p-6 space-y-4 text-white shadow-2xl">
+            <div className="flex items-center gap-3 border-b border-slate-800 pb-3">
+              <div className="p-2.5 rounded-xl bg-rose-500/20 text-rose-400 border border-rose-500/30">
+                <Plus className="w-5 h-5" />
+              </div>
+              <div>
+                <h3 className="text-sm font-bold text-white uppercase tracking-wider">Cấp Tài Khoản Nhân Viên Mới</h3>
+                <p className="text-xs text-slate-400">Tạo thông tin đăng nhập và gán nhóm quyền</p>
+              </div>
+            </div>
+
+            <form onSubmit={handleCreateStaff} className="space-y-3 text-xs">
+              <div>
+                <label className="text-slate-300 block font-semibold mb-1">Họ và Tên (*):</label>
+                <input
+                  type="text"
+                  required
+                  placeholder="VD: Nguyễn Văn A"
+                  value={newStaffForm.fullName}
+                  onChange={(e) => setNewStaffForm({ ...newStaffForm, fullName: e.target.value })}
+                  className="w-full bg-slate-950 border border-slate-700 rounded-xl p-2.5 text-white outline-none focus:border-rose-500"
+                />
+              </div>
+
+              <div className="grid grid-cols-2 gap-2.5">
+                <div>
+                  <label className="text-slate-300 block font-semibold mb-1">Tên Đăng Nhập (*):</label>
+                  <input
+                    type="text"
+                    required
+                    placeholder="VD: staff_kho01"
+                    value={newStaffForm.username}
+                    onChange={(e) => setNewStaffForm({ ...newStaffForm, username: e.target.value })}
+                    className="w-full bg-slate-950 border border-slate-700 rounded-xl p-2.5 text-white font-mono outline-none focus:border-rose-500"
+                  />
+                </div>
+                <div>
+                  <label className="text-slate-300 block font-semibold mb-1">Email Liên Hệ:</label>
+                  <input
+                    type="email"
+                    placeholder="staff@system.local"
+                    value={newStaffForm.email}
+                    onChange={(e) => setNewStaffForm({ ...newStaffForm, email: e.target.value })}
+                    className="w-full bg-slate-950 border border-slate-700 rounded-xl p-2.5 text-white font-mono outline-none focus:border-rose-500"
+                  />
+                </div>
+              </div>
+
+              <div>
+                <label className="text-slate-300 block font-semibold mb-1">Nhóm Quyền (*):</label>
+                <select
+                  value={newStaffForm.roleId}
+                  onChange={(e) => setNewStaffForm({ ...newStaffForm, roleId: e.target.value })}
+                  className="w-full bg-slate-950 border border-slate-700 rounded-xl p-2.5 text-white outline-none focus:border-rose-500"
+                >
+                  {roles.map(r => (
+                    <option key={r.id} value={r.id}>
+                      {r.name} {r.isSuperAdmin ? '(Tối Cao)' : ''}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              <div className="flex items-center justify-end gap-2.5 pt-3 border-t border-slate-800">
+                <button
+                  type="button"
+                  onClick={() => setIsAddingStaff(false)}
+                  className="px-4 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs font-semibold cursor-pointer transition-colors"
+                >
+                  Hủy Bỏ
+                </button>
+                <button
+                  type="submit"
+                  className="px-4 py-2 rounded-xl bg-rose-600 hover:bg-rose-500 text-white text-xs font-bold flex items-center gap-2 cursor-pointer shadow-lg shadow-rose-600/30 transition-all"
+                >
+                  <Plus className="w-4 h-4" />
+                  <span>Cấp Tài Khoản</span>
+                </button>
+              </div>
+            </form>
+          </div>
         </div>
       )}
     </div>

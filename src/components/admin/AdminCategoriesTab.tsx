@@ -22,13 +22,26 @@ import {
 import { CategoryItem } from '../../types';
 import { INITIAL_EXTENDED_CATEGORIES } from '../../data/systemExtendedData';
 
-export const AdminCategoriesTab: React.FC = () => {
-  const [categories, setCategories] = useState<CategoryItem[]>(INITIAL_EXTENDED_CATEGORIES);
+interface AdminCategoriesTabProps {
+  categories?: CategoryItem[];
+  onAddCategory?: (category: Partial<CategoryItem>) => void;
+  onUpdateCategory?: (categoryId: string, category: Partial<CategoryItem>) => void;
+  onDeleteCategory?: (categoryId: string) => void;
+}
+
+export const AdminCategoriesTab: React.FC<AdminCategoriesTabProps> = ({
+  categories: propCategories,
+  onAddCategory,
+  onUpdateCategory,
+  onDeleteCategory
+}) => {
+  const [categories, setCategories] = useState<CategoryItem[]>(propCategories && propCategories.length > 0 ? propCategories : INITIAL_EXTENDED_CATEGORIES);
   const [searchTerm, setSearchTerm] = useState('');
   const [filterType, setFilterType] = useState<'all' | 'root' | 'sub'>('all');
   const [editingCategory, setEditingCategory] = useState<CategoryItem | null>(null);
   const [isCreatingNew, setIsCreatingNew] = useState(false);
   const [saveNotice, setSaveNotice] = useState<string | null>(null);
+  const [categoryToDelete, setCategoryToDelete] = useState<CategoryItem | null>(null);
 
   // Form State
   const [formData, setFormData] = useState<Partial<CategoryItem>>({
@@ -116,16 +129,18 @@ export const AdminCategoriesTab: React.FC = () => {
   };
 
   const handleDelete = (id: string) => {
-    const hasChildren = categories.some(c => c.parentId === id);
-    if (hasChildren) {
-      if (!confirm('Chuyên mục này đang có các nhánh phụ con. Bạn có chắc muốn xóa không?')) {
-        return;
-      }
-    } else {
-      if (!confirm('Bạn có chắc muốn xóa chuyên mục này không?')) return;
+    const target = categories.find(c => c.id === id);
+    if (target) {
+      setCategoryToDelete(target);
     }
+  };
+
+  const confirmDeleteCategory = () => {
+    if (!categoryToDelete) return;
+    const id = categoryToDelete.id;
     setCategories(categories.filter(c => c.id !== id && c.parentId !== id));
-    setSaveNotice('Đã xóa chuyên mục thành công!');
+    setSaveNotice(`Đã xóa chuyên mục "${categoryToDelete.name}" thành công!`);
+    setCategoryToDelete(null);
     setTimeout(() => setSaveNotice(null), 3000);
   };
 
@@ -471,6 +486,55 @@ export const AdminCategoriesTab: React.FC = () => {
                 </button>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+
+      {/* CONFIRM DELETE CATEGORY MODAL */}
+      {categoryToDelete && (
+        <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4">
+          <div className="w-full max-w-md bg-slate-900 border border-rose-500/40 rounded-2xl p-6 space-y-4 text-white shadow-2xl">
+            <div className="flex items-center gap-3 border-b border-slate-800 pb-3">
+              <div className="p-2.5 rounded-xl bg-rose-500/20 text-rose-400 border border-rose-500/30">
+                <Trash2 className="w-5 h-5" />
+              </div>
+              <div>
+                <h3 className="text-sm font-bold text-white uppercase tracking-wider">Xác Nhận Xóa Chuyên Mục</h3>
+                <p className="text-xs text-slate-400">Gỡ bỏ chuyên mục và các nhánh phụ liên quan</p>
+              </div>
+            </div>
+
+            <div className="p-3.5 bg-slate-950 rounded-xl border border-slate-800 space-y-2 text-xs">
+              <div className="text-slate-200 font-semibold text-sm">
+                {categoryToDelete.name}
+              </div>
+              <div className="text-slate-400 font-mono text-[11px]">
+                Slug: <span className="text-cyan-400">{categoryToDelete.slug}</span> • Nhánh: <span className="text-slate-300">{getParentName(categoryToDelete.parentId)}</span>
+              </div>
+              {categories.some(c => c.parentId === categoryToDelete.id) && (
+                <div className="text-amber-300 bg-amber-950/40 border border-amber-500/30 p-2.5 rounded-lg text-[11px] leading-relaxed">
+                  ⚠️ Lưu ý: Chuyên mục này đang có các nhánh phụ con. Xóa chuyên mục này sẽ xóa toàn bộ các nhánh con trực thuộc.
+                </div>
+              )}
+            </div>
+
+            <div className="flex items-center justify-end gap-2.5 pt-2">
+              <button
+                type="button"
+                onClick={() => setCategoryToDelete(null)}
+                className="px-4 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs font-semibold cursor-pointer transition-colors"
+              >
+                Hủy Bỏ
+              </button>
+              <button
+                type="button"
+                onClick={confirmDeleteCategory}
+                className="px-4 py-2 rounded-xl bg-rose-600 hover:bg-rose-500 text-white text-xs font-bold flex items-center gap-2 cursor-pointer shadow-lg shadow-rose-600/30 transition-all"
+              >
+                <Trash2 className="w-4 h-4" />
+                <span>Xác Nhận Xóa</span>
+              </button>
+            </div>
           </div>
         </div>
       )}

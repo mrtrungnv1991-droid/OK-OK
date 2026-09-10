@@ -16,14 +16,15 @@ import { useTranslation } from '../i18n';
 interface KeyToolsModalProps {
   isOpen: boolean;
   onClose: () => void;
+  currency?: any;
 }
 
 export const KeyToolsModal: React.FC<KeyToolsModalProps> = ({
   isOpen,
-  onClose
+  onClose,
+  currency
 }) => {
   const { t } = useTranslation();
-  if (!isOpen) return null;
 
   const [activeTab, setActiveTab] = useState<'formatter' | 'steam_validator' | 'uid_checker'>('formatter');
   const [rawText, setRawText] = useState('');
@@ -40,6 +41,8 @@ export const KeyToolsModal: React.FC<KeyToolsModalProps> = ({
   const [selectedGame, setSelectedGame] = useState('Genshin Impact');
   const [uidResult, setUidResult] = useState<{ nickname: string; server: string; status: string } | null>(null);
   const [isCheckingUid, setIsCheckingUid] = useState(false);
+
+  if (!isOpen) return null;
 
   const handleFormatAccounts = () => {
     if (!rawText.trim()) return;
