@@ -32,6 +32,7 @@ export type TransactionType =
   | 'ESCROW_LOCK' 
   | 'ESCROW_RELEASE' 
   | 'ESCROW_REFUND' 
+  | 'REFUND'
   | 'PURCHASE_INSTANT' 
   | 'TOPUP_GAME' 
   | 'SELLER_PAYOUT' 

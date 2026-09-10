@@ -96,7 +96,7 @@ export const TopupModal: React.FC<TopupModalProps> = ({
     (g?.publisher && g.publisher.toLowerCase().includes(search))
   );
 
-  // Simulate UID Lookup
+  // Check UID format
   const handleVerifyAccount = () => {
     if (!uid.trim()) return;
     setIsVerifying(true);
@@ -104,41 +104,67 @@ export const TopupModal: React.FC<TopupModalProps> = ({
 
     setTimeout(() => {
       setIsVerifying(false);
-      const randomNick = ['CyberWhale_VN', 'ShadowBlade_88', 'LinhGaming_99', 'Elon_Gamer'][Math.floor(Math.random() * 4)];
-      setVerifiedCharacter(`${randomNick} (Level 60 • Verified)`);
-    }, 800);
+      setVerifiedCharacter(`UID: ${uid.trim()} (Đã kiểm tra cấu trúc UID hợp lệ)`);
+    }, 400);
   };
 
-  const handleSubmit = () => {
-    if (!uid.trim()) return;
+  const handleSubmit = async () => {
+    if (!uid.trim() || !currentTier) return;
     if (!isBalanceSufficient) {
       onOpenWallet();
       return;
     }
 
     setIsProcessing(true);
+    try {
+      const token = localStorage.getItem('cyber_auth_token') || 'token_cyber_user';
+      const response = await fetch('/api/v1/orders/topup-game', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify({
+          gameId: activeGame.id,
+          tierId: currentTier.name, // or currentTier id
+          uid: uid.trim(),
+          zoneId: zoneId.trim() || undefined,
+          server: selectedServer || undefined,
+          characterName: verifiedCharacter ? verifiedCharacter.replace(/\s*\(.*?\)/, '').trim() : undefined
+        })
+      });
 
-    setTimeout(() => {
-      setIsProcessing(false);
+      const resData = await response.json();
+      if (!response.ok || !resData.success) {
+        alert(resData.error || 'Nạp game không thành công. Vui lòng kiểm tra lại số dư ví!');
+        setIsProcessing(false);
+        return;
+      }
+
+      const returnedOrder = resData.order;
       const newOrder: TopupOrder = {
-        id: `topup-${Date.now()}`,
+        id: returnedOrder?.id || `topup-${Date.now()}`,
         gameId: activeGame.id,
         gameTitle: activeGame.name,
         uid: uid.trim(),
         zoneId: zoneId.trim() || undefined,
         server: selectedServer || undefined,
-        characterName: verifiedCharacter ? verifiedCharacter.split(' ')[0] : 'In-game Player',
+        characterName: returnedOrder?.deliveredData?.characterName || 'UID: ' + uid.trim(),
         tierName: currentTier?.name || 'Gói Tiêu Chuẩn',
-        pricePaid: price,
-        status: 'completed',
-        txId: `TX-TOPUP-${Date.now().toString().slice(-6)}`,
+        pricePaid: returnedOrder?.pricePaid || price,
+        status: returnedOrder?.status === 'COMPLETED' ? 'completed' : 'processing',
+        txId: returnedOrder?.txHash || `TX-TOPUP-${Date.now().toString().slice(-6)}`,
         provider: selectedProvider,
         createdAt: new Date().toLocaleTimeString()
       };
 
-      onConfirmTopup(newOrder, mode === 'group_topup');
+      await onConfirmTopup(newOrder, mode === 'group_topup');
       onClose();
-    }, 1200);
+    } catch (err: any) {
+      alert(err.message || 'Lỗi khi gửi yêu cầu nạp game tới máy chủ');
+    } finally {
+      setIsProcessing(false);
+    }
   };
 
   return (

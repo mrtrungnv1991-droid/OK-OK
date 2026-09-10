@@ -250,17 +250,17 @@ function AppContent() {
 
 
   // Top-Up Direct Game Handler
-  const handleConfirmTopup = (topupOrder: TopupOrder, isGroupTopup: boolean) => {
-    updateUserBalance(-topupOrder.pricePaid);
+  const handleConfirmTopup = async (topupOrder: TopupOrder, isGroupTopup: boolean) => {
+    await Promise.all([refreshUserProfile(), fetchWalletData()]);
 
     const newOrder: UserOrder = {
-      id: `ord-topup-${Date.now()}`,
+      id: topupOrder.id || `ord-topup-${Date.now()}`,
       productId: topupOrder.gameId,
       productTitle: `${topupOrder.gameTitle} - ${topupOrder.tierName}`,
-      platform: 'Garena/HoYoverse',
+      platform: 'Game Direct Topup',
       type: isGroupTopup ? 'topup_group' : 'topup_direct',
       pricePaid: topupOrder.pricePaid,
-      status: 'fulfilled',
+      status: topupOrder.status === 'completed' ? 'fulfilled' : 'processing',
       createdAt: new Date().toLocaleString('vi-VN'),
       topupDetails: {
         gameName: topupOrder.gameTitle,
@@ -282,13 +282,14 @@ function AppContent() {
       txCode: topupOrder.txId
     });
 
+    addOrder(newOrder);
     triggerConfetti();
 
     showToast(
-      `Đã nạp ${topupOrder.tierName} cho nhân vật [${topupOrder.characterName || topupOrder.uid}] qua cổng ${topupOrder.provider}.`,
+      `Đã tiếp nhận đơn nạp ${topupOrder.tierName} cho UID [${topupOrder.characterName || topupOrder.uid}]. Hệ thống đang xử lý đối soát nạp trực tiếp!`,
       'success',
       {
-        title: '⚡ NẠP GAME THÀNH CÔNG // API ĐÃ BẮN KIM CƯƠNG',
+        title: '⚡ TIẾP NHẬN ĐƠN NẠP GAME THÀNH CÔNG',
         duration: 5000,
         action: { label: 'Xem đơn nạp →', onClick: () => openModal('vault') }
       }

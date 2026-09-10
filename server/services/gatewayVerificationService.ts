@@ -106,56 +106,88 @@ export class GatewayVerificationService {
     const secretKey = db.systemConfig?.binanceSecretKey || process.env.BINANCE_PAY_SECRET_KEY;
     const usdRate = db.systemConfig?.usdToVndRate || 25400;
 
-    let verifiedAmountUsdt = 0;
-    let orderStatus = 'SUCCESS';
-    let rawApiResponse: any = null;
-
-    // If real API key is configured, query Binance Pay OpenAPI v2
-    if (apiKey && secretKey && !apiKey.includes('live_891823901823')) {
-      try {
-        const timestamp = Date.now().toString();
-        const nonce = crypto.randomBytes(16).toString('hex');
-        const queryBody = JSON.stringify({ prepayId: cleanOrderId, merchantTradeNo: cleanOrderId });
-        const payloadToSign = `${timestamp}\n${nonce}\n${queryBody}\n`;
-        const signature = crypto.createHmac('sha512', secretKey).update(payloadToSign).digest('hex').toUpperCase();
-
-        const bpayRes = await fetch('https://bpay.binanceapi.com/binancepay/openapi/v2/order/query', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'BinancePay-Timestamp': timestamp,
-            'BinancePay-Nonce': nonce,
-            'BinancePay-Certificate-SN': apiKey,
-            'BinancePay-Signature': signature
-          },
-          body: queryBody
-        });
-
-        rawApiResponse = await bpayRes.json();
-        if (rawApiResponse.status === 'SUCCESS' && rawApiResponse.data) {
-          orderStatus = rawApiResponse.data.status;
-          verifiedAmountUsdt = Number(rawApiResponse.data.orderAmount || 0);
-        } else {
-          return {
-            success: false,
-            verified: false,
-            gateway: 'BINANCE_PAY',
-            referenceId: cleanOrderId,
-            amount: 0,
-            message: `Binance Pay API phản hồi: ${rawApiResponse.errorMessage || 'Không tìm thấy hóa đơn trên Binance Pay'}`,
-            details: rawApiResponse
-          };
-        }
-      } catch (apiErr: any) {
-        console.error('[BINANCE_PAY_API_ERROR]', apiErr);
-      }
+    if (!apiKey || !secretKey || apiKey.includes('live_891823901823')) {
+      return {
+        success: false,
+        verified: false,
+        gateway: 'BINANCE_PAY',
+        referenceId: cleanOrderId,
+        amount: 0,
+        message: 'Cổng thanh toán Binance Pay chưa được cấu hình credentials đối tác. Vui lòng liên hệ quản trị viên.'
+      };
     }
 
-    // If verified or sandbox validation for test order IDs
+    let verifiedAmountUsdt = 0;
+    let orderStatus = '';
+    let rawApiResponse: any = null;
+
+    try {
+      const timestamp = Date.now().toString();
+      const nonce = crypto.randomBytes(16).toString('hex');
+      const queryBody = JSON.stringify({ prepayId: cleanOrderId, merchantTradeNo: cleanOrderId });
+      const payloadToSign = `${timestamp}\n${nonce}\n${queryBody}\n`;
+      const signature = crypto.createHmac('sha512', secretKey).update(payloadToSign).digest('hex').toUpperCase();
+
+      const bpayRes = await fetch('https://bpay.binanceapi.com/binancepay/openapi/v2/order/query', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'BinancePay-Timestamp': timestamp,
+          'BinancePay-Nonce': nonce,
+          'BinancePay-Certificate-SN': apiKey,
+          'BinancePay-Signature': signature
+        },
+        body: queryBody
+      });
+
+      rawApiResponse = await bpayRes.json();
+      if (rawApiResponse.status === 'SUCCESS' && rawApiResponse.data) {
+        orderStatus = rawApiResponse.data.status;
+        verifiedAmountUsdt = Number(rawApiResponse.data.orderAmount || 0);
+      } else {
+        return {
+          success: false,
+          verified: false,
+          gateway: 'BINANCE_PAY',
+          referenceId: cleanOrderId,
+          amount: 0,
+          message: `Binance Pay API phản hồi: ${rawApiResponse.errorMessage || 'Không tìm thấy hóa đơn trên Binance Pay'}`,
+          details: rawApiResponse
+        };
+      }
+    } catch (apiErr: any) {
+      console.error('[BINANCE_PAY_API_ERROR]', apiErr);
+      return {
+        success: false,
+        verified: false,
+        gateway: 'BINANCE_PAY',
+        referenceId: cleanOrderId,
+        amount: 0,
+        message: `Lỗi kết nối kiểm tra Binance Pay API: ${apiErr.message}`
+      };
+    }
+
+    // F02: Chỉ cộng tiền khi Binance Pay xác nhận đã thanh toán thành công (PAID)
+    if (orderStatus !== 'PAID' && orderStatus !== 'SUCCESS') {
+      return {
+        success: false,
+        verified: false,
+        gateway: 'BINANCE_PAY',
+        referenceId: cleanOrderId,
+        amount: 0,
+        message: `Giao dịch Binance Pay chưa hoàn tất thanh toán (Trạng thái: ${orderStatus || 'UNPAID'})`
+      };
+    }
+
     if (verifiedAmountUsdt <= 0) {
-      // If declared amount provided by modal, use it; otherwise calculate from parameter
-      const declaredNum = Number(params.declaredAmount || 50000);
-      verifiedAmountUsdt = Math.max(1, Math.round((declaredNum / usdRate) * 100) / 100);
+      return {
+        success: false,
+        verified: false,
+        gateway: 'BINANCE_PAY',
+        referenceId: cleanOrderId,
+        amount: 0,
+        message: 'Số tiền thanh toán xác thực trên Binance Pay không hợp lệ.'
+      };
     }
 
     const creditedVnd = Math.round(verifiedAmountUsdt * usdRate);
@@ -305,24 +337,17 @@ export class GatewayVerificationService {
       }
     }
 
-    // If on-chain query succeeded with valid amount
+    // F02: Chỉ cộng tiền khi truy vấn blockchain trả về giao dịch chuyển tiền hợp lệ
     if (!onChainVerified || detectedUsdt <= 0) {
-      // If client provided an expected amount (e.g. from deposit form) and hash has valid 64-hex format
-      if (/^[a-fA-F0-9]{64}$/.test(cleanHash) || /^0x[a-fA-F0-9]{64}$/.test(cleanHash)) {
-        detectedUsdt = params.expectedUsdt ? Number(params.expectedUsdt) : 10;
-        onChainVerified = true;
-        confirmations = 10;
-      } else {
-        return {
-          success: false,
-          verified: false,
-          gateway: 'CRYPTO_USDT',
-          referenceId: cleanHash,
-          amount: 0,
-          explorerUrl,
-          message: 'Không tìm thấy giao dịch chuyển USDT hợp lệ trên blockchain hoặc giao dịch chưa đủ số block xác nhận (confirmations). Vui lòng đợi 1-2 phút và thử lại!'
-        };
-      }
+      return {
+        success: false,
+        verified: false,
+        gateway: 'CRYPTO_USDT',
+        referenceId: cleanHash,
+        amount: 0,
+        explorerUrl,
+        message: 'Không tìm thấy giao dịch chuyển USDT hợp lệ trên blockchain tới ví CyberPool hoặc giao dịch chưa đủ số block xác nhận. Vui lòng kiểm tra lại TxID.'
+      };
     }
 
     const creditedVnd = Math.round(detectedUsdt * usdRate);
@@ -469,23 +494,17 @@ export class GatewayVerificationService {
       }
     }
 
-    // Fallback if transaction was just broadcasted or formatted correctly in test
+    // F02: Chỉ cộng tiền khi truy vấn blockchain Litecoin trả về giao dịch hợp lệ
     if (!onChainVerified || detectedLtc <= 0) {
-      if (/^[a-fA-F0-9]{64}$/.test(cleanHash)) {
-        detectedLtc = params.expectedLtc ? Number(params.expectedLtc) : 0.05;
-        confirmations = 2;
-        onChainVerified = true;
-      } else {
-        return {
-          success: false,
-          verified: false,
-          gateway: 'CRYPTO_LTC',
-          referenceId: cleanHash,
-          amount: 0,
-          explorerUrl,
-          message: 'Không tìm thấy giao dịch chuyển Litecoin hợp lệ trên mạng lưới LTC Core Mainnet hoặc chưa có block xác nhận. Vui lòng kiểm tra lại TxID!'
-        };
-      }
+      return {
+        success: false,
+        verified: false,
+        gateway: 'CRYPTO_LTC',
+        referenceId: cleanHash,
+        amount: 0,
+        explorerUrl,
+        message: 'Không tìm thấy giao dịch chuyển LTC hợp lệ tới địa chỉ ví CyberPool trên blockchain. Vui lòng kiểm tra lại TxID.'
+      };
     }
 
     const creditedVnd = Math.round(detectedLtc * ltcRate);
@@ -583,47 +602,70 @@ export class GatewayVerificationService {
     let verifiedAmount = 0;
     let momoStatus = 'SUCCESS';
 
-    // If MoMo Business API credentials are configured, query MoMo OpenAPI v2
-    if (partnerCode && accessKey && secretKey) {
-      try {
-        const requestId = `QUERY_${Date.now()}`;
-        const rawSignature = `accessKey=${accessKey}&orderId=${cleanTransId}&partnerCode=${partnerCode}&requestId=${requestId}`;
-        const signature = crypto.createHmac('sha256', secretKey).update(rawSignature).digest('hex');
-
-        const momoRes = await fetch('https://payment.momo.vn/v2/gateway/api/query', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            partnerCode,
-            requestId,
-            orderId: cleanTransId,
-            signature,
-            lang: 'vi'
-          })
-        });
-
-        const momoData: any = await momoRes.json();
-        if (momoData && (momoData.resultCode === 0 || momoData.resultCode === 9000)) {
-          verifiedAmount = Number(momoData.amount || 0);
-          momoStatus = 'COMPLETED';
-        } else if (momoData && momoData.resultCode !== 0) {
-          return {
-            success: false,
-            verified: false,
-            gateway: 'MOMO',
-            referenceId: cleanTransId,
-            amount: 0,
-            message: `MoMo API phản hồi: ${momoData.message || 'Mã giao dịch MoMo không hợp lệ hoặc đang chờ xử lý'}`
-          };
-        }
-      } catch (momoApiErr) {
-        console.warn('[MOMO_API_QUERY_ERROR]', momoApiErr);
-      }
+    // If MoMo Business API credentials are NOT configured, return error
+    if (!partnerCode || !accessKey || !secretKey) {
+      return {
+        success: false,
+        verified: false,
+        gateway: 'MOMO',
+        referenceId: cleanTransId,
+        amount: 0,
+        message: 'Cổng thanh toán MoMo Business API chưa được cấu hình đối soát. Vui lòng liên hệ quản trị viên.'
+      };
     }
 
-    // If API query didn't set amount, use declared amount
+    try {
+      const requestId = `QUERY_${Date.now()}`;
+      const rawSignature = `accessKey=${accessKey}&orderId=${cleanTransId}&partnerCode=${partnerCode}&requestId=${requestId}`;
+      const signature = crypto.createHmac('sha256', secretKey).update(rawSignature).digest('hex');
+
+      const momoRes = await fetch('https://payment.momo.vn/v2/gateway/api/query', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          partnerCode,
+          requestId,
+          orderId: cleanTransId,
+          signature,
+          lang: 'vi'
+        })
+      });
+
+      const momoData: any = await momoRes.json();
+      if (momoData && (momoData.resultCode === 0 || momoData.resultCode === 9000)) {
+        verifiedAmount = Number(momoData.amount || 0);
+        momoStatus = 'COMPLETED';
+      } else {
+        return {
+          success: false,
+          verified: false,
+          gateway: 'MOMO',
+          referenceId: cleanTransId,
+          amount: 0,
+          message: `MoMo API phản hồi: ${momoData?.message || 'Mã giao dịch MoMo không hợp lệ hoặc chưa hoàn tất'}`
+        };
+      }
+    } catch (momoApiErr: any) {
+      console.warn('[MOMO_API_QUERY_ERROR]', momoApiErr);
+      return {
+        success: false,
+        verified: false,
+        gateway: 'MOMO',
+        referenceId: cleanTransId,
+        amount: 0,
+        message: `Lỗi kết nối kiểm tra MoMo API: ${momoApiErr.message}`
+      };
+    }
+
     if (verifiedAmount <= 0) {
-      verifiedAmount = params.declaredAmount ? Number(params.declaredAmount) : 50000;
+      return {
+        success: false,
+        verified: false,
+        gateway: 'MOMO',
+        referenceId: cleanTransId,
+        amount: 0,
+        message: 'Số tiền giao dịch MoMo không hợp lệ.'
+      };
     }
 
     if (verifiedAmount <= 0) {
@@ -674,7 +716,7 @@ export class GatewayVerificationService {
   }
 
   // ============================================================================
-  // 5. VIETQR / BANKING 24/7 AUTO VERIFICATION
+  // 5. VIETQR / BANKING 24/7 AUTO VERIFICATION (F01: Chặn cộng tiền khi chưa có đối soát)
   // ============================================================================
   public static async verifyVietQr(params: {
     userId: string;
@@ -683,7 +725,6 @@ export class GatewayVerificationService {
     ipAddress?: string;
   }): Promise<VerificationResult> {
     const cleanCode = String(params.transferCode || '').trim().toUpperCase();
-    const depositAmount = Number(params.amount || 50000);
 
     const targetUser = db.users.get(params.userId);
     if (!targetUser) {
@@ -697,16 +738,62 @@ export class GatewayVerificationService {
       };
     }
 
+    if (!cleanCode) {
+      return {
+        success: false,
+        verified: false,
+        gateway: 'VIETQR',
+        referenceId: '',
+        amount: 0,
+        message: 'Mã nội dung chuyển khoản không hợp lệ'
+      };
+    }
+
+    // Kiểm tra xem đã có bản ghi đối soát thực tế từ ngân hàng/webhook chưa
+    const existingSettlement = Array.from(db.processedWebhooks.values()).find(
+      w => (w.provider === 'VIETQR' || w.provider === 'BANK') && w.memo?.toUpperCase() === cleanCode
+    );
+
+    if (!existingSettlement) {
+      return {
+        success: false,
+        verified: false,
+        gateway: 'VIETQR',
+        referenceId: cleanCode,
+        amount: 0,
+        message: 'Cổng thanh toán tự động VietQR chưa nhận được biến động số dư ngân hàng khớp với mã chuyển khoản này. Vui lòng chờ 1-3 phút để hệ thống ngân hàng đồng bộ.'
+      };
+    }
+
+    if (this.isAlreadyRedeemed(cleanCode)) {
+      return {
+        success: false,
+        verified: false,
+        gateway: 'VIETQR',
+        referenceId: cleanCode,
+        amount: 0,
+        message: 'Giao dịch chuyển khoản này đã được đối soát và cộng tiền trước đó.'
+      };
+    }
+
+    const actualAmount = existingSettlement.amount;
     const txRef = `NAPAS_${Date.now()}`;
     await LedgerService.executeTransaction({
       userId: targetUser.id,
-      amount: depositAmount,
+      amount: actualAmount,
       type: 'DEPOSIT',
-      description: `Nạp tiền VietQR Ngân Hàng Napas 24/7 (+${depositAmount.toLocaleString()}₫) - Nội dung: ${cleanCode}`,
+      description: `Nạp tiền VietQR Ngân Hàng Napas 24/7 (+${actualAmount.toLocaleString()}₫) - Nội dung: ${cleanCode}`,
       referenceId: txRef,
       actorId: 'VIETQR_NAPAS_AUTO',
       actorName: 'Napas 24/7 Core API',
       ipAddress: params.ipAddress
+    });
+
+    this.markRedeemed(cleanCode, {
+      gateway: 'VIETQR',
+      amount: actualAmount,
+      userId: targetUser.id,
+      memo: cleanCode
     });
 
     return {
@@ -714,8 +801,8 @@ export class GatewayVerificationService {
       verified: true,
       gateway: 'VIETQR',
       referenceId: txRef,
-      amount: depositAmount,
-      message: `Xác nhận nạp VietQR thành công! Đã cộng +${depositAmount.toLocaleString()}₫ vào tài khoản.`,
+      amount: actualAmount,
+      message: `Xác nhận nạp VietQR thành công! Đã cộng +${actualAmount.toLocaleString()}₫ vào tài khoản.`,
       newBalance: targetUser.walletBalance
     };
   }
@@ -728,8 +815,8 @@ export class GatewayVerificationService {
     secretKey?: string;
   }) {
     const start = Date.now();
-    const apiKey = credentials?.apiKey || db.systemConfig?.binanceApiKey || 'bpay_live_891823901823';
-    const secretKey = credentials?.secretKey || db.systemConfig?.binanceSecretKey || 'sec_bpay_test';
+    const apiKey = credentials?.apiKey || db.systemConfig?.binanceApiKey || process.env.BINANCE_PAY_API_KEY;
+    const secretKey = credentials?.secretKey || db.systemConfig?.binanceSecretKey || process.env.BINANCE_PAY_SECRET_KEY;
 
     try {
       // Test Binance ping

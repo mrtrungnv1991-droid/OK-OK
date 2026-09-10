@@ -277,7 +277,7 @@ export interface UserOrder {
   platform: string;
   type: 'group_buy' | 'instant_single' | 'topup_game' | 'topup_direct' | 'topup_group';
   pricePaid: number;
-  status: 'escrow_locked' | 'fulfilled' | 'refunded';
+  status: 'escrow_locked' | 'fulfilled' | 'refunded' | 'processing';
   createdAt: string;
   deliveredKey?: string;
   pinCode?: string;

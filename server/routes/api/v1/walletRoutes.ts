@@ -18,32 +18,34 @@ walletRouter.get('/ledger', requireAuth, (req: AuthenticatedRequest, res) => {
   });
 });
 
-// POST /api/v1/wallet/deposit - Create Deposit (VietQR, MoMo, Crypto)
+// POST /api/v1/wallet/deposit - Create Deposit Intent (Chờ đối soát từ cổng thanh toán / ngân hàng)
 walletRouter.post('/deposit', requireAuth, async (req: AuthenticatedRequest, res) => {
   const { amount, methodTitle, idempotencyKey } = req.body;
   const depositAmount = Number(amount);
 
   if (isNaN(depositAmount) || depositAmount <= 0) {
-    return res.status(400).json({ success: false, error: 'Invalid deposit amount' });
+    return res.status(400).json({ success: false, error: 'Số tiền nạp không hợp lệ' });
   }
 
-  const result = await LedgerService.executeTransaction({
+  // F01: Chặn direct-credit từ request client. Request nạp chỉ tạo DepositIntent chờ thanh toán.
+  // Số dư ví chỉ được cộng khi có đối soát / webhook xác thực từ ngân hàng hoặc cổng thanh toán.
+  const intentId = `DEP-${Date.now()}-${Math.random().toString(36).substring(2, 7).toUpperCase()}`;
+  const depositIntent = {
+    id: intentId,
     userId: req.user!.id,
-    type: 'DEPOSIT',
     amount: depositAmount,
-    description: `Nạp tiền qua ${methodTitle || 'Cổng Thanh Toán Tự Động'}`,
-    idempotencyKey,
-    ipAddress: req.ip
-  });
-
-  if (!result.success) {
-    return res.status(400).json(result);
-  }
+    methodTitle: methodTitle || 'Cổng Chuyển Khoản Tự Động',
+    idempotencyKey: idempotencyKey || intentId,
+    status: 'PENDING',
+    createdAt: new Date().toISOString(),
+    expiresAt: new Date(Date.now() + 15 * 60 * 1000).toISOString()
+  };
 
   res.json({
     success: true,
-    newBalance: req.user!.walletBalance,
-    transaction: result.transaction
+    status: 'PENDING',
+    depositIntent,
+    message: 'Yêu cầu nạp tiền đã được ghi nhận. Vui lòng hoàn tất chuyển khoản chính xác nội dung để hệ thống tự động cộng tiền sau khi đối soát.'
   });
 });
 
@@ -173,10 +175,17 @@ walletRouter.post('/telco-card', requireAuth, async (req: AuthenticatedRequest, 
     return res.status(400).json({ success: false, error: 'Thông tin thẻ không hợp lệ (vui lòng nhập đủ loại thẻ, mệnh giá, mã pin và số seri)' });
   }
 
-  // Card24h API credentials
-  const partnerId = db.systemConfig?.telcoPartnerId || process.env.CARD24H_PARTNER_ID || '16654919157';
-  const partnerKey = db.systemConfig?.telcoPartnerKey || process.env.CARD24H_PARTNER_KEY || 'bc3299820230bb1ed2b2b729cac744e3';
+  // Card24h API credentials (F11: Gỡ bỏ credentials fallback cố định)
+  const partnerId = db.systemConfig?.telcoPartnerId || process.env.CARD24H_PARTNER_ID;
+  const partnerKey = db.systemConfig?.telcoPartnerKey || process.env.CARD24H_PARTNER_KEY;
   const provider = db.systemConfig?.telcoProvider || 'card24h';
+
+  if (!partnerId || !partnerKey) {
+    return res.status(503).json({
+      success: false,
+      error: 'Cổng đổi thẻ cào Card24h chưa được cấu hình credentials (CARD24H_PARTNER_ID, CARD24H_PARTNER_KEY). Vui lòng cấu hình trên hệ thống quản trị.'
+    });
+  }
 
   // Normalize telco for Card24h
   let normalizedTelco = String(telco).toUpperCase().trim();

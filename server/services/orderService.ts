@@ -21,7 +21,7 @@ export class OrderService {
     finalTotal?: number;
     ipAddress?: string;
   }): Promise<{ success: boolean; order?: ServerOrder; deliveredKey?: string; error?: string }> {
-    const { buyer, productId, quantity = 1, paymentMethod = 'wallet', finalTotal, ipAddress } = params;
+    const { buyer, productId, quantity = 1, paymentMethod = 'wallet', voucherCode, ipAddress } = params;
     const product = db.products.find(p => p.id === productId);
 
     if (!product) {
@@ -31,14 +31,45 @@ export class OrderService {
     if ((product.stockAvailable !== undefined && product.stockAvailable <= 0) || product.status === 'OUT_OF_STOCK' || product.isAvailable === false) {
       return {
         success: false,
-        error: `Sản phẩm "${product.title}" hiện tại đã hết hàng tại shop API nguồn. Vui lòng chọn sản phẩm khác hoặc quay lại sau!`
+        error: `Sản phẩm "${product.title}" hiện tại đã hết hàng trong kho. Vui lòng chọn sản phẩm khác hoặc quay lại sau!`
       };
     }
 
-    const unitPrice = product.retailPrice;
-    const price = typeof finalTotal === 'number' && finalTotal > 0 ? finalTotal : (unitPrice * quantity);
+    // F03: Kiểm tra số lượng hợp lệ
+    const validQuantity = Math.floor(Number(quantity || 1));
+    if (!Number.isInteger(validQuantity) || validQuantity <= 0 || validQuantity > 100) {
+      return { success: false, error: 'Số lượng mua không hợp lệ (từ 1 đến 100)' };
+    }
 
-    if (paymentMethod === 'wallet' && buyer.walletBalance < price) {
+    // F03: Server tự tính giá dựa trên retailPrice và voucher, client không được tự ý quyết định finalTotal
+    const unitPrice = Number(product.retailPrice || 0);
+    if (isNaN(unitPrice) || unitPrice <= 0) {
+      return { success: false, error: 'Giá sản phẩm không hợp lệ' };
+    }
+
+    let calculatedPrice = unitPrice * validQuantity;
+    if (voucherCode) {
+      const voucher = db.vouchers?.find(v => v.code?.toUpperCase() === voucherCode.toUpperCase() && v.active);
+      if (voucher) {
+        if (voucher.type === 'percent') {
+          const discount = Math.round((calculatedPrice * Number(voucher.discount)) / 100);
+          calculatedPrice = Math.max(0, calculatedPrice - discount);
+        } else if (voucher.type === 'fixed') {
+          calculatedPrice = Math.max(0, calculatedPrice - Number(voucher.discount));
+        }
+      }
+    }
+    const price = calculatedPrice;
+
+    // F03: Chưa có phương thức thanh toán ngoài ví thì chặn phương thức đó
+    if (paymentMethod !== 'wallet') {
+      return {
+        success: false,
+        error: 'Phương thức thanh toán trực tiếp ngoài ví chưa hỗ trợ mua hàng tự động. Vui lòng nạp tiền vào ví hoặc chọn thanh toán bằng Ví CyberPool.'
+      };
+    }
+
+    if (buyer.walletBalance < price) {
       return { 
         success: false, 
         error: `Số dư ví không đủ. Cần: ${price.toLocaleString('vi-VN')}đ, Hiện có: ${buyer.walletBalance.toLocaleString('vi-VN')}đ` 
@@ -47,98 +78,121 @@ export class OrderService {
 
     const orderId = `ORD-${Date.now()}-${Math.random().toString(36).substring(2, 6).toUpperCase()}`;
 
-    // 1. Digital item resolution (Supplier Relay or Inventory vault)
+    // F04 & F05: Kiểm tra tồn kho và giữ hàng trước khi trừ tiền ví
+    const isSupplierProduct = Boolean(product.supplierId || (product as any).source_info);
+    let reservedItems: any[] = [];
     let deliveredKey = '';
+    let deliveredKeys: string[] = [];
     let supplierOrderInfo: any = null;
 
-    // A. Check if product is mapped to an integrated Supplier (Account, API, or Custom)
-    try {
-      const supplierDispatch = await SupplierManagerService.dispatchSupplierOrder({
-        localProductId: productId,
-        quantity,
-        localOrderId: orderId,
-        customerPrice: price
-      });
-
-      if (supplierDispatch.isSupplierProduct) {
-        if (!supplierDispatch.success) {
-          return {
-            success: false,
-            error: supplierDispatch.error || 'Lỗi khi đặt hàng qua nhà cung cấp nguồn'
-          };
+    if (!isSupplierProduct) {
+      // Kho nội bộ: Giữ đúng số lượng validQuantity
+      for (let i = 0; i < validQuantity; i++) {
+        const item = await InventoryService.reserveItem(productId, buyer.id, orderId);
+        if (item) {
+          reservedItems.push(item);
+        } else {
+          break;
         }
-        deliveredKey = supplierDispatch.deliveredKey || '';
-        supplierOrderInfo = supplierDispatch.supplierOrderSnapshot;
       }
-    } catch (err: any) {
-      console.warn('[OrderService] Supplier dispatch exception:', err);
-    }
 
-    // A2. Check if product is from Cyborg Pipeline / G2UP Direct Connector (Real live API)
-    if (!deliveredKey) {
-      try {
-        let g2upRawId: string | null = null;
-        const pTitle = (product.title || '').toLowerCase();
-        
-        if (productId === 'prod-g2up-priv-server' || productId === 'prod-roblox-priv-server') {
-          g2upRawId = '1937';
-        } else if (productId === 'prod-g2up-godhuman' || productId === 'prod-roblox-godhuman') {
-          g2upRawId = '1752';
-        } else if (productId === 'prod-g2up-anime-exp' || productId === 'prod-roblox-fullgear-v4') {
-          g2upRawId = '1940';
-        } else if (productId.startsWith('prod_g2up_')) {
-          g2upRawId = productId.replace('prod_g2up_', '');
-        } else if (productId.startsWith('prod-g2up-')) {
-          g2upRawId = productId.replace('prod-g2up-', '');
-        } else if ((product as any)?.source_info?.sourceProductId) {
-          g2upRawId = String((product as any).source_info.sourceProductId).replace('g2up-', '');
-        } else if (pTitle.includes('private server') || pTitle.includes('vip server') || pTitle.includes('blox fruits')) {
-          g2upRawId = '1937';
-        } else if (pTitle.includes('godhuman')) {
-          g2upRawId = '1752';
+      if (reservedItems.length < validQuantity) {
+        // Hủy giữ các item đã reserve nếu không đủ số lượng
+        for (const item of reservedItems) {
+          InventoryService.releaseReservation(item.id);
         }
-
-        if (g2upRawId) {
-          console.log(`[OrderService] Found G2UP source product #${g2upRawId} for ${productId} ("${product.title}"). Purchasing directly via G2UP Live API...`);
-          const connector = cyborgPipelineService.getConnector();
-          const purchaseRes = await connector.purchase(g2upRawId, quantity);
-
-          if (purchaseRes.success && purchaseRes.data?.key) {
-            deliveredKey = purchaseRes.data.key;
-            supplierOrderInfo = {
-              supplierId: 'acc_g2up_net',
-              supplierName: 'G2UP.NET Official Live API',
-              externalOrderId: purchaseRes.data.purchaseId,
-              status: purchaseRes.data.status,
-              rawResponse: purchaseRes.data
-            };
-            console.log(`[OrderService] G2UP Live purchase SUCCESS! Key/Link delivered:`, deliveredKey);
-          } else {
-            const errMsg = purchaseRes.error?.message || 'G2UP.NET từ chối giao dịch hoặc số dư không đủ';
-            console.error(`[OrderService] G2UP Live API purchase FAILED:`, errMsg);
-            return {
-              success: false,
-              error: `G2UP API: ${errMsg}`
-            };
-          }
-        }
-      } catch (err: any) {
-        console.error('[OrderService] Cyborg/G2UP connector dispatch error:', err);
         return {
           success: false,
-          error: `Lỗi kết nối G2UP: ${err.message || 'Không thể kết nối máy chủ nhà cung cấp'}`
+          error: `Sản phẩm "${product.title}" không đủ tồn kho (yêu cầu ${validQuantity}, hiện còn ${reservedItems.length}).`
         };
       }
     }
 
-    // B. If not a supplier product or fallback, check local inventory vault
-    let reservedItem: any = null;
-    if (!deliveredKey) {
-      reservedItem = await InventoryService.reserveItem(productId, buyer.id, orderId);
-      if (reservedItem?.keyCode) {
-        deliveredKey = reservedItem.keyCode;
-        InventoryService.markDelivered(reservedItem.id);
+    // Trừ tiền ví qua Ledger (Step 2)
+    const ledgerRes = await LedgerService.executeTransaction({
+      userId: buyer.id,
+      type: 'PURCHASE_INSTANT',
+      amount: -price,
+      description: `Mua lẻ: ${product.title} (x${validQuantity})`,
+      referenceId: orderId,
+      ipAddress
+    });
+
+    if (!ledgerRes.success) {
+      for (const item of reservedItems) {
+        InventoryService.releaseReservation(item.id);
       }
+      return { success: false, error: ledgerRes.error || 'Trừ tiền ví thất bại' };
+    }
+
+    // Step 3: Giao hàng
+    if (reservedItems.length > 0) {
+      for (const item of reservedItems) {
+        InventoryService.markDelivered(item.id);
+        if (item.keyCode) {
+          deliveredKeys.push(item.keyCode);
+        }
+      }
+      deliveredKey = deliveredKeys.join('\n');
+    } else if (isSupplierProduct) {
+      // Gọi nhà cung cấp
+      try {
+        const supplierDispatch = await SupplierManagerService.dispatchSupplierOrder({
+          localProductId: productId,
+          quantity: validQuantity,
+          localOrderId: orderId,
+          customerPrice: price
+        });
+
+        if (supplierDispatch.isSupplierProduct) {
+          if (!supplierDispatch.success || !supplierDispatch.deliveredKey) {
+            // Hoàn tiền lại ví
+            await LedgerService.executeTransaction({
+              userId: buyer.id,
+              type: 'REFUND',
+              amount: price,
+              description: `Hoàn tiền đơn ${orderId}: Nhà cung cấp không thể giao hàng`,
+              referenceId: `REFUND-${orderId}`
+            });
+            return {
+              success: false,
+              error: supplierDispatch.error || 'Nhà cung cấp không thể giao hàng vào thời điểm này. Đã hoàn tiền về ví của bạn.'
+            };
+          }
+          deliveredKey = supplierDispatch.deliveredKey;
+          deliveredKeys = [deliveredKey];
+          supplierOrderInfo = supplierDispatch.supplierOrderSnapshot;
+        }
+      } catch (err: any) {
+        // Hoàn tiền
+        await LedgerService.executeTransaction({
+          userId: buyer.id,
+          type: 'REFUND',
+          amount: price,
+          description: `Hoàn tiền đơn ${orderId}: Lỗi kết nối nhà cung cấp`,
+          referenceId: `REFUND-${orderId}`
+        });
+        return {
+          success: false,
+          error: `Lỗi kết nối nhà cung cấp: ${err.message || 'Không thể giao hàng'}. Đã hoàn tiền về ví.`
+        };
+      }
+    }
+
+    // F04: CHẶN FALLBACK SINH HÀNG GIẢ KHI KHO HOẶC PROVIDER HẾT HÀNG
+    if (!deliveredKey || deliveredKeys.length === 0) {
+      // Hoàn tiền lại cho khách nếu đã trừ tiền
+      await LedgerService.executeTransaction({
+        userId: buyer.id,
+        type: 'REFUND',
+        amount: price,
+        description: `Hoàn tiền đơn ${orderId}: Kho không có sẵn mã bản quyền`,
+        referenceId: `REFUND-${orderId}`
+      });
+      return {
+        success: false,
+        error: `Sản phẩm "${product.title}" hiện tại không có sẵn hàng trong kho. Đã hoàn tiền về ví của bạn!`
+      };
     }
 
     // Determine branch
@@ -148,81 +202,33 @@ export class OrderService {
       category: product.category
     });
 
-    if (deliveredKey) {
-      const trimmed = deliveredKey.trim();
-      if (trimmed.startsWith('http://') || trimmed.startsWith('https://')) {
-        branch = 'LINK';
-      } else if (trimmed.includes(':') && !trimmed.includes('http')) {
-        branch = 'ACCOUNT';
-      }
-    }
-
-    // C. Default generated key or account credential if vault is empty
-    if (!deliveredKey) {
-      if (branch === 'ACCOUNT') {
-        const userPrefix = 'cyber_' + Math.random().toString(36).substring(2, 7);
-        const passSuffix = Math.floor(100000 + Math.random() * 900000);
-        const cookieToken = 'cyber_sess_' + Math.random().toString(36).substring(2, 12);
-        deliveredKey = `${userPrefix}:Cyber#${passSuffix}:${cookieToken}`;
-      } else if (branch === 'LINK') {
-        const inviteCode = Math.random().toString(36).substring(2, 10).toUpperCase();
-        deliveredKey = `https://cyberstore.vn/redeem/INVITE-${inviteCode}`;
-      } else if (branch === 'GIFTCARD') {
-        const cardNum = `GC${Math.floor(10000000 + Math.random() * 90000000)}`;
-        const pinNum = `${Math.floor(1000 + Math.random() * 9000)}`;
-        deliveredKey = `${cardNum} | PIN: ${pinNum}`;
-      } else {
-        const platformCode = (product.platform || 'CYBER').toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 5);
-        deliveredKey = `${platformCode}-${Math.floor(1000 + Math.random() * 9000)}-${Math.floor(1000 + Math.random() * 9000)}-${Math.floor(1000 + Math.random() * 9000)}`;
-      }
+    const trimmed = deliveredKey.trim();
+    if (trimmed.startsWith('http://') || trimmed.startsWith('https://')) {
+      branch = 'LINK';
+    } else if (trimmed.includes(':') && !trimmed.includes('http')) {
+      branch = 'ACCOUNT';
     }
 
     const parsedOutput = parseDeliveredOutput(deliveredKey, branch);
-
-    // 2. Deduct funds if payment method is wallet
-    if (paymentMethod === 'wallet') {
-      const ledgerRes = await LedgerService.executeTransaction({
-        userId: buyer.id,
-        type: 'PURCHASE_INSTANT',
-        amount: -price,
-        description: `Mua lẻ [${branch}]: ${product.title} (x${quantity})`,
-        referenceId: orderId,
-        ipAddress
-      });
-
-      if (!ledgerRes.success) {
-        if (reservedItem) {
-          InventoryService.releaseReservation(reservedItem.id);
-        }
-        return { success: false, error: ledgerRes.error || 'Trừ tiền ví thất bại' };
-      }
-    }
 
     // 3. Create real fulfilled Order record in database
     const order: ServerOrder = {
       id: orderId,
       buyerId: buyer.id,
       productId: product.id,
-      productTitle: quantity > 1 ? `${product.title} (x${quantity})` : product.title,
+      productTitle: validQuantity > 1 ? `${product.title} (x${validQuantity})` : product.title,
       orderType: 'INSTANT_KEY',
       status: 'COMPLETED',
       pricePaid: price,
-      originalPrice: product.retailPrice * quantity,
-      discountAmount: Math.max(0, (product.retailPrice * quantity) - price),
+      originalPrice: product.retailPrice * validQuantity,
+      discountAmount: Math.max(0, (product.retailPrice * validQuantity) - price),
       deliveredData: {
-        keys: [deliveredKey],
+        keys: deliveredKeys.length > 0 ? deliveredKeys : [deliveredKey],
         deliveryBranch: branch,
         accountCredentials: parsedOutput.accountCredentials,
         inviteLink: parsedOutput.inviteLink,
         cardCode: (parsedOutput as any).cardCode,
-        pinCode: (parsedOutput as any).pinCode,
-        giftUpCard: product.deliveryType === 'giftup_card' || branch === 'GIFTCARD' ? {
-          cardNumber: (parsedOutput as any).cardCode || `4928 ${Math.floor(1000 + Math.random() * 9000)} ${Math.floor(1000 + Math.random() * 9000)}`,
-          pinCode: (parsedOutput as any).pinCode || '7721',
-          barcode: `GU-INSTANT-${Math.floor(1000 + Math.random() * 9000)}`,
-          balance: 50,
-          currency: 'USD'
-        } : undefined
+        pinCode: (parsedOutput as any).pinCode
       },
       createdAt: new Date().toISOString(),
       completedAt: new Date().toISOString(),
@@ -238,7 +244,7 @@ export class OrderService {
 
     // Reduce product stock in database
     if (product.stockAvailable !== undefined && product.stockAvailable > 0) {
-      product.stockAvailable = Math.max(0, product.stockAvailable - quantity);
+      product.stockAvailable = Math.max(0, product.stockAvailable - validQuantity);
     }
 
     AuditService.log({
@@ -276,57 +282,62 @@ export class OrderService {
 
     const game = db.games.find(g => g.id === gameId);
     if (!game) {
-      return { success: false, error: 'Game not found' };
+      return { success: false, error: 'Không tìm thấy thông tin game' };
     }
 
-    const tier = game.tiers?.find((t: any) => t.id === tierId);
+    const tier = game.tiers?.find((t: any) => t.id === tierId || t.name === tierId);
     if (!tier) {
-      return { success: false, error: 'Topup tier not found' };
+      return { success: false, error: 'Gói nạp game không tồn tại' };
     }
 
-    const price = tier.price;
+    // F15: Khắc phục lỗi NaN khi tier dùng retailPrice thay vì price
+    const price = Number(tier.retailPrice ?? tier.price ?? tier.retail_price ?? 0);
+    if (!price || isNaN(price) || price <= 0) {
+      return { success: false, error: 'Giá gói nạp không hợp lệ hoặc chưa được cập nhật' };
+    }
 
     if (buyer.walletBalance < price) {
       return { 
         success: false, 
-        error: `Số dư ví không đủ để nạp. Cần: ${price.toLocaleString()}đ, Hiện có: ${buyer.walletBalance.toLocaleString()}đ` 
+        error: `Số dư ví không đủ để nạp. Cần: ${price.toLocaleString('vi-VN')}đ, Hiện có: ${buyer.walletBalance.toLocaleString('vi-VN')}đ` 
       };
     }
 
     const orderId = `ord-topup-${Date.now()}-${Math.random().toString(36).substr(2, 5)}`;
+    const gameTitle = game.name || game.title || 'Game';
 
     // Deduct via Ledger
     const ledgerRes = await LedgerService.executeTransaction({
       userId: buyer.id,
       type: 'TOPUP_GAME',
       amount: -price,
-      description: `Nạp ${game.title} [${tier.name}] - UID: ${uid}`,
+      description: `Nạp ${gameTitle} [${tier.name}] - UID: ${uid}`,
       referenceId: orderId,
       ipAddress
     });
 
     if (!ledgerRes.success) {
-      return { success: false, error: ledgerRes.error || 'Payment execution failed' };
+      return { success: false, error: ledgerRes.error || 'Trừ tiền ví nạp game thất bại' };
     }
 
+    // F15: Trạng thái ban đầu là PROCESSING (chờ nhà cung cấp / đối soát xử lý), không giả lập COMPLETED tức thì
     const order: ServerOrder = {
       id: orderId,
       buyerId: buyer.id,
       gameId: game.id,
-      productTitle: `${game.title} - ${tier.name}`,
+      productTitle: `${gameTitle} - ${tier.name}`,
       orderType: 'DIRECT_TOPUP',
-      status: 'COMPLETED',
+      status: 'PROCESSING',
       pricePaid: price,
       originalPrice: tier.originalPrice || price,
-      discountAmount: (tier.originalPrice || price) - price,
+      discountAmount: Math.max(0, (tier.originalPrice || price) - price),
       deliveredData: {
         topupUid: uid,
         topupServer: server || zoneId || 'Global',
-        characterName: characterName || 'Player_' + uid.slice(-4),
+        characterName: characterName || undefined,
         tierName: tier.name
       },
       createdAt: new Date().toISOString(),
-      completedAt: new Date().toISOString(),
       txHash: `TX-TOPUP-${Date.now()}`
     };
 
