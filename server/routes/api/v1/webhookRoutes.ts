@@ -6,33 +6,45 @@ import { AuditService } from '../../../services/auditService';
 import { db } from '../../../db/store';
 import { requireAuth, requireRole, AuthenticatedRequest } from '../../../middleware/authMiddleware';
 import { ServerUser } from '../../../types';
+import { IdempotencyService } from '../../../services/idempotencyService';
 
 export const webhookRouter = Router();
 
-const VIETQR_SECRET = process.env.VIETQR_WEBHOOK_SECRET || 'CYBER_VIETQR_SECRET_KEY_SECURE_2026!';
-const TELCO_SECRET = process.env.TELCO_WEBHOOK_SECRET || 'CYBER_TELCO_SECRET_KEY_SECURE_2026!';
+// Secure runtime fallback in dev/test only - NEVER use hardcoded static committed credentials in production
+const devFallbackSecret = crypto.randomBytes(32).toString('hex');
+export const getVietQrSecret = (): string => {
+  if (process.env.VIETQR_WEBHOOK_SECRET) return process.env.VIETQR_WEBHOOK_SECRET;
+  if (process.env.NODE_ENV === 'test') return 'TEST_VIETQR_KEY_SECRET_32B_MIN_VAL';
+  if (process.env.NODE_ENV === 'production') {
+    throw new Error('FATAL: VIETQR_WEBHOOK_SECRET is not configured in production environment.');
+  }
+  return devFallbackSecret;
+};
 
-if (process.env.NODE_ENV === 'production' && !process.env.VIETQR_WEBHOOK_SECRET) {
-  console.warn('[SECURITY ADVISORY] VIETQR_WEBHOOK_SECRET environment variable is not explicitly configured. Using hardened fallback secret.');
-}
+export const getTelcoSecret = (): string => {
+  if (process.env.TELCO_WEBHOOK_SECRET) return process.env.TELCO_WEBHOOK_SECRET;
+  if (process.env.NODE_ENV === 'test') return 'TEST_TELCO_KEY_SECRET_32B_MIN_VAL';
+  if (process.env.NODE_ENV === 'production') {
+    throw new Error('FATAL: TELCO_WEBHOOK_SECRET is not configured in production environment.');
+  }
+  return devFallbackSecret;
+};
 
 /**
- * Extracts and verifies target user from bank transaction memo or payload
+ * Extracts and verifies target user exclusively from bank transaction memo/description
  * Supported formats:
- * - Direct userId: "usr-buyer-01"
  * - Memo patterns: "CP usr-buyer-01", "NAP usr-buyer-01 500k", "CYBER usr-buyer-01"
- * - Email pattern: "lombard2508@gmail.com"
+ * - Direct user identifier: "usr-buyer-01"
+ * - Email pattern: "user@example.com"
  * - Phone number pattern: "0901234567"
+ * 
+ * NOTE: Disallows direct body injection of userId to prevent spoofing attack vectors.
  */
-function resolveUserFromTransaction(content: string = '', explicitUserId?: string): ServerUser | null {
-  // 1. Explicit userId provided by verified webhook
-  if (explicitUserId && db.users.has(explicitUserId)) {
-    return db.users.get(explicitUserId)!;
-  }
-
+function resolveUserFromTransaction(content: string = ''): ServerUser | null {
   const rawMemo = (content || '').trim();
+  if (!rawMemo) return null;
 
-  // 2. Search for usr-* pattern in content
+  // 1. Search for usr-* pattern in content
   const userPatternMatch = rawMemo.match(/(usr-[a-zA-Z0-9_-]+)/i);
   if (userPatternMatch) {
     const candidateId = userPatternMatch[1];
@@ -41,7 +53,7 @@ function resolveUserFromTransaction(content: string = '', explicitUserId?: strin
     }
   }
 
-  // 3. Search for email in content
+  // 2. Search for email in content
   const emailMatch = rawMemo.match(/([a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,})/i);
   if (emailMatch) {
     const candidateEmail = emailMatch[1].toLowerCase();
@@ -52,7 +64,7 @@ function resolveUserFromTransaction(content: string = '', explicitUserId?: strin
     }
   }
 
-  // 4. Search for phone in content
+  // 3. Search for phone in content
   const phoneMatch = rawMemo.match(/(0[3|5|7|8|9][0-9]{8})/);
   if (phoneMatch) {
     const candidatePhone = phoneMatch[1];
@@ -70,12 +82,21 @@ function resolveUserFromTransaction(content: string = '', explicitUserId?: strin
 webhookRouter.post('/vietqr', async (req: Request, res: Response) => {
   try {
     const signature = req.headers['x-vietqr-signature'] as string;
-    const { transactionId, amount, content, status, bankCode, userId: explicitUserId } = req.body;
+    const { transactionId, amount, content, status, bankCode } = req.body;
 
     if (!transactionId || amount === undefined || Number(amount) <= 0) {
       return res.status(400).json({ 
         success: false, 
         error: 'Thiếu tham số bắt buộc (transactionId hoặc amount hợp lệ)' 
+      });
+    }
+
+    // STRICT STATUS CHECK: Must explicitly be SUCCESS, COMPLETED, or PAID. Never accept undefined or pending.
+    const normalizedStatus = String(status || '').trim().toUpperCase();
+    if (normalizedStatus !== 'SUCCESS' && normalizedStatus !== 'COMPLETED' && normalizedStatus !== 'PAID') {
+      return res.status(400).json({
+        success: false,
+        error: `Trạng thái giao dịch không hợp lệ (${status || 'UNDEFINED'}). Chỉ xử lý khi status là SUCCESS hoặc COMPLETED.`
       });
     }
 
@@ -87,9 +108,20 @@ webhookRouter.post('/vietqr', async (req: Request, res: Response) => {
       });
     }
 
+    let secretKey = '';
+    try {
+      secretKey = getVietQrSecret();
+    } catch (err: any) {
+      console.error('[VIETQR_CONFIG_ERROR]', err?.message);
+      return res.status(503).json({
+        success: false,
+        error: 'Cổng webhook VietQR chưa được cấu hình biến môi trường an toàn trên máy chủ.'
+      });
+    }
+
     const payloadString = JSON.stringify(req.body);
     const expectedSig = crypto
-      .createHmac('sha256', VIETQR_SECRET)
+      .createHmac('sha256', secretKey)
       .update(payloadString)
       .digest('hex');
 
@@ -113,54 +145,68 @@ webhookRouter.post('/vietqr', async (req: Request, res: Response) => {
     }
 
     // PERSISTENT IDEMPOTENCY CHECK
-    const existing = db.processedWebhooks.get(transactionId);
-    if (existing) {
+    if (IdempotencyService.isProcessed(transactionId) || (content && IdempotencyService.isProcessed(content))) {
       return res.json({ 
         success: true, 
         message: 'Giao dịch đã được xử lý trước đó (Idempotent OK)',
-        transactionId,
-        processedAt: existing.processedAt
-      });
-    }
-
-    // DYNAMIC USER RESOLUTION (NEVER HARDCODE USER)
-    const targetUser = resolveUserFromTransaction(content, explicitUserId);
-
-    if (!targetUser) {
-      // Transaction cannot be mapped to any user -> Queue for manual admin reconciliation
-      const unmappedRecord = {
-        id: `unmapped-${Date.now()}-${transactionId}`,
-        provider: 'VIETQR',
-        transactionId,
-        amount: Number(amount),
-        memo: content || '',
-        rawPayload: req.body,
-        receivedAt: new Date().toISOString(),
-        status: 'PENDING_REVIEW' as const
-      };
-      db.pendingUnmappedDeposits.push(unmappedRecord);
-
-      AuditService.log({
-        actorId: 'WEBHOOK_VIETQR',
-        actorName: 'VietQR Auto Gateway',
-        actorRole: 'SUPER_ADMIN',
-        action: 'DEPOSIT_UNMAPPED_USER',
-        resource: 'WALLET',
-        resourceId: transactionId,
-        ipAddress: req.ip,
-        newValue: { content, amount, bankCode }
-      });
-
-      return res.status(422).json({
-        success: false,
-        error: 'Không thể xác định tài khoản người dùng từ nội dung chuyển khoản. Đã đưa vào hàng đợi đối soát thủ công.',
-        queuedForReview: true,
         transactionId
       });
     }
 
-    // Process deposit only if status is SUCCESS/COMPLETED or undefined (assumed success from bank webhook)
-    if (status === 'SUCCESS' || status === 'COMPLETED' || !status) {
+    // Acquire atomic lock on transaction ID to prevent concurrent duplicate execution
+    const lockAcquired = await IdempotencyService.acquireLock(transactionId);
+    if (!lockAcquired) {
+      return res.status(429).json({
+        success: false,
+        error: 'Giao dịch đang được xử lý đồng thời bởi một tiến trình khác.'
+      });
+    }
+
+    try {
+      if (IdempotencyService.isProcessed(transactionId)) {
+        return res.json({
+          success: true,
+          message: 'Giao dịch đã được xử lý trước đó (Idempotent OK)',
+          transactionId
+        });
+      }
+
+      // DYNAMIC USER RESOLUTION (EXCLUSIVELY FROM VERIFIED MEMO CONTENT)
+      const targetUser = resolveUserFromTransaction(content);
+
+      if (!targetUser) {
+        // Transaction cannot be mapped to any user -> Queue for manual admin reconciliation
+        const unmappedRecord = {
+          id: `unmapped-${Date.now()}-${transactionId}`,
+          provider: 'VIETQR',
+          transactionId,
+          amount: Number(amount),
+          memo: content || '',
+          rawPayload: req.body,
+          receivedAt: new Date().toISOString(),
+          status: 'PENDING_REVIEW' as const
+        };
+        db.pendingUnmappedDeposits.push(unmappedRecord);
+
+        AuditService.log({
+          actorId: 'WEBHOOK_VIETQR',
+          actorName: 'VietQR Auto Gateway',
+          actorRole: 'SUPER_ADMIN',
+          action: 'DEPOSIT_UNMAPPED_USER',
+          resource: 'WALLET',
+          resourceId: transactionId,
+          ipAddress: req.ip,
+          newValue: { content, amount, bankCode }
+        });
+
+        return res.status(422).json({
+          success: false,
+          error: 'Không thể xác định tài khoản người dùng từ nội dung chuyển khoản. Đã đưa vào hàng đợi đối soát thủ công.',
+          queuedForReview: true,
+          transactionId
+        });
+      }
+
       await LedgerService.executeTransaction({
         userId: targetUser.id,
         amount: Number(amount),
@@ -189,7 +235,17 @@ webhookRouter.post('/vietqr', async (req: Request, res: Response) => {
         newValue: { transactionId, amount, bankCode, userId: targetUser.id }
       });
 
-      // Record persistently in processed webhooks store
+      // Commit persistent idempotency
+      IdempotencyService.commit({
+        primaryKey: transactionId,
+        aliasKeys: content ? [content] : [],
+        provider: 'VIETQR',
+        referenceId: transactionId,
+        memo: content,
+        amount: Number(amount),
+        userId: targetUser.id
+      });
+
       db.processedWebhooks.set(transactionId, {
         amount: Number(amount),
         userId: targetUser.id,
@@ -198,18 +254,20 @@ webhookRouter.post('/vietqr', async (req: Request, res: Response) => {
         provider: 'VIETQR',
         memo: content
       });
-    }
 
-    res.json({
-      success: true,
-      message: 'Xử lý webhook VietQR thành công',
-      creditedTo: {
-        userId: targetUser.id,
-        email: targetUser.email,
-        amount: Number(amount)
-      },
-      processedAt: new Date().toISOString()
-    });
+      res.json({
+        success: true,
+        message: 'Xử lý webhook VietQR thành công',
+        creditedTo: {
+          userId: targetUser.id,
+          email: targetUser.email,
+          amount: Number(amount)
+        },
+        processedAt: new Date().toISOString()
+      });
+    } finally {
+      IdempotencyService.releaseLock(transactionId);
+    }
   } catch (err: any) {
     res.status(500).json({ success: false, error: err?.message || 'Lỗi xử lý webhook' });
   }
@@ -218,10 +276,15 @@ webhookRouter.post('/vietqr', async (req: Request, res: Response) => {
 // POST /api/v1/webhooks/telco
 webhookRouter.post('/telco', async (req: Request, res: Response) => {
   try {
-    const { requestId, status, declaredAmount, realAmount, callbackSign, content, userId: explicitUserId } = req.body;
+    const { requestId, status, declaredAmount, realAmount, callbackSign, content } = req.body;
 
     if (!requestId) {
       return res.status(400).json({ success: false, error: 'Thiếu requestId' });
+    }
+
+    const normalizedStatus = String(status || '').trim().toUpperCase();
+    if (normalizedStatus !== 'SUCCESS' && normalizedStatus !== 'COMPLETED') {
+      return res.status(400).json({ success: false, error: 'Chỉ chấp nhận status là SUCCESS hoặc COMPLETED' });
     }
 
     // Enforce Telco HMAC signature verification strictly in all environments
@@ -229,8 +292,15 @@ webhookRouter.post('/telco', async (req: Request, res: Response) => {
       return res.status(401).json({ success: false, error: 'Unauthorized: Thiếu chữ ký xác thực callbackSign' });
     }
 
+    let secretKey = '';
+    try {
+      secretKey = getTelcoSecret();
+    } catch (err: any) {
+      return res.status(503).json({ success: false, error: 'Cổng gạch thẻ chưa cấu hình bí mật webhook trong môi trường.' });
+    }
+
     const expectedSign = crypto
-      .createHmac('sha256', TELCO_SECRET)
+      .createHmac('sha256', secretKey)
       .update(`${requestId}:${declaredAmount || 0}:${status}`)
       .digest('hex');
 
@@ -242,39 +312,61 @@ webhookRouter.post('/telco', async (req: Request, res: Response) => {
     }
 
     // Persistent idempotency
-    if (db.processedWebhooks.has(requestId)) {
+    if (IdempotencyService.isProcessed(requestId)) {
       return res.json({ success: true, message: 'Giao dịch gạch thẻ đã được xử lý (Idempotent OK)' });
     }
 
-    const targetUser = resolveUserFromTransaction(content, explicitUserId);
-    if (targetUser && (status === 'SUCCESS' || status === 'COMPLETED')) {
-      const creditedAmount = Number(realAmount || declaredAmount || 0);
-      if (creditedAmount > 0) {
-        await LedgerService.executeTransaction({
-          userId: targetUser.id,
-          amount: creditedAmount,
-          type: 'DEPOSIT',
-          description: `Gạch thẻ cào tự động thành công (Mã yêu cầu: ${requestId})`,
-          referenceId: requestId,
-          actorId: 'WEBHOOK_TELCO',
-          actorName: 'Telco Auto Gateway'
-        });
-
-        db.processedWebhooks.set(requestId, {
-          amount: creditedAmount,
-          userId: targetUser.id,
-          status: 'COMPLETED',
-          processedAt: new Date().toISOString(),
-          provider: 'TELCO',
-          memo: content
-        });
-      }
+    const lockAcquired = await IdempotencyService.acquireLock(requestId);
+    if (!lockAcquired) {
+      return res.status(429).json({ success: false, error: 'Giao dịch đang được xử lý.' });
     }
 
-    res.json({
-      success: true,
-      message: 'Xử lý callback gạch thẻ cào thành công'
-    });
+    try {
+      if (IdempotencyService.isProcessed(requestId)) {
+        return res.json({ success: true, message: 'Giao dịch gạch thẻ đã được xử lý (Idempotent OK)' });
+      }
+
+      const targetUser = resolveUserFromTransaction(content);
+      if (targetUser && (status === 'SUCCESS' || status === 'COMPLETED')) {
+        const creditedAmount = Number(realAmount || declaredAmount || 0);
+        if (creditedAmount > 0) {
+          await LedgerService.executeTransaction({
+            userId: targetUser.id,
+            amount: creditedAmount,
+            type: 'DEPOSIT',
+            description: `Gạch thẻ cào tự động thành công (Mã yêu cầu: ${requestId})`,
+            referenceId: requestId,
+            actorId: 'WEBHOOK_TELCO',
+            actorName: 'Telco Auto Gateway'
+          });
+
+          IdempotencyService.commit({
+            primaryKey: requestId,
+            provider: 'TELCO',
+            referenceId: requestId,
+            memo: content,
+            amount: creditedAmount,
+            userId: targetUser.id
+          });
+
+          db.processedWebhooks.set(requestId, {
+            amount: creditedAmount,
+            userId: targetUser.id,
+            status: 'COMPLETED',
+            processedAt: new Date().toISOString(),
+            provider: 'TELCO',
+            memo: content
+          });
+        }
+      }
+
+      res.json({
+        success: true,
+        message: 'Xử lý callback gạch thẻ cào thành công'
+      });
+    } finally {
+      IdempotencyService.releaseLock(requestId);
+    }
   } catch (err: any) {
     res.status(500).json({ success: false, error: err?.message });
   }
@@ -317,7 +409,12 @@ export async function handleCard24hCallback(req: Request, res: Response) {
       return res.status(400).send('missing_parameters');
     }
 
-    const partnerKey = db.systemConfig?.telcoPartnerKey || process.env.CARD24H_PARTNER_KEY || 'bc3299820230bb1ed2b2b729cac744e3';
+    const partnerKey = db.systemConfig?.telcoPartnerKey || process.env.CARD24H_PARTNER_KEY;
+    if (!partnerKey) {
+      console.error('[CARD24H_CONFIG_ERROR] Missing CARD24H_PARTNER_KEY');
+      return res.status(503).send('partner_key_not_configured');
+    }
+
     const cleanCode = String(code || '');
     const cleanSerial = String(serial || '');
     const expectedSign = crypto.createHash('md5').update(`${partnerKey}${cleanCode}${cleanSerial}`).digest('hex');
@@ -332,8 +429,8 @@ export async function handleCard24hCallback(req: Request, res: Response) {
 
     const strRequestId = String(request_id);
 
-    // Idempotency check
-    if (db.processedWebhooks.has(strRequestId)) {
+    // Persistent Idempotency check
+    if (IdempotencyService.isProcessed(strRequestId) || db.processedWebhooks.has(strRequestId)) {
       return res.send('Thẻ hợp lệ');
     }
 

@@ -1,6 +1,7 @@
 import crypto from 'crypto';
 import { db } from '../db/store';
 import { LedgerService } from './ledgerService';
+import { IdempotencyService } from './idempotencyService';
 
 export interface VerificationResult {
   success: boolean;
@@ -19,15 +20,19 @@ export interface VerificationResult {
 export class GatewayVerificationService {
   /**
    * Check if a transaction hash/id was already redeemed (Anti-replay protection)
+   * Backed by persistent disk storage via IdempotencyService
    */
   public static isAlreadyRedeemed(identifier: string): boolean {
-    const cleanId = String(identifier).trim().toLowerCase();
-    if (db.processedWebhooks && db.processedWebhooks.has(cleanId)) {
+    const cleanId = String(identifier).trim().toUpperCase();
+    if (IdempotencyService.isProcessed(cleanId)) {
+      return true;
+    }
+    if (db.processedWebhooks && db.processedWebhooks.has(cleanId.toLowerCase())) {
       return true;
     }
     // Check in ledger transactions
     const existsInLedger = db.transactions.some(
-      tx => tx.referenceId && tx.referenceId.toLowerCase() === cleanId
+      tx => tx.referenceId && tx.referenceId.toUpperCase() === cleanId
     );
     return existsInLedger;
   }
@@ -41,11 +46,21 @@ export class GatewayVerificationService {
     userId: string;
     memo?: string;
   }) {
-    const cleanId = String(identifier).trim().toLowerCase();
+    const cleanId = String(identifier).trim();
+    IdempotencyService.commit({
+      primaryKey: cleanId,
+      aliasKeys: data.memo ? [data.memo] : undefined,
+      provider: data.gateway,
+      referenceId: cleanId,
+      memo: data.memo,
+      amount: data.amount,
+      userId: data.userId
+    });
+
     if (!db.processedWebhooks) {
       db.processedWebhooks = new Map();
     }
-    db.processedWebhooks.set(cleanId, {
+    db.processedWebhooks.set(cleanId.toLowerCase(), {
       amount: data.amount,
       userId: data.userId,
       status: 'COMPLETED',
@@ -305,7 +320,8 @@ export class GatewayVerificationService {
                 const toAddr = transfer.to_address || '';
                 const contract = transfer.contract_address || '';
                 // USDT contract on TRON is TR7NHqjeKQxGTCi8q8ZY4pL8otSzgjLj6t
-                if (contract === 'TR7NHqjeKQxGTCi8q8ZY4pL8otSzgjLj6t' || toAddr.toLowerCase() === shopUsdtAddress.toLowerCase()) {
+                // STRICT CHECK: Both contract address AND shop recipient address must match!
+                if (contract.toLowerCase() === 'TR7NHqjeKQxGTCi8q8ZY4pL8otSzgjLj6t'.toLowerCase() && toAddr.toLowerCase() === shopUsdtAddress.toLowerCase()) {
                   detectedUsdt = Number(transfer.amount_str || 0) / 1000000;
                   contractAddress = contract;
                   onChainVerified = true;
@@ -459,7 +475,8 @@ export class GatewayVerificationService {
         if (txObj) {
           confirmations = (data?.context?.state || 0) - (txObj.block_id || 0) + 1;
           for (const out of outputs) {
-            if (out.recipient && (out.recipient.toLowerCase() === shopLtcAddress.toLowerCase() || out.recipient.startsWith('L') || out.recipient.startsWith('M') || out.recipient.startsWith('ltc1'))) {
+            // STRICT CHECK: Recipient must be the exact shop LTC address, no prefix-only matching
+            if (out.recipient && out.recipient.toLowerCase() === shopLtcAddress.toLowerCase()) {
               detectedLtc = out.value / 100000000;
               onChainVerified = true;
               break;
@@ -749,10 +766,20 @@ export class GatewayVerificationService {
       };
     }
 
-    // Kiểm tra xem đã có bản ghi đối soát thực tế từ ngân hàng/webhook chưa
-    const existingSettlement = Array.from(db.processedWebhooks.values()).find(
-      w => (w.provider === 'VIETQR' || w.provider === 'BANK') && w.memo?.toUpperCase() === cleanCode
-    );
+    // 1. Kiểm tra xem giao dịch đã được hệ thống ghi nhận qua webhook và cộng tiền chưa
+    const existingSettlement = IdempotencyService.getRecord(cleanCode);
+
+    if (this.isAlreadyRedeemed(cleanCode) || (existingSettlement && IdempotencyService.isProcessed(existingSettlement.referenceId || cleanCode))) {
+      return {
+        success: true,
+        verified: true,
+        gateway: 'VIETQR',
+        referenceId: existingSettlement?.referenceId || cleanCode,
+        amount: existingSettlement?.amount || params.amount || 0,
+        message: 'Giao dịch chuyển khoản này đã được đối soát và cộng tiền thành công vào ví của bạn trước đó.',
+        newBalance: targetUser.walletBalance
+      };
+    }
 
     if (!existingSettlement) {
       return {
@@ -765,46 +792,76 @@ export class GatewayVerificationService {
       };
     }
 
-    if (this.isAlreadyRedeemed(cleanCode)) {
+    // Giao dịch có bản ghi webhook nhưng chưa được cộng tiền (hoặc cần đối soát): thực hiện khóa nguyên tử và cộng 1 lần duy nhất
+    const lockAcquired = await IdempotencyService.acquireLock(cleanCode);
+    if (!lockAcquired) {
       return {
         success: false,
         verified: false,
         gateway: 'VIETQR',
         referenceId: cleanCode,
         amount: 0,
-        message: 'Giao dịch chuyển khoản này đã được đối soát và cộng tiền trước đó.'
+        message: 'Giao dịch đang được xử lý song song bởi một tiến trình khác. Vui lòng thử lại sau giây lát.'
       };
     }
 
-    const actualAmount = existingSettlement.amount;
-    const txRef = `NAPAS_${Date.now()}`;
-    await LedgerService.executeTransaction({
-      userId: targetUser.id,
-      amount: actualAmount,
-      type: 'DEPOSIT',
-      description: `Nạp tiền VietQR Ngân Hàng Napas 24/7 (+${actualAmount.toLocaleString()}₫) - Nội dung: ${cleanCode}`,
-      referenceId: txRef,
-      actorId: 'VIETQR_NAPAS_AUTO',
-      actorName: 'Napas 24/7 Core API',
-      ipAddress: params.ipAddress
-    });
+    try {
+      if (this.isAlreadyRedeemed(cleanCode)) {
+        return {
+          success: true,
+          verified: true,
+          gateway: 'VIETQR',
+          referenceId: cleanCode,
+          amount: existingSettlement.amount,
+          message: 'Giao dịch chuyển khoản này đã được đối soát và cộng tiền thành công vào ví của bạn.',
+          newBalance: targetUser.walletBalance
+        };
+      }
 
-    this.markRedeemed(cleanCode, {
-      gateway: 'VIETQR',
-      amount: actualAmount,
-      userId: targetUser.id,
-      memo: cleanCode
-    });
+      const actualAmount = existingSettlement.amount;
+      const txRef = `NAPAS_${Date.now()}`;
+      await LedgerService.executeTransaction({
+        userId: targetUser.id,
+        amount: actualAmount,
+        type: 'DEPOSIT',
+        description: `Nạp tiền VietQR Ngân Hàng Napas 24/7 (+${actualAmount.toLocaleString()}₫) - Nội dung: ${cleanCode}`,
+        referenceId: txRef,
+        actorId: 'VIETQR_NAPAS_AUTO',
+        actorName: 'Napas 24/7 Core API',
+        ipAddress: params.ipAddress
+      });
 
-    return {
-      success: true,
-      verified: true,
-      gateway: 'VIETQR',
-      referenceId: txRef,
-      amount: actualAmount,
-      message: `Xác nhận nạp VietQR thành công! Đã cộng +${actualAmount.toLocaleString()}₫ vào tài khoản.`,
-      newBalance: targetUser.walletBalance
-    };
+      this.markRedeemed(cleanCode, {
+        gateway: 'VIETQR',
+        amount: actualAmount,
+        userId: targetUser.id,
+        memo: cleanCode
+      });
+
+      if (existingSettlement.referenceId) {
+        IdempotencyService.commit({
+          primaryKey: existingSettlement.referenceId,
+          aliasKeys: [cleanCode],
+          provider: 'VIETQR',
+          referenceId: existingSettlement.referenceId,
+          memo: cleanCode,
+          amount: actualAmount,
+          userId: targetUser.id
+        });
+      }
+
+      return {
+        success: true,
+        verified: true,
+        gateway: 'VIETQR',
+        referenceId: txRef,
+        amount: actualAmount,
+        message: `Xác nhận nạp VietQR thành công! Đã cộng +${actualAmount.toLocaleString()}₫ vào tài khoản.`,
+        newBalance: targetUser.walletBalance
+      };
+    } finally {
+      IdempotencyService.releaseLock(cleanCode);
+    }
   }
 
   // ============================================================================

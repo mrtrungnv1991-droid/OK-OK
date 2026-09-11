@@ -9,90 +9,96 @@ import { sourceCircuitBreaker } from '../../../services/orderProcessing/circuitB
 import { keyVault } from '../../../services/orderProcessing/keyVaultService';
 import { notificationQueue } from '../../../services/orderProcessing/notificationQueueService';
 import { reconciliationWorker } from '../../../services/orderProcessing/reconciliationWorker';
+import { requireAuth, requireRole, AuthenticatedRequest } from '../../../middleware/authMiddleware';
 
 export const reliableOrderRouter = Router();
 
-// 1. Get orders list with status filter
-reliableOrderRouter.get('/', (req, res) => {
+// 1. Get orders list with status filter (Admin only)
+reliableOrderRouter.get('/', requireAuth, requireRole('ADMIN'), (req, res) => {
   const status = req.query.status as string;
   const orders = orderProcessingService.getOrders(status);
   res.json({ success: true, data: orders });
 });
 
-// 2. Get Reliability Metrics & KPIs
-reliableOrderRouter.get('/metrics', (req, res) => {
+// 2. Get Reliability Metrics & KPIs (Admin only)
+reliableOrderRouter.get('/metrics', requireAuth, requireRole('ADMIN'), (req, res) => {
   const metrics = orderProcessingService.getReliabilityMetrics();
   res.json({ success: true, data: metrics });
 });
 
-// 3. Get Circuit Breakers statuses
-reliableOrderRouter.get('/circuit-breakers', (req, res) => {
+// 3. Get Circuit Breakers statuses (Admin only)
+reliableOrderRouter.get('/circuit-breakers', requireAuth, requireRole('ADMIN'), (req, res) => {
   const statuses = sourceCircuitBreaker.getAllStatuses();
   res.json({ success: true, data: statuses });
 });
 
-// Reset Circuit Breaker
-reliableOrderRouter.post('/circuit-breakers/reset', (req, res) => {
+// Reset Circuit Breaker (Admin only)
+reliableOrderRouter.post('/circuit-breakers/reset', requireAuth, requireRole('ADMIN'), (req, res) => {
   const { provider } = req.body;
   if (!provider) return res.status(400).json({ success: false, error: 'Thiếu provider' });
   sourceCircuitBreaker.reset(provider);
   res.json({ success: true, message: `Đã reset Circuit Breaker cho ${provider}` });
 });
 
-// Trip Circuit Breaker for testing
-reliableOrderRouter.post('/circuit-breakers/trip', (req, res) => {
+// Trip Circuit Breaker for testing (Admin only)
+reliableOrderRouter.post('/circuit-breakers/trip', requireAuth, requireRole('ADMIN'), (req, res) => {
   const { provider } = req.body;
   if (!provider) return res.status(400).json({ success: false, error: 'Thiếu provider' });
   sourceCircuitBreaker.trip(provider);
   res.json({ success: true, message: `Đã kích hoạt Circuit Breaker MỞ (OPEN) cho ${provider}` });
 });
 
-// 4. Get Active Distributed Locks
-reliableOrderRouter.get('/locks', (req, res) => {
+// 4. Get Active Distributed Locks (Admin only)
+reliableOrderRouter.get('/locks', requireAuth, requireRole('ADMIN'), (req, res) => {
   const locks = orderLock.getActiveLocks();
   res.json({ success: true, data: locks });
 });
 
-// 5. Get Notification Queue & DLQ
-reliableOrderRouter.get('/notifications', (req, res) => {
+// 5. Get Notification Queue & DLQ (Admin only)
+reliableOrderRouter.get('/notifications', requireAuth, requireRole('ADMIN'), (req, res) => {
   const filter = req.query.filter as 'ALL' | 'DLQ' | 'ACTIVE';
   const queue = notificationQueue.getQueue(filter || 'ALL');
   const dlqAlerts = notificationQueue.getDLQAlerts();
   res.json({ success: true, data: { queue, dlqAlerts } });
 });
 
-// Retry DLQ Notification
-reliableOrderRouter.post('/notifications/:id/retry', (req, res) => {
+// Retry DLQ Notification (Admin only)
+reliableOrderRouter.post('/notifications/:id/retry', requireAuth, requireRole('ADMIN'), (req, res) => {
   const success = notificationQueue.retryDLQ(req.params.id);
   res.json({ success, message: success ? 'Đã kích hoạt thử lại thông báo từ DLQ' : 'Không tìm thấy thông báo trong DLQ' });
 });
 
-// 6. Create and process a reliable order
-reliableOrderRouter.post('/create', async (req, res) => {
+// 6. Create and process a reliable order (Authenticated)
+reliableOrderRouter.post('/create', requireAuth, async (req: AuthenticatedRequest, res) => {
   try {
-    const result = await orderProcessingService.createAndProcessOrder(req.body);
+    const payload = {
+      ...req.body,
+      buyer_id: req.user!.id,
+      buyer_email: req.user!.email
+    };
+    const result = await orderProcessingService.createAndProcessOrder(payload);
     res.json({ success: true, data: result.order, message: result.message });
   } catch (err: any) {
     res.status(500).json({ success: false, error: err.message });
   }
 });
 
-// 7. Confirm source account topped up & resume purchase
-reliableOrderRouter.post('/:id/confirm-balance', async (req, res) => {
-  const operatorId = (req.body.operator_id as string) || 'admin-operator';
+// 7. Confirm source account topped up & resume purchase (Admin only)
+reliableOrderRouter.post('/:id/confirm-balance', requireAuth, requireRole('ADMIN'), async (req: AuthenticatedRequest, res) => {
+  const operatorId = req.user!.id || 'admin-operator';
   const result = await orderProcessingService.confirmBalanceAndResume(req.params.id, operatorId);
   res.json(result);
 });
 
-// 8. Single order reconciliation
-reliableOrderRouter.post('/:id/reconcile', async (req, res) => {
-  const operatorId = (req.body.operator_id as string) || 'admin-reconciler';
+// 8. Single order reconciliation (Admin only)
+reliableOrderRouter.post('/:id/reconcile', requireAuth, requireRole('ADMIN'), async (req: AuthenticatedRequest, res) => {
+  const operatorId = req.user!.id || 'admin-reconciler';
   const result = await orderProcessingService.retryReconciliationManual(req.params.id, operatorId);
   res.json(result);
 });
 
-// 9. Reconcile all unknown orders
-reliableOrderRouter.post('/reconcile-all', async (req, res) => {
+// 9. Reconcile all unknown orders (Admin only)
+reliableOrderRouter.post('/reconcile-all', requireAuth, requireRole('ADMIN'), async (req: AuthenticatedRequest, res) => {
   const unknownOrders = orderProcessingService.getOrders().filter(
     o => o.status === 'PURCHASE_UNKNOWN' || o.status === 'PURCHASE_RECONCILING'
   );
@@ -117,25 +123,25 @@ reliableOrderRouter.post('/reconcile-all', async (req, res) => {
   });
 });
 
-// 9b. Auto Fix single order
-reliableOrderRouter.post('/:id/auto-fix', async (req, res) => {
-  const operatorId = (req.body.operator_id as string) || 'admin-autofix';
+// 9b. Auto Fix single order (Admin only)
+reliableOrderRouter.post('/:id/auto-fix', requireAuth, requireRole('ADMIN'), async (req: AuthenticatedRequest, res) => {
+  const operatorId = req.user!.id || 'admin-autofix';
   const result = await orderProcessingService.autoFixOrder(req.params.id, operatorId);
   res.json(result);
 });
 
-// 9c. Auto Fix all problematic orders
-reliableOrderRouter.post('/fix-all', async (req, res) => {
-  const operatorId = (req.body.operator_id as string) || 'admin-autofix';
+// 9c. Auto Fix all problematic orders (Admin only)
+reliableOrderRouter.post('/fix-all', requireAuth, requireRole('ADMIN'), async (req: AuthenticatedRequest, res) => {
+  const operatorId = req.user!.id || 'admin-autofix';
   const result = await orderProcessingService.autoFixAll(operatorId);
   res.json(result);
 });
 
-// 10. Manual Recovery Actions
-reliableOrderRouter.post('/:id/manual-action', async (req, res) => {
-  const { action, raw_key, reason, operator_id } = req.body;
+// 10. Manual Recovery Actions (Admin only)
+reliableOrderRouter.post('/:id/manual-action', requireAuth, requireRole('ADMIN'), async (req: AuthenticatedRequest, res) => {
+  const { action, raw_key, reason } = req.body;
   const orderId = req.params.id;
-  const operator = operator_id || 'admin-recovery';
+  const operator = req.user!.id || 'admin-recovery';
 
   if (action === 'CHECK_SOURCE_ORDER') {
     const r = orderProcessingService.checkSourceOrder(orderId);
@@ -170,24 +176,38 @@ reliableOrderRouter.post('/:id/manual-action', async (req, res) => {
   res.status(400).json({ success: false, error: 'Hành động can thiệp thủ công không hợp lệ' });
 });
 
-// 11. Get Order Events (Append-only Audit Trail)
-reliableOrderRouter.get('/:id/events', (req, res) => {
-  const events = orderProcessingService.getOrderEvents(req.params.id);
+// 11. Get Order Events (Append-only Audit Trail - Authenticated)
+reliableOrderRouter.get('/:id/events', requireAuth, (req: AuthenticatedRequest, res) => {
+  const orderId = req.params.id;
+  const order = orderProcessingService.getOrders().find(o => o.id === orderId);
+  const isAdmin = req.user!.role === 'ADMIN' || req.user!.role === 'SUPER_ADMIN';
+
+  if (!isAdmin && order && order.customer_id !== req.user!.id) {
+    return res.status(403).json({ success: false, error: 'Forbidden' });
+  }
+
+  const events = orderProcessingService.getOrderEvents(orderId);
   res.json({ success: true, data: events });
 });
 
-// 12. Get Purchase Attempts
-reliableOrderRouter.get('/:id/attempts', (req, res) => {
+// 12. Get Purchase Attempts (Admin only)
+reliableOrderRouter.get('/:id/attempts', requireAuth, requireRole('ADMIN'), (req, res) => {
   const attempts = orderProcessingService.getPurchaseAttempts(req.params.id);
   res.json({ success: true, data: attempts });
 });
 
-// 13. Get Decrypted Key from Key Vault (Audited)
-reliableOrderRouter.get('/:id/key', (req, res) => {
+// 13. Get Decrypted Key from Key Vault (Audited & Authorized)
+reliableOrderRouter.get('/:id/key', requireAuth, (req: AuthenticatedRequest, res) => {
   const orderId = req.params.id;
-  const actorId = (req.query.actor_id as string) || 'admin-viewer';
-  const vaultRec = keyVault.getVaultRecord(orderId);
+  const actorId = req.user!.id;
+  const isAdmin = req.user!.role === 'ADMIN' || req.user!.role === 'SUPER_ADMIN';
 
+  const order = orderProcessingService.getOrders().find(o => o.id === orderId);
+  if (!isAdmin && (!order || order.customer_id !== req.user!.id)) {
+    return res.status(403).json({ success: false, error: 'Không có quyền truy cập khóa đơn hàng này' });
+  }
+
+  const vaultRec = keyVault.getVaultRecord(orderId);
   if (!vaultRec) {
     return res.status(404).json({ success: false, error: 'Chưa có khóa bản quyền trong Key Vault' });
   }
@@ -215,8 +235,8 @@ reliableOrderRouter.get('/:id/key', (req, res) => {
   }
 });
 
-// 14. Key Vault records list & access logs
-reliableOrderRouter.get('/vault/overview', (req, res) => {
+// 14. Key Vault records list & access logs (Admin only)
+reliableOrderRouter.get('/vault/overview', requireAuth, requireRole('ADMIN'), (req, res) => {
   const records = keyVault.getAllRecords();
   const logs = keyVault.getAccessLogs();
   res.json({
@@ -244,26 +264,46 @@ reliableOrderRouter.post('/telegram/callback', async (req, res) => {
   res.json(result);
 });
 
-// 16. Dual Stream Support Chat
-reliableOrderRouter.get('/:id/chat', (req, res) => {
-  const msgs = orderProcessingService.getDualChatMessages(req.params.id);
+// 16. Dual Stream Support Chat (Authenticated)
+reliableOrderRouter.get('/:id/chat', requireAuth, (req: AuthenticatedRequest, res) => {
+  const orderId = req.params.id;
+  const order = orderProcessingService.getOrders().find(o => o.id === orderId);
+  const isAdmin = req.user!.role === 'ADMIN' || req.user!.role === 'SUPER_ADMIN';
+
+  if (!isAdmin && order && order.customer_id !== req.user!.id) {
+    return res.status(403).json({ success: false, error: 'Forbidden' });
+  }
+
+  const msgs = orderProcessingService.getDualChatMessages(orderId);
   res.json({ success: true, data: msgs });
 });
 
-reliableOrderRouter.post('/:id/chat', (req, res) => {
+reliableOrderRouter.post('/:id/chat', requireAuth, (req: AuthenticatedRequest, res) => {
+  const orderId = req.params.id;
+  const order = orderProcessingService.getOrders().find(o => o.id === orderId);
+  const isAdmin = req.user!.role === 'ADMIN' || req.user!.role === 'SUPER_ADMIN';
+
+  if (!isAdmin && order && order.customer_id !== req.user!.id) {
+    return res.status(403).json({ success: false, error: 'Forbidden' });
+  }
+
   const msg = orderProcessingService.sendDualChatMessage({
-    order_id: req.params.id,
+    order_id: orderId,
     stream: req.body.stream,
-    sender: req.body.sender,
-    sender_name: req.body.sender_name,
+    sender: isAdmin ? 'ADMIN' : 'CUSTOMER',
+    sender_name: req.user!.name || 'Khách hàng',
     content: req.body.content,
     is_forwarded: req.body.is_forwarded
   });
   res.json({ success: true, data: msg });
 });
 
-// 17. Run Failure Scenario Simulations (Scenarios A through F)
-reliableOrderRouter.post('/simulate-scenario', async (req, res) => {
+// 17. Run Failure Scenario Simulations (Admin only - Strictly disabled in production)
+reliableOrderRouter.post('/simulate-scenario', requireAuth, requireRole('ADMIN'), async (req, res) => {
+  if (process.env.NODE_ENV === 'production') {
+    return res.status(403).json({ success: false, error: 'Simulation is disabled in production environment.' });
+  }
+
   const { scenario } = req.body;
   if (!scenario) return res.status(400).json({ success: false, error: 'Thiếu mã kịch bản' });
 

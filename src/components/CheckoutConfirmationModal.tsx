@@ -28,6 +28,7 @@ import { formatCurrency } from '../utils/formatters';
 import { UserOrder } from '../types';
 import { useTranslation } from '../i18n';
 import { WebDeliveryOutput, detectDeliveryBranch } from './WebDeliveryOutput';
+import { api } from '../api/client';
 
 interface CheckoutConfirmationModalProps {
   onOpenVault?: () => void;
@@ -46,14 +47,14 @@ export const CheckoutConfirmationModal: React.FC<CheckoutConfirmationModalProps>
     removeFromCart
   } = useCart();
 
-
-  const { currentUser, updateUserBalance } = useAuth();
+  const { currentUser, updateUserBalance, refreshUserProfile } = useAuth();
   const { addTransaction } = useWallet();
   const { addOrder } = useOrders();
 
   const [paymentMethod, setPaymentMethod] = useState<'wallet' | 'vietqr' | 'telco'>('wallet');
   const [hasConfirmedAgreement, setHasConfirmedAgreement] = useState(true);
   const [isProcessing, setIsProcessing] = useState(false);
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [completedOrders, setCompletedOrders] = useState<UserOrder[] | null>(null);
   const [copiedKeyIndex, setCopiedKeyIndex] = useState<number | null>(null);
 
@@ -72,110 +73,89 @@ export const CheckoutConfirmationModal: React.FC<CheckoutConfirmationModalProps>
 
   const handleConfirmPurchase = async () => {
     if (!hasConfirmedAgreement) return;
-    if (paymentMethod === 'wallet' && !hasEnoughBalance) return;
+    setErrorMessage(null);
+
+    // If direct gateway is selected, user must route through deposit to authenticate payment
+    if (paymentMethod !== 'wallet') {
+      closeCheckoutConfirm();
+      if (onOpenDeposit) {
+        onOpenDeposit();
+      }
+      return;
+    }
+
+    if (!hasEnoughBalance) {
+      setErrorMessage(`Số dư ví không đủ (hiện có ${formatCurrency(currentUser.walletBalance, currentUser.currency)}, cần ${formatCurrency(finalTotal, currentUser.currency)}). Vui lòng nạp thêm tiền.`);
+      return;
+    }
 
     setIsProcessing(true);
 
-    // Simulate atomic processing
-    setTimeout(() => {
+    try {
       const generatedOrders: UserOrder[] = [];
-      const balanceBefore = currentUser.walletBalance || 0;
-      const balanceAfter = paymentMethod === 'wallet' ? Math.max(0, balanceBefore - finalTotal) : balanceBefore;
 
-      // 1. Deduct wallet balance if paid via wallet
-      if (paymentMethod === 'wallet') {
-        updateUserBalance(-finalTotal);
-      }
+      // Process each checkout item atomically through backend API
+      for (let itemIndex = 0; itemIndex < checkoutTargetItems.length; itemIndex++) {
+        const item = checkoutTargetItems[itemIndex];
 
-      // 2. Generate delivered orders for each item & quantity with branch-specific delivery format
-      checkoutTargetItems.forEach((item, itemIndex) => {
-        const branch = item.product.deliveryBranch || detectDeliveryBranch(undefined, item.product.title, item.product.platform);
-
-        for (let q = 0; q < item.quantity; q++) {
-          let deliveredKey = '';
-          let pinCode: string | undefined = undefined;
-          let deliveredData: any = undefined;
-
-          const platformSafe = (item.product.platform || 'cyber').toLowerCase();
-          const platformUpper = (item.product.platform || 'CYBER').toUpperCase();
-
-          if (branch === 'ACCOUNT') {
-            const username = `cyber_${platformSafe}_${Math.floor(1000 + Math.random() * 9000)}@cyberpool.vn`;
-            const password = `Pass#${Math.floor(100000 + Math.random() * 900000)}`;
-            const cookie = `sess_tok_${Math.random().toString(36).substring(2, 10)}`;
-            deliveredKey = `${username}:${password}:${cookie}`;
-            deliveredData = {
-              accountCredentials: {
-                username,
-                password,
-                cookie,
-                extra: 'Đăng nhập trực tiếp hoặc nhập Cookie session trên trình duyệt'
-              }
-            };
-          } else if (branch === 'LINK') {
-            deliveredKey = `https://${platformSafe.replace(/\s+/g, '')}.com/invite/join?token=CYBER-${Math.floor(100000 + Math.random() * 900000)}`;
-            deliveredData = {
-              inviteLink: deliveredKey
-            };
-          } else if (branch === 'GIFTCARD') {
-            deliveredKey = `GC-${platformUpper}-${Math.floor(1000 + Math.random() * 9000)}-${Math.floor(1000 + Math.random() * 9000)}`;
-            pinCode = `${Math.floor(1000 + Math.random() * 9000)}`;
-            deliveredData = {
-              giftCardInfo: {
-                cardNumber: deliveredKey,
-                pinCode,
-                balance: item.product.retailPrice,
-                currency: 'VND'
-              }
-            };
-          } else {
-            deliveredKey = `CYBER-${platformUpper}-${Math.floor(1000 + Math.random() * 9000)}-${Math.floor(1000 + Math.random() * 9000)}-${Math.floor(1000 + Math.random() * 9000)}`;
-            deliveredData = {
-              keys: [deliveredKey]
-            };
-          }
-
-          const txCode = `ORD-${Date.now().toString().slice(-6)}-${itemIndex}${q}`;
-
-          const order: UserOrder = {
-            id: `ord-retail-${Date.now()}-${itemIndex}-${q}`,
+        const response = await api.request<any>('/orders/instant-buy', {
+          method: 'POST',
+          body: JSON.stringify({
             productId: item.product.id,
-            productTitle: `${item.product.title} (Key #${q + 1})`,
-            platform: item.product.platform,
-            type: 'instant_single',
-            pricePaid: item.product.retailPrice,
-            status: 'fulfilled',
-            createdAt: new Date().toLocaleString('vi-VN'),
-            deliveryBranch: branch,
-            deliveredKey: deliveredKey,
-            pinCode: pinCode,
-            deliveredData: deliveredData,
-            txId: txCode
-          };
+            quantity: item.quantity,
+            paymentMethod: 'wallet',
+            finalTotal: item.product.retailPrice * item.quantity
+          })
+        });
 
-          // Save order to history
-          addOrder(order);
-          generatedOrders.push(order);
+        if (!response.success || !response.order) {
+          throw new Error(response.error || response.message || `Đặt hàng "${item.product.title}" không thành công`);
         }
 
-        // Remove bought item from cart
-        removeFromCart(item.product.id);
-      });
+        const serverOrder = response.order;
+        const branch = serverOrder.deliveryBranch || item.product.deliveryBranch || detectDeliveryBranch(undefined, item.product.title, item.product.platform);
 
-      // 3. Record transaction in wallet ledger
+        const order: UserOrder = {
+          id: serverOrder.id,
+          productId: serverOrder.productId || item.product.id,
+          productTitle: serverOrder.productTitle || `${item.product.title} (x${item.quantity})`,
+          platform: serverOrder.platform || item.product.platform,
+          type: 'instant_single',
+          pricePaid: serverOrder.pricePaid || (item.product.retailPrice * item.quantity),
+          status: 'fulfilled',
+          createdAt: serverOrder.createdAt ? new Date(serverOrder.createdAt).toLocaleString('vi-VN') : new Date().toLocaleString('vi-VN'),
+          deliveryBranch: branch,
+          deliveredKey: serverOrder.deliveredKey || response.deliveredKey || '',
+          deliveredData: serverOrder.deliveredData || (serverOrder.deliveredKey ? { keys: [serverOrder.deliveredKey] } : undefined),
+          txId: serverOrder.id
+        };
+
+        addOrder(order);
+        generatedOrders.push(order);
+        removeFromCart(item.product.id);
+      }
+
+      // Refresh true user balance from backend ledger
+      await refreshUserProfile();
+
+      // Record in local wallet context summary
       const titlesSummary = checkoutTargetItems.map(i => `${i.product.title} (x${i.quantity})`).join(', ');
       addTransaction({
         type: 'buy_instant',
-        description: `Mua lẻ (${totalItemCount} món): ${titlesSummary.slice(0, 80)}...`,
+        description: `Mua hàng (${totalItemCount} món): ${titlesSummary.slice(0, 80)}...`,
         amount: -finalTotal,
-        balanceAfter: balanceAfter,
+        balanceAfter: Math.max(0, (currentUser.walletBalance || 0) - finalTotal),
         status: 'completed',
-        txCode: generatedOrders[0]?.txId || `TX-RETAIL-${Date.now()}`
+        txCode: generatedOrders[0]?.id || `TX-RETAIL-${Date.now()}`
       });
 
       setCompletedOrders(generatedOrders);
+    } catch (err: any) {
+      console.error('[Checkout] Purchase failed:', err);
+      setErrorMessage(err.message || 'Giao dịch không thành công. Vui lòng kiểm tra lại số dư và tồn kho.');
+    } finally {
       setIsProcessing(false);
-    }, 1200);
+    }
   };
 
   const handleCopy = (keyText: string, index: number) => {
@@ -336,6 +316,14 @@ export const CheckoutConfirmationModal: React.FC<CheckoutConfirmationModalProps>
             /* ORDER CONFIRMATION & REVIEW STEP */
             <div className="space-y-4">
               
+              {/* Error Message Banner */}
+              {errorMessage && (
+                <div className="p-3.5 rounded-xl bg-rose-950/60 border border-rose-500/50 flex items-start gap-2.5 text-xs font-mono text-rose-300 animate-in fade-in">
+                  <AlertCircle className="w-4 h-4 text-rose-400 shrink-0 mt-0.5" />
+                  <span className="flex-1">{errorMessage}</span>
+                </div>
+              )}
+
               {/* Anti-Accidental Click Warning Banner */}
               <div className="p-3.5 rounded-xl bg-cyan-950/40 border border-cyan-500/40 flex items-start gap-3">
                 <Info className="w-4 h-4 text-cyan-400 shrink-0 mt-0.5" />
@@ -488,6 +476,19 @@ export const CheckoutConfirmationModal: React.FC<CheckoutConfirmationModalProps>
                 </div>
               )}
 
+              {/* Direct Gateway Guidance */}
+              {paymentMethod !== 'wallet' && (
+                <div className="p-3.5 rounded-xl bg-cyan-950/50 border border-cyan-500/40 flex items-start gap-2.5 text-xs font-mono text-cyan-200">
+                  <QrCode className="w-4 h-4 text-cyan-400 shrink-0 mt-0.5" />
+                  <div>
+                    <p className="font-bold text-white">Thanh toán qua cổng {paymentMethod === 'vietqr' ? 'VietQR Tự Động' : 'Thẻ Cào Telco'}</p>
+                    <p className="text-slate-300 mt-0.5">
+                      Hệ thống sẽ mở cổng nạp tự động với mã giao dịch định danh. Ngay khi ngân hàng hoặc nhà mạng xác nhận, đơn hàng được xử lý và kích hoạt ngay lập tức.
+                    </p>
+                  </div>
+                </div>
+              )}
+
               {/* Delivery & Account Guarantee Info */}
               <div className="p-3.5 rounded-xl bg-slate-900/60 border border-slate-800 text-xs font-mono space-y-1.5">
                 <div className="flex items-center justify-between text-slate-400">
@@ -538,6 +539,11 @@ export const CheckoutConfirmationModal: React.FC<CheckoutConfirmationModalProps>
                     <>
                       <div className="w-4 h-4 border-2 border-black border-t-transparent rounded-full animate-spin" />
                       <span>{t('checkout.processing_payment')}</span>
+                    </>
+                  ) : paymentMethod !== 'wallet' ? (
+                    <>
+                      <ExternalLink className="w-4 h-4" />
+                      <span>Mở cổng nạp {paymentMethod === 'vietqr' ? 'VietQR' : 'Thẻ cào'} ({formatCurrency(finalTotal, currentUser.currency)})</span>
                     </>
                   ) : (
                     <>

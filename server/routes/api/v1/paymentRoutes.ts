@@ -4,6 +4,7 @@
 // ==============================================================================
 
 import { Router, Request, Response } from 'express';
+import crypto from 'crypto';
 import { paymentStore } from '../../../services/paymentSystem/store';
 import { paymentWorkerService } from '../../../services/paymentSystem/workers';
 import { circuitBreaker } from '../../../services/paymentSystem/circuitBreaker';
@@ -14,18 +15,18 @@ import {
   encryptCredential
 } from '../../../services/paymentSystem/security';
 import { PaymentTransaction, SourceAccount, CurrencyCode } from '../../../services/paymentSystem/types';
+import { requireAuth, requireRole, AuthenticatedRequest } from '../../../middleware/authMiddleware';
 
 export const paymentRouter = Router();
 
 // ------------------------------------------------------------------------------
-// 1. CREATE PAYMENT (Section 38, 11 - Idempotent)
+// 1. CREATE PAYMENT (Section 38, 11 - Idempotent, Authenticated)
 // ------------------------------------------------------------------------------
-paymentRouter.post('/', async (req: Request, res: Response) => {
+paymentRouter.post('/', requireAuth, async (req: AuthenticatedRequest, res: Response) => {
   try {
     const {
       idempotency_key,
       order_id,
-      user_id,
       provider_id,
       amount,
       currency = 'VND',
@@ -33,6 +34,7 @@ paymentRouter.post('/', async (req: Request, res: Response) => {
       metadata
     } = req.body;
 
+    const user_id = req.user!.id;
     const traceId = generateTraceId();
 
     // Validation
@@ -240,7 +242,7 @@ paymentRouter.post('/:id/cancel', (req: Request, res: Response) => {
 });
 
 // ------------------------------------------------------------------------------
-// 4. WEBHOOKS WITH REPLAY PROTECTION (Sections 22 & 23)
+// 4. WEBHOOKS WITH REPLAY PROTECTION & SIGNATURE VERIFICATION (Sections 22 & 23)
 // ------------------------------------------------------------------------------
 paymentRouter.post('/webhooks/provider/:providerId', (req: Request, res: Response) => {
   const { providerId } = req.params;
@@ -248,6 +250,26 @@ paymentRouter.post('/webhooks/provider/:providerId', (req: Request, res: Respons
 
   if (!event_id) {
     return res.status(400).json({ error: { code: 'INVALID_WEBHOOK', message: 'Missing event_id' } });
+  }
+
+  const webhookSecret = process.env.PAYMENT_PROVIDER_WEBHOOK_SECRET;
+  if (process.env.NODE_ENV === 'production' && !webhookSecret) {
+    return res.status(503).json({ error: { code: 'WEBHOOK_CONFIG_ERROR', message: 'PAYMENT_PROVIDER_WEBHOOK_SECRET is not configured.' } });
+  }
+
+  if (webhookSecret) {
+    if (!signature || typeof signature !== 'string') {
+      return res.status(401).json({ error: { code: 'UNAUTHORIZED', message: 'Missing required signature header/field.' } });
+    }
+
+    const payload = JSON.stringify({ event_id, external_transaction_id, status, amount });
+    const expectedSig = crypto.createHmac('sha256', webhookSecret).update(payload).digest('hex');
+    const expectedBuf = Buffer.from(expectedSig, 'utf8');
+    const actualBuf = Buffer.from(signature, 'utf8');
+
+    if (expectedBuf.length !== actualBuf.length || !crypto.timingSafeEqual(expectedBuf, actualBuf)) {
+      return res.status(401).json({ error: { code: 'UNAUTHORIZED', message: 'Provider webhook signature mismatch.' } });
+    }
   }
 
   // Deduplication check: UNIQUE(provider_id, event_id)
@@ -281,7 +303,11 @@ paymentRouter.post('/webhooks/provider/:providerId', (req: Request, res: Respons
 // ------------------------------------------------------------------------------
 // 5. DEV & SIMULATOR TEST BENCH (Section 95: Simulation without real money)
 // ------------------------------------------------------------------------------
-paymentRouter.post('/dev/mock/simulate', async (req: Request, res: Response) => {
+paymentRouter.post('/dev/mock/simulate', requireAuth, requireRole('ADMIN'), async (req: Request, res: Response) => {
+  if (process.env.NODE_ENV === 'production') {
+    return res.status(403).json({ error: 'Mock simulator test bench is strictly disabled in production.' });
+  }
+
   try {
     const { scenario, latencyMs = 200 } = req.body;
     // Supported scenarios: 'SUCCESS' | 'FAILED' | 'TIMEOUT' | 'UNKNOWN' | 'RATE_LIMIT' | 'INSUFFICIENT_BALANCE' | 'SERVER_500'
@@ -300,8 +326,9 @@ paymentRouter.post('/dev/mock/simulate', async (req: Request, res: Response) => 
 });
 
 // ------------------------------------------------------------------------------
-// 6. ADMIN APIS (Sections 41, 42, 43, 44, 45, 69)
+// 6. ADMIN APIS (Sections 41, 42, 43, 44, 45, 69) - STRICTLY PROTECTED BY RBAC
 // ------------------------------------------------------------------------------
+paymentRouter.use('/admin', requireAuth, requireRole('ADMIN'));
 
 // 6.1 Get Summary KPI & System Health
 paymentRouter.get('/admin/system-health', (req: Request, res: Response) => {

@@ -200,9 +200,9 @@ class DatabaseStore {
       maintenanceMode: false,
       // Card24h API configuration
       telcoProvider: 'card24h',
-      telcoPartnerId: process.env.CARD24H_PARTNER_ID || '16654919157',
-      telcoPartnerKey: process.env.CARD24H_PARTNER_KEY || 'bc3299820230bb1ed2b2b729cac744e3',
-      telcoWalletId: '0059134947',
+      telcoPartnerId: process.env.CARD24H_PARTNER_ID || '',
+      telcoPartnerKey: process.env.CARD24H_PARTNER_KEY || '',
+      telcoWalletId: process.env.CARD24H_WALLET_ID || '',
       telcoCallbackUrl: '/api/v1/webhooks/card24h'
     };
   }

@@ -347,6 +347,45 @@ export class OrderService {
 
     db.orders.set(order.id, order);
 
+    // Route to actual real source provider & account based on target game
+    let targetProviderId = 'provider_genshin_api';
+    let targetAccountId = 'acc_genshin_alpha';
+
+    const gameLower = (game.id + ' ' + (gameTitle || '')).toLowerCase();
+    if (gameLower.includes('genshin') || gameLower.includes('honkai') || gameLower.includes('star-rail') || gameLower.includes('hoyoverse')) {
+      targetProviderId = 'provider_genshin_api';
+      targetAccountId = 'acc_genshin_alpha';
+    } else if (gameLower.includes('steam') || gameLower.includes('valve') || gameLower.includes('dota') || gameLower.includes('csgo') || gameLower.includes('cs2')) {
+      targetProviderId = 'provider_steam_wallet';
+      targetAccountId = 'acc_steam_usd';
+    } else if (gameLower.includes('riot') || gameLower.includes('valorant') || gameLower.includes('league') || gameLower.includes('tft')) {
+      targetProviderId = 'provider_riot_browser';
+      targetAccountId = 'acc_riot_web01';
+    } else {
+      // Find any active real account with sufficient balance
+      const realAccounts = Array.from(paymentStore.accounts.values()).filter(
+        acc => acc.provider_id !== 'mock_game_topup_v1' && acc.status === 'ACTIVE'
+      );
+      if (realAccounts.length > 0) {
+        realAccounts.sort((a, b) => b.available_balance - a.available_balance);
+        targetProviderId = realAccounts[0].provider_id;
+        targetAccountId = realAccounts[0].id;
+      }
+    }
+
+    // Verify account exists and is operational
+    const selectedAccount = paymentStore.accounts.get(targetAccountId);
+    if (!selectedAccount || selectedAccount.status !== 'ACTIVE') {
+      console.warn(`[OrderService] Real provider account ${targetAccountId} not active. Locating fallback active account...`);
+      const fallback = Array.from(paymentStore.accounts.values()).find(
+        acc => acc.provider_id !== 'mock_game_topup_v1' && acc.status === 'ACTIVE'
+      );
+      if (fallback) {
+        targetProviderId = fallback.provider_id;
+        targetAccountId = fallback.id;
+      }
+    }
+
     // F15: Chuyển giao sang hệ thống worker nạp tiền độc lập xử lý với cơ chế lock phân tán & routing
     const txId = `pay_topup_${Date.now()}_${Math.random().toString(36).substring(2, 6)}`;
     const paymentTx: PaymentTransaction = {
@@ -354,8 +393,8 @@ export class OrderService {
       idempotency_key: `IDEMP_${orderId}`,
       order_id: orderId,
       user_id: buyer.id,
-      provider_id: 'mock_game_topup_v1',
-      source_account_id: 'acc_mock_sandbox',
+      provider_id: targetProviderId,
+      source_account_id: targetAccountId,
       amount: price,
       currency: 'VND',
       fee: 0,
