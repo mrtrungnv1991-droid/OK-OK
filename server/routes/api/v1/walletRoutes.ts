@@ -284,22 +284,10 @@ walletRouter.post('/telco-card', requireAuth, async (req: AuthenticatedRequest, 
     }
   }
 
-  // Fallback / mock mode if not configured
-  const receivedAmount = Math.round(numAmount * 0.82);
-  const result = await LedgerService.executeTransaction({
-    userId: req.user!.id,
-    type: 'DEPOSIT',
-    amount: receivedAmount,
-    description: `Đổi thẻ cào ${telco} ${numAmount.toLocaleString()}đ (Thực nhận +${receivedAmount.toLocaleString()}đ)`,
-    referenceId: `TELCO-${serial}`,
-    ipAddress: req.ip
-  });
-
-  res.json({
-    success: true,
-    receivedAmount,
-    newBalance: req.user!.walletBalance,
-    transaction: result.transaction
+  // Chặn hoàn toàn fallback cộng tiền ảo khi không qua cổng gạch thẻ hợp lệ
+  return res.status(400).json({
+    success: false,
+    error: 'Nhà cung cấp gạch thẻ cào không hợp lệ hoặc chưa được hỗ trợ. Vui lòng thử lại sau.'
   });
 });
 

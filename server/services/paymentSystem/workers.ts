@@ -22,6 +22,8 @@ import {
   ApiSourceAdapter,
   BrowserSourceAdapter
 } from './adapters/base';
+import { db } from '../../db/store';
+import { LedgerService } from '../ledgerService';
 
 export class PaymentWorkerService {
   private workerId: string = `worker_${process.pid}_${Math.floor(Math.random() * 1000)}`;
@@ -226,6 +228,16 @@ export class PaymentWorkerService {
             notes: `Successfully delivered to recipient ${tx.recipient}`
           });
 
+          if (tx.order_id && db.orders.has(tx.order_id)) {
+            const linkedOrder = db.orders.get(tx.order_id)!;
+            linkedOrder.status = 'COMPLETED';
+            linkedOrder.completedAt = new Date().toISOString();
+            if (result.external_id) {
+              linkedOrder.txHash = result.external_id;
+            }
+            db.orders.set(tx.order_id, linkedOrder);
+          }
+
         } else if (result.status === 'UNKNOWN') {
           // Section 18: UNKNOWN transaction - NEVER recreate transaction immediately!
           attempt.status = 'UNKNOWN';
@@ -245,6 +257,14 @@ export class PaymentWorkerService {
             tx.external_transaction_id = queryResult.external_id;
             tx.completed_at = new Date().toISOString();
             tx.updated_at = new Date().toISOString();
+
+            if (tx.order_id && db.orders.has(tx.order_id)) {
+              const linkedOrder = db.orders.get(tx.order_id)!;
+              linkedOrder.status = 'COMPLETED';
+              linkedOrder.completedAt = new Date().toISOString();
+              linkedOrder.txHash = queryResult.external_id;
+              db.orders.set(tx.order_id, linkedOrder);
+            }
           } else {
             // Escalate to MANUAL_REVIEW if not resolved
             tx.status = 'MANUAL_REVIEW';
@@ -322,6 +342,21 @@ export class PaymentWorkerService {
             } else {
               tx.status = 'FAILED';
               tx.failed_at = new Date().toISOString();
+
+              if (tx.order_id && db.orders.has(tx.order_id)) {
+                const linkedOrder = db.orders.get(tx.order_id)!;
+                linkedOrder.status = 'CANCELLED';
+                db.orders.set(tx.order_id, linkedOrder);
+
+                // Tự động hoàn tiền về ví người dùng nếu cổng nạp thất bại hoàn toàn
+                LedgerService.executeTransaction({
+                  userId: tx.user_id,
+                  type: 'REFUND',
+                  amount: tx.amount,
+                  description: `Hoàn tiền đơn nạp game ${tx.order_id}: Giao dịch cổng nạp thất bại (${result.message || result.error_code})`,
+                  referenceId: `REFUND-${tx.order_id}`
+                }).catch(e => console.error('[WORKER_REFUND_ERROR]', e));
+              }
             }
 
             tx.last_error_code = result.error_code;

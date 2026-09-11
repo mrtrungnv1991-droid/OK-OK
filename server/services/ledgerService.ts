@@ -58,6 +58,7 @@ export class LedgerService {
         case 'DEPOSIT':
         case 'AFFILIATE_COMMISSION':
         case 'ESCROW_REFUND':
+        case 'REFUND':
         case 'SELLER_PAYOUT':
           balanceAfter = balanceBefore + Math.abs(amount);
           break;

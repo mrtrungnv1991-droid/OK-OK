@@ -1,3 +1,4 @@
+import crypto from 'crypto';
 import { db } from '../db/store';
 import { ServerOrder, ServerUser, OrderStatus } from '../types';
 import { LedgerService } from './ledgerService';
@@ -6,6 +7,9 @@ import { AuditService } from './auditService';
 import { SupplierManagerService } from './supplierHub/services/SupplierManagerService';
 import { cyborgPipelineService } from './sourceConnector/cyborgPipelineService';
 import { detectDeliveryBranch, parseDeliveredOutput, DeliveryBranch } from './supplierHub/utils/deliveryBranchDetector';
+import { paymentStore } from './paymentSystem/store';
+import { paymentWorkerService } from './paymentSystem/workers';
+import { PaymentTransaction } from './paymentSystem/types';
 
 export class OrderService {
   /**
@@ -342,6 +346,33 @@ export class OrderService {
     };
 
     db.orders.set(order.id, order);
+
+    // F15: Chuyển giao sang hệ thống worker nạp tiền độc lập xử lý với cơ chế lock phân tán & routing
+    const txId = `pay_topup_${Date.now()}_${Math.random().toString(36).substring(2, 6)}`;
+    const paymentTx: PaymentTransaction = {
+      id: txId,
+      idempotency_key: `IDEMP_${orderId}`,
+      order_id: orderId,
+      user_id: buyer.id,
+      provider_id: 'mock_game_topup_v1',
+      source_account_id: 'acc_mock_sandbox',
+      amount: price,
+      currency: 'VND',
+      fee: 0,
+      net_amount: price,
+      recipient: `UID_${uid}${server ? `_SRV_${server}` : ''}`,
+      status: 'QUEUED',
+      request_payload_hash: crypto.createHash('sha256').update(`${orderId}:${uid}:${price}`).digest('hex'),
+      attempt_count: 0,
+      max_attempts: 5,
+      trace_id: `trace_${orderId}`,
+      created_at: new Date().toISOString(),
+      updated_at: new Date().toISOString()
+    };
+
+    paymentStore.transactions.set(txId, paymentTx);
+    paymentStore.idempotencyIndex.set(paymentTx.idempotency_key, txId);
+    paymentWorkerService.enqueue(txId);
 
     return { success: true, order };
   }
