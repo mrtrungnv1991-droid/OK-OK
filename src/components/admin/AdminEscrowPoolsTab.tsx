@@ -29,19 +29,22 @@ interface AdminEscrowPoolsTabProps {
   products: Product[];
   orders: UserOrder[];
   currency: CurrencyCode;
-  onForceEscrowAction: (orderId: string, action: 'release_to_seller' | 'refund_to_buyer' | 'release' | 'refund') => void;
+  onForceEscrowAction?: (orderId: string, action: 'release_to_seller' | 'refund_to_buyer' | 'release' | 'refund') => void;
   onUpdatePoolStatus?: (poolId: string, newStatus: GroupPool['status']) => void;
 }
 
 export const AdminEscrowPoolsTab: React.FC<AdminEscrowPoolsTabProps> = ({
   products,
   orders,
-  currency,
-  onForceEscrowAction
+  currency
 }) => {
   const [searchTerm, setSearchTerm] = useState('');
     const [statusFilter, setStatusFilter] = useState<'all' | 'filling' | 'completed' | 'full'>('all');
     const [selectedPoolDetail, setSelectedPoolDetail] = useState<{ product: Product; pool: GroupPool } | null>(null);
+    // CYBERPOOL FIX (#17): state cho Force Refund thật (server endpoint)
+    const [isRefunding, setIsRefunding] = useState(false);
+    const [refundMessage, setRefundMessage] = useState<string | null>(null);
+    const [refundOk, setRefundOk] = useState(false);
 
     // CYBERPOOL FIX: pools must come from the SERVER (/escrow/pools = db.escrowContracts),
     // not from client-side products[].activePools which is fetched once at page load and
@@ -75,6 +78,38 @@ export const AdminEscrowPoolsTab: React.FC<AdminEscrowPoolsTabProps> = ({
       const iv = setInterval(fetchServerPools, 20000);
       return () => clearInterval(iv);
     }, []);
+
+    // CYBERPOOL FIX (#17): Force Refund THẬT qua server — hoàn tiền từng thành
+    // viên (ESCROW_REFUND credit + giảm escrowLocked) và đóng pool. Không dùng
+    // prop onForceEscrowAction fake client-side nữa.
+    const handleForceRefund = async () => {
+      const poolId = selectedPoolDetail?.pool?.id;
+      if (!poolId) return;
+      if (!window.confirm(`Hoàn tiền TOÀN BỘ thành viên pool ${poolId}? Hành động này không thể đảo ngược.`)) return;
+      setIsRefunding(true);
+      setRefundMessage(null);
+      try {
+        const res = await authFetch('/api/v1/escrow/admin/refund', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ poolId })
+        });
+        const data = await res.json().catch(() => ({}));
+        if (res.ok && data?.success) {
+          setRefundOk(true);
+          setRefundMessage('✓ Đã hoàn tiền thành công cho toàn bộ thành viên (server ledger).');
+          await fetchServerPools();
+        } else {
+          setRefundOk(false);
+          setRefundMessage(`✗ ${data?.message || data?.error || 'Hoàn tiền thất bại (pool đã hoàn tất hoặc không tồn tại).'}`);
+        }
+      } catch (err: any) {
+        setRefundOk(false);
+        setRefundMessage(`✗ Lỗi kết nối: ${err?.message || 'không gọi được server'}`);
+      } finally {
+        setIsRefunding(false);
+      }
+    };
 
     // Merge server contracts (authoritative) với products (để lấy title/ảnh hiển thị)
         const allPools = (serverPools && serverPools.length > 0
@@ -539,6 +574,20 @@ export const AdminEscrowPoolsTab: React.FC<AdminEscrowPoolsTabProps> = ({
             </div>
 
             <div className="flex justify-end gap-2 pt-2 border-t border-slate-800">
+              {/* CYBERPOOL FIX (#17 frontend audit): nút Force Refund THẬT —
+                  gọi POST /escrow/admin/refund (server hoàn tiền từng thành viên
+                  qua ledger + mở khóa escrow). Trước đây prop onForceEscrowAction
+                  chỉ đổi state client và bịa key 'CYBER-FORCE-RELEASE-KEY',
+                  không bao giờ được gọi. */}
+              {selectedPoolDetail.pool.status === 'filling' && (
+                <button
+                  onClick={handleForceRefund}
+                  disabled={isRefunding}
+                  className="px-4 py-2 rounded-xl bg-rose-600 hover:bg-rose-500 disabled:opacity-50 text-white font-bold text-xs flex items-center gap-1.5"
+                >
+                  {isRefunding ? 'Đang hoàn tiền...' : 'Force Refund — Hoàn Tiền Cả Nhóm'}
+                </button>
+              )}
               <button
                 onClick={() => setSelectedPoolDetail(null)}
                 className="px-4 py-2 rounded-xl bg-cyan-500 hover:bg-cyan-400 text-black font-bold text-xs"
@@ -546,6 +595,11 @@ export const AdminEscrowPoolsTab: React.FC<AdminEscrowPoolsTabProps> = ({
                 Đã Hiểu & Đóng
               </button>
             </div>
+            {refundMessage && (
+              <div className={`p-2.5 rounded-lg text-xs font-mono border ${refundOk ? 'bg-emerald-950/40 border-emerald-500/40 text-emerald-300' : 'bg-rose-950/40 border-rose-500/40 text-rose-300'}`}>
+                {refundMessage}
+              </div>
+            )}
           </div>
         </div>
       )}

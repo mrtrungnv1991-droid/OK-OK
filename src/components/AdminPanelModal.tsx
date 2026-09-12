@@ -120,7 +120,6 @@ interface AdminPanelModalProps {
   onAdjustProductStock?: (productId: string, delta: number) => void;
   onToggleFlashSale: (productId: string, discountPercent?: number, isFlashSale?: boolean, flashSaleData?: Partial<Product>) => void;
   onBulkAddStock: (productId: string, rawKeys: string[]) => void;
-  onForceEscrowAction: (orderId: string, action: 'release_to_seller' | 'refund_to_buyer') => void;
   onAdminReplyTicket: (ticketId: string, replyText: string, newStatus?: SupportTicket['status']) => void;
   onUpdateSupplierBalance: (supplierId: string, deltaBalance: number) => void;
   onUpdateMemberRole: (memberId: string, newRole: MemberUser['role']) => void;
@@ -171,7 +170,6 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({
   onAdjustProductStock,
   onToggleFlashSale,
   onBulkAddStock,
-  onForceEscrowAction,
   onAdminReplyTicket,
   onUpdateSupplierBalance,
   onUpdateMemberRole,
@@ -486,7 +484,6 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({
                 products={products}
                 orders={orders}
                 currency={currency}
-                onForceEscrowAction={onForceEscrowAction}
               />
             )}
 

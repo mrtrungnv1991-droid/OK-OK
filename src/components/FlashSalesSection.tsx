@@ -366,10 +366,26 @@ export const FlashSalesSection: React.FC<FlashSalesSectionProps> = ({
                       </div>
                     </div>
 
-                    <span className="px-2 sm:px-3 py-1 rounded bg-orange-500 hover:bg-orange-400 text-black font-mono font-bold text-[9px] sm:text-xs uppercase flex items-center gap-0.5 shadow-[0_0_10px_rgba(249,115,22,0.3)] group-hover:translate-x-0.5 transition-all">
+                    {/* CYBERPOOL FIX (#18 frontend audit): nút "SĂN NGAY" từng là
+                        <span> chết — prop onInstantBuy được App.tsx truyền vào nhưng
+                        không bao giờ được gọi, nên nút flash-sale không mở được
+                        instant-buy. Giờ bấm nút gọi onInstantBuy trực tiếp (stopPropagation
+                        để không kích hoạt onClick của cả card). */}
+                    <button
+                      type="button"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        if (onInstantBuy) {
+                          onInstantBuy(product);
+                        } else {
+                          handleProductClick(product);
+                        }
+                      }}
+                      className="px-2 sm:px-3 py-1 rounded bg-orange-500 hover:bg-orange-400 text-black font-mono font-bold text-[9px] sm:text-xs uppercase flex items-center gap-0.5 shadow-[0_0_10px_rgba(249,115,22,0.3)] group-hover:translate-x-0.5 transition-all cursor-pointer"
+                    >
                       <span>{t('flash_sale.hunt_btn')}</span>
                       <ChevronRight className="w-3 h-3 hidden sm:inline" />
-                    </span>
+                    </button>
                   </div>
                 </div>
               </div>

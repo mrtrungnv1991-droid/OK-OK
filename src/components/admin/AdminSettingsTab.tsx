@@ -508,10 +508,14 @@ export const AdminSettingsTab: React.FC<AdminSettingsTabProps> = ({
               <label className="text-slate-400 font-bold block mb-1">Telegram Admin Chat ID (*):</label>
               <input
                 type="text"
-                value={formData.telegramChatId || '-1008892182019'}
+                value={formData.telegramChatId || ''}
+                placeholder="vd: -1001234567890 (chưa cấu hình)"
                 onChange={(e) => handleChange('telegramChatId', e.target.value)}
                 className="w-full bg-slate-950 border border-slate-700 rounded-lg p-2 text-cyan-300 font-mono text-xs"
               />
+              {/* CYBERPOOL FIX (#19 frontend audit): bỏ chat ID hardcode
+                  '-1008892182019' làm default hiển thị — giá trị lạ dễ bị lưu
+                  nhầm thành cấu hình thật. */}
             </div>
           </div>
 

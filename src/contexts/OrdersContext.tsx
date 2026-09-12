@@ -37,7 +37,6 @@ interface OrdersContextType {
   joinPool: (poolId: string, product: Product) => Promise<{ success: boolean; message: string }>;
   buyInstantSingle: (product: Product, quantity?: number) => Promise<{ success: boolean; message: string; deliveredKey?: string }>;
   createTopupOrder: (game: GameItem, tier: TopupTier, uid: string, zoneId?: string, characterName?: string, isGroup?: boolean) => Promise<{ success: boolean; message: string }>;
-  forceEscrowAction: (orderId: string, action: 'release_to_seller' | 'refund_to_buyer') => void;
   createSupportTicket: (ticket: Omit<SupportTicket, 'id' | 'createdAt' | 'status' | 'messages'>, initialMessage: string) => void;
   adminReplyTicket: (ticketId: string, replyText: string, newStatus?: SupportTicket['status']) => void;
   adminSendChatMessage: (sessionId: string, text: string) => void;
@@ -304,18 +303,10 @@ export const OrdersProvider: React.FC<{ children: ReactNode }> = ({ children }) 
     }
   };
 
-  const forceEscrowAction = (orderId: string, action: 'release_to_seller' | 'refund_to_buyer') => {
-    setOrders(prev => prev.map(o => {
-      if (o.id === orderId) {
-        return {
-          ...o,
-          status: action === 'release_to_seller' ? 'fulfilled' : 'refunded',
-          deliveredKey: action === 'release_to_seller' ? (o.deliveredKey || 'CYBER-FORCE-RELEASE-KEY') : undefined
-        };
-      }
-      return o;
-    }));
-  };
+  // CYBERPOOL FIX (#17 frontend audit): forceEscrowAction client-side FAKE đã
+  // xóa — nó chỉ đổi state local và bịa deliveredKey 'CYBER-FORCE-RELEASE-KEY'
+  // mà không gọi server. Admin escrow tab giờ dùng POST /escrow/admin/refund
+  // (hoàn tiền thật qua ledger).
 
   const createSupportTicket = (ticket: Omit<SupportTicket, 'id' | 'createdAt' | 'status' | 'messages'>, initialMessage: string) => {
     const newT: SupportTicket = {
@@ -452,7 +443,6 @@ export const OrdersProvider: React.FC<{ children: ReactNode }> = ({ children }) 
     joinPool,
     buyInstantSingle,
     createTopupOrder,
-    forceEscrowAction,
     createSupportTicket,
     adminReplyTicket,
     adminSendChatMessage,
@@ -473,7 +463,6 @@ export const OrdersProvider: React.FC<{ children: ReactNode }> = ({ children }) 
     joinPool,
     buyInstantSingle,
     createTopupOrder,
-    forceEscrowAction,
     createSupportTicket,
     adminReplyTicket,
     adminSendChatMessage,

@@ -167,8 +167,7 @@ function AppContent() {
     adminSendChatMessage, 
     sendUserChatMessage, 
     processManualOrder, 
-    spinLuckyWheel,
-    forceEscrowAction
+    spinLuckyWheel
   } = useOrders();
 
   // Admin Context
@@ -1014,7 +1013,6 @@ function AppContent() {
           onAdjustProductStock={adjustProductStock}
           onToggleFlashSale={toggleFlashSale}
           onBulkAddStock={bulkAddStock}
-          onForceEscrowAction={forceEscrowAction}
           onAdminReplyTicket={adminReplyTicket}
           onUpdateSupplierBalance={updateSupplierBalance}
           onUpdateMemberRole={updateMemberRole}
