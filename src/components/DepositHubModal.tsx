@@ -117,11 +117,14 @@ export const DepositHubModal: React.FC<DepositHubModalProps> = ({
   };
 
   const binanceAccount = {
-    payId: systemConfig?.binancePayId || '582910384',
-    uid: systemConfig?.binanceUid || '293847291',
-    nickname: systemConfig?.binanceNickname || 'CYBERPOOL_PAY',
-    rate: systemConfig?.usdToVndRate || 25400
-  };
+      // CYBERPOOL FIX: không hardcode Pay ID/UID giả làm default — cấu hình từ
+      // systemConfig khi admin nhập thật; nút "Tạo Lệnh" (checkout thật) không
+      // phụ thuộc các giá trị này nữa.
+      payId: systemConfig?.binancePayId || '',
+      uid: systemConfig?.binanceUid || '',
+      nickname: systemConfig?.binanceNickname || '',
+      rate: systemConfig?.usdToVndRate || 25400
+    };
 
   // Calculated LTC amount
   const calculatedLtcAmount = (depositAmount / ltcAccount.rate).toFixed(6);

@@ -94,14 +94,14 @@ export const AdminBankingTopupsTab: React.FC<AdminBankingTopupsTabProps> = ({
     bankBin: systemConfig?.bankBin || '970422',
     bankQrCustomImage: systemConfig?.bankQrCustomImage || '',
     qrDisplayMode: systemConfig?.qrDisplayMode || 'vietqr_auto',
-    vietQrApiToken: systemConfig?.vietQrApiToken || 'VQR_SEC_9988442211',
+    vietQrApiToken: systemConfig?.vietQrApiToken || '', // CYBERPOOL FIX: không hardcode token giả
     bankCronInterval: systemConfig?.bankCronInterval || 5,
     mbbankApiPassword: systemConfig?.mbbankApiPassword || '••••••••',
     
     telcoProvider: systemConfig?.telcoProvider || 'card24h',
-    telcoPartnerId: systemConfig?.telcoPartnerId || '16654919157',
-    telcoPartnerKey: systemConfig?.telcoPartnerKey || 'bc3299820230bb1ed2b2b729cac744e3',
-    telcoWalletId: systemConfig?.telcoWalletId || '0059134947',
+        telcoPartnerId: systemConfig?.telcoPartnerId || '',
+        telcoPartnerKey: systemConfig?.telcoPartnerKey || '', // CYBERPOOL FIX: không hardcode credential thật
+        telcoWalletId: systemConfig?.telcoWalletId || '',
     telcoCallbackUrl: systemConfig?.telcoCallbackUrl || (typeof window !== 'undefined' ? `${window.location.origin}/api/v1/webhooks/card24h` : '/api/v1/webhooks/card24h'),
     
     telcoFeeViettel: systemConfig?.telcoFeeViettel || 16,
@@ -116,16 +116,20 @@ export const AdminBankingTopupsTab: React.FC<AdminBankingTopupsTabProps> = ({
     cryptoLtcRate: systemConfig?.cryptoLtcRate || 2150000,
     cryptoLtcConfirmations: systemConfig?.cryptoLtcConfirmations || 2,
     
-    binancePayId: systemConfig?.binancePayId || '582910384',
-    binanceUid: systemConfig?.binanceUid || '293847291',
-    binanceNickname: systemConfig?.binanceNickname || 'CYBERPOOL_PAY',
-    binanceApiKey: systemConfig?.binanceApiKey || 'bpay_live_891823901823',
-    binanceSecretKey: systemConfig?.binanceSecretKey || '••••••••••••••••',
-    usdToVndRate: systemConfig?.usdToVndRate || 25400,
-    
-    momoPhone: systemConfig?.momoPhone || '0988889999',
-    momoName: systemConfig?.momoName || 'NGUYEN HOANG LONG',
-    momoApiToken: systemConfig?.momoApiToken || 'MOMO_SEC_889922'
+    binancePayId: systemConfig?.binancePayId || '',
+        binanceUid: systemConfig?.binanceUid || '',
+        binanceNickname: systemConfig?.binanceNickname || '',
+        binanceApiKey: systemConfig?.binanceApiKey || '', // CYBERPOOL FIX: không hardcode credential
+        binanceSecretKey: systemConfig?.binanceSecretKey || '',
+        usdToVndRate: systemConfig?.usdToVndRate || 25400,
+
+        momoPhone: systemConfig?.momoPhone || '',
+        momoName: systemConfig?.momoName || '',
+        momoPartnerCode: systemConfig?.momoPartnerCode || '',
+        momoAccessKey: systemConfig?.momoAccessKey || '',
+        momoSecretKey: systemConfig?.momoSecretKey || '',
+        // CYBERPOOL FIX: xóa token giả hardcode
+        momoApiToken: ''
   });
 
   // Individual Deposit API Modules Control State
@@ -1551,7 +1555,7 @@ export const AdminBankingTopupsTab: React.FC<AdminBankingTopupsTabProps> = ({
                 </label>
                 <input
                   type="text"
-                  value={gatewayForm.telcoWalletId || '0059134947'}
+                  value={gatewayForm.telcoWalletId || ''}
                   onChange={(e) => setGatewayForm({ ...gatewayForm, telcoWalletId: e.target.value })}
                   placeholder="0059134947"
                   className="w-full bg-slate-950 border border-slate-700 rounded-lg p-2 text-cyan-300 font-mono mt-1 text-xs focus:border-cyan-500 focus:outline-none"
@@ -1647,25 +1651,57 @@ export const AdminBankingTopupsTab: React.FC<AdminBankingTopupsTabProps> = ({
                 <span className="font-bold text-white text-xs">VÍ ĐIỆN TỬ MOMO BUSINESS AUTO</span>
               </div>
               <div className="space-y-2">
-                <div>
-                  <label className="text-[11px] text-slate-400">Số Điện Thoại MoMo:</label>
-                  <input
-                    type="text"
-                    value={gatewayForm.momoPhone}
-                    onChange={(e) => setGatewayForm({ ...gatewayForm, momoPhone: e.target.value })}
-                    className="w-full bg-slate-950 border border-slate-700 rounded-lg p-2 text-white mt-1 text-xs"
-                  />
-                </div>
-                <div>
-                  <label className="text-[11px] text-slate-400">Tên Tài Khoản MoMo:</label>
-                  <input
-                    type="text"
-                    value={gatewayForm.momoName}
-                    onChange={(e) => setGatewayForm({ ...gatewayForm, momoName: e.target.value })}
-                    className="w-full bg-slate-950 border border-slate-700 rounded-lg p-2 text-white mt-1 text-xs"
-                  />
-                </div>
-              </div>
+                              <div>
+                                <label className="text-[11px] text-slate-400">Số Điện Thoại MoMo:</label>
+                                <input
+                                  type="text"
+                                  value={gatewayForm.momoPhone}
+                                  onChange={(e) => setGatewayForm({ ...gatewayForm, momoPhone: e.target.value })}
+                                  className="w-full bg-slate-950 border border-slate-700 rounded-lg p-2 text-white mt-1 text-xs"
+                                />
+                              </div>
+                              <div>
+                                <label className="text-[11px] text-slate-400">Tên Tài Khoản MoMo:</label>
+                                <input
+                                  type="text"
+                                  value={gatewayForm.momoName}
+                                  onChange={(e) => setGatewayForm({ ...gatewayForm, momoName: e.target.value })}
+                                  className="w-full bg-slate-950 border border-slate-700 rounded-lg p-2 text-white mt-1 text-xs"
+                                />
+                              </div>
+                              {/* CYBERPOOL FIX: bổ sung 3 credentials MoMo Business (Partner Code / Access Key / Secret Key)
+                                  — cần thiết cho endpoint create-payment (captureWallet) vừa thêm */}
+                              <div>
+                                <label className="text-[11px] text-slate-400">Partner Code (Ví MoMo Business):</label>
+                                <input
+                                  type="text"
+                                  value={gatewayForm.momoPartnerCode || ''}
+                                  onChange={(e) => setGatewayForm({ ...gatewayForm, momoPartnerCode: e.target.value })}
+                                  placeholder="VD: MOMOBKUN20180529"
+                                  className="w-full bg-slate-950 border border-slate-700 rounded-lg p-2 text-pink-300 font-mono mt-1 text-xs"
+                                />
+                              </div>
+                              <div>
+                                <label className="text-[11px] text-slate-400">Access Key (MoMo):</label>
+                                <input
+                                  type="text"
+                                  value={gatewayForm.momoAccessKey || ''}
+                                  onChange={(e) => setGatewayForm({ ...gatewayForm, momoAccessKey: e.target.value })}
+                                  placeholder="Access Key từ cổng MoMo"
+                                  className="w-full bg-slate-950 border border-slate-700 rounded-lg p-2 text-pink-300 font-mono mt-1 text-xs"
+                                />
+                              </div>
+                              <div>
+                                <label className="text-[11px] text-slate-400">Secret Key (MoMo):</label>
+                                <input
+                                  type="password"
+                                  value={gatewayForm.momoSecretKey || ''}
+                                  onChange={(e) => setGatewayForm({ ...gatewayForm, momoSecretKey: e.target.value })}
+                                  placeholder="••••••••••••••••"
+                                  className="w-full bg-slate-950 border border-slate-700 rounded-lg p-2 text-pink-300 font-mono mt-1 text-xs"
+                                />
+                              </div>
+                            </div>
             </div>
 
             <div className="p-4 rounded-xl bg-slate-900/60 border border-purple-500/30 space-y-3">

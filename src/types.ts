@@ -806,10 +806,13 @@ export interface SystemConfig {
   binanceApiKey?: string;
   binanceSecretKey?: string;
   momoPhone: string;
-  momoName: string;
-  momoApiToken?: string;
-  zalopayPhone?: string;
-  zalopayName?: string;
+    momoName: string;
+    momoApiToken?: string;
+    momoPartnerCode?: string;
+    momoAccessKey?: string;
+    momoSecretKey?: string;
+    zalopayPhone?: string;
+    zalopayName?: string;
   
   // Deposit Bonus Rules
   depositPromotions?: DepositPromotionRule[];
