@@ -16,6 +16,19 @@ import { INITIAL_VOUCHERS } from '../../src/data/systemAdminData';
 import { ALL_PRODUCTS_DATA } from '../../src/i18n/catalogData/allProductsData';
 import { PRODUCT_TRANSLATIONS } from '../../src/i18n/catalogTranslations';
 import { GameStorageService } from '../services/gameStorageService';
+import fs from 'fs';
+import path from 'path';
+
+// CYBERPOOL FIX (systemic #1): store trước đây là in-memory thuần — restart
+// xóa sạch users/balances/orders/escrow (chỉ idempotency records, games,
+// supplier data được persist). Mọi lỗi tiền trở thành "không thể phục hồi".
+// Giờ có JSON snapshot: atomic write (temp+rename), load lúc boot, lưu định
+// kỳ 10s + flush khi shutdown. Games/suppliers do service riêng quản lý nên
+// KHÔNG nằm trong snapshot. Khi chạy test (NODE_TEST_CONTEXT) snapshot bị bỏ
+// qua để test luôn làm việc trên seed sạch.
+const SNAPSHOT_DIR = path.join(process.cwd(), 'server', 'data');
+const SNAPSHOT_FILE = process.env.DB_SNAPSHOT_FILE || path.join(SNAPSHOT_DIR, 'db_snapshot.json');
+const IS_TEST_RUN = Boolean(process.env.NODE_TEST_CONTEXT);
 
 class DatabaseStore {
   public users: Map<string, ServerUser> = new Map();
@@ -49,6 +62,116 @@ class DatabaseStore {
 
   constructor() {
     this.seedDatabase();
+    // CYBERPOOL FIX (systemic #1): khôi phục state đã lưu sau khi seed —
+    // bản ghi trên đĩa ghi đè dữ liệu seed (ví dụ số dư user, đơn hàng,
+    // trạng thái escrow). Khi chạy test thì bỏ qua để seed luôn sạch.
+    if (!IS_TEST_RUN) {
+      this.loadSnapshot();
+      this.startSnapshotTimer();
+      this.registerShutdownFlush();
+    }
+  }
+
+  // ==================== SNAPSHOT PERSISTENCE ====================
+  // Snapshot toàn bộ collections "sống" (users, transactions, orders, escrow,
+  // inventory, withdrawals, deposits, wheel spins, audit, reviews, config...).
+  // KHÔNG snapshot: products/games/suppliers/vouchers/categories (seed từ
+  // source-of-truth + service riêng đã tự persist games/suppliers).
+  private snapshotTimer: NodeJS.Timeout | null = null;
+  private shutdownRegistered = false;
+
+  public snapshotState(): Record<string, any> {
+    return {
+      version: 1,
+      savedAt: new Date().toISOString(),
+      users: Array.from(this.users.values()),
+      transactions: this.transactions,
+      withdrawals: this.withdrawals,
+      inventory: Array.from(this.inventory.values()),
+      escrowContracts: Array.from(this.escrowContracts.values()),
+      orders: Array.from(this.orders.values()),
+      reviews: this.reviews,
+      auditLogs: this.auditLogs.slice(-2000), // giới hạn để file không phình
+      telcoCards: Array.from(this.telcoCards.values()),
+      processedWebhooks: Array.from(this.processedWebhooks.entries()).map(([k, v]) => ({ key: k, value: v })),
+      depositIntents: Array.from(this.depositIntents.values()),
+      pendingUnmappedDeposits: this.pendingUnmappedDeposits,
+      wheelSpins: this.wheelSpins,
+      systemConfig: this.systemConfig
+    };
+  }
+
+  public saveSnapshot(): void {
+    if (IS_TEST_RUN) return;
+    try {
+      if (!fs.existsSync(SNAPSHOT_DIR)) fs.mkdirSync(SNAPSHOT_DIR, { recursive: true });
+      const tempPath = `${SNAPSHOT_FILE}.tmp_${process.pid}_${Date.now()}`;
+      fs.writeFileSync(tempPath, JSON.stringify(this.snapshotState()), 'utf-8');
+      fs.renameSync(tempPath, SNAPSHOT_FILE);
+    } catch (err) {
+      console.error('[DatabaseStore] Snapshot save error:', err);
+    }
+  }
+
+  private loadSnapshot(): void {
+    try {
+      if (!fs.existsSync(SNAPSHOT_FILE)) return;
+      const raw = fs.readFileSync(SNAPSHOT_FILE, 'utf-8');
+      const snap = JSON.parse(raw);
+      if (!snap || typeof snap !== 'object') return;
+
+      if (Array.isArray(snap.users)) {
+        for (const u of snap.users) if (u?.id) this.users.set(u.id, u);
+      }
+      if (Array.isArray(snap.transactions)) this.transactions = snap.transactions;
+      if (Array.isArray(snap.withdrawals)) this.withdrawals = snap.withdrawals;
+      if (Array.isArray(snap.inventory)) {
+        for (const it of snap.inventory) if (it?.id) this.inventory.set(it.id, it);
+      }
+      if (Array.isArray(snap.escrowContracts)) {
+        for (const c of snap.escrowContracts) if (c?.poolId) this.escrowContracts.set(c.poolId, c);
+      }
+      if (Array.isArray(snap.orders)) {
+        for (const o of snap.orders) if (o?.id) this.orders.set(o.id, o);
+      }
+      if (Array.isArray(snap.reviews)) this.reviews = snap.reviews;
+      if (Array.isArray(snap.auditLogs)) this.auditLogs = snap.auditLogs;
+      if (Array.isArray(snap.telcoCards)) {
+        for (const c of snap.telcoCards) if (c?.id) this.telcoCards.set(c.id, c);
+      }
+      if (Array.isArray(snap.processedWebhooks)) {
+        for (const e of snap.processedWebhooks) if (e?.key) this.processedWebhooks.set(e.key, e.value);
+      }
+      if (Array.isArray(snap.depositIntents)) {
+        for (const d of snap.depositIntents) if (d?.id) this.depositIntents.set(d.id, d);
+      }
+      if (Array.isArray(snap.pendingUnmappedDeposits)) this.pendingUnmappedDeposits = snap.pendingUnmappedDeposits;
+      if (Array.isArray(snap.wheelSpins)) this.wheelSpins = snap.wheelSpins;
+      if (snap.systemConfig && typeof snap.systemConfig === 'object') {
+        // Merge: snapshot ghi đè seed, nhưng env-configured secrets mới nhất vẫn thắng
+        this.systemConfig = { ...this.systemConfig, ...snap.systemConfig };
+      }
+      console.log(`[DatabaseStore] Restored snapshot from disk: ${this.users.size} users, ${this.orders.size} orders, ${this.escrowContracts.size} escrow contracts (saved ${snap.savedAt || '?'})`);
+    } catch (err) {
+      console.warn('[DatabaseStore] Snapshot load error (falling back to fresh seed):', err);
+    }
+  }
+
+  private startSnapshotTimer(): void {
+    // Lưu định kỳ 10s — đủ mới, đủ nhẹ. unref để không giữ process sống.
+    this.snapshotTimer = setInterval(() => this.saveSnapshot(), 10_000);
+    this.snapshotTimer.unref?.();
+  }
+
+  private registerShutdownFlush(): void {
+    if (this.shutdownRegistered) return;
+    this.shutdownRegistered = true;
+    const flush = () => {
+      try { this.saveSnapshot(); } catch {}
+    };
+    process.on('SIGINT', () => { flush(); process.exit(0); });
+    process.on('SIGTERM', () => { flush(); process.exit(0); });
+    process.on('beforeExit', flush);
   }
 
   private seedDatabase() {

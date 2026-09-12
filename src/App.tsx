@@ -44,6 +44,7 @@ import { EscrowGuideModal } from './components/EscrowGuideModal';
 import { LiveTelemetryStream } from './components/LiveTelemetryStream';
 import { TopupSection } from './components/TopupSection';
 import { FlashSalesSection } from './components/FlashSalesSection';
+import { AuthGate } from './components/AuthGate';
 import { ActivePoolsShowcase } from './components/ActivePoolsShowcase';
 import { TopupModal } from './components/TopupModal';
 import { TicketsModal } from './components/TicketsModal';
@@ -96,6 +97,8 @@ function AppContent() {
   // Auth Context
   const { 
     currentUser, 
+    isAuthenticated,
+    isBooting,
     updateUserRole, 
     updateUserBalance, 
     updateEscrowLocked, 
@@ -560,6 +563,23 @@ function AppContent() {
   });
 
   const siteContainerClass = systemConfig.uiLayoutConfig?.siteContainerWidth || systemConfig.heroConfig?.containerMaxWidth || 'max-w-7xl';
+
+  // CYBERPOOL FIX: auth gate — trước đây app luôn render như đã đăng nhập
+  // (auto-login admin hardcode). Giờ: đang boot → splash; chưa xác thực →
+  // màn hình đăng nhập/đăng ký thật (AuthGate).
+  if (isBooting) {
+    return (
+      <div className="min-h-screen bg-[#050811] flex items-center justify-center">
+        <div className="flex flex-col items-center gap-3">
+          <div className="w-12 h-12 rounded-xl border border-cyan-500/50 bg-cyan-500/10 animate-pulse" />
+          <div className="text-xs font-mono text-cyan-400 tracking-widest">CYBERPOOL // ĐANG KHỞI ĐỘNG...</div>
+        </div>
+      </div>
+    );
+  }
+  if (!isAuthenticated) {
+    return <AuthGate />;
+  }
 
   return (
     <div className="min-h-screen bg-[#050811] text-slate-100 flex flex-col font-sans selection:bg-cyan-500 selection:text-black">

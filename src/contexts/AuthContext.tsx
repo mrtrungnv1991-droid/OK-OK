@@ -8,6 +8,7 @@ interface AuthContextType {
   setCurrentUser: React.Dispatch<React.SetStateAction<UserProfile>>;
   isAuthenticated: boolean;
   isLoading: boolean;
+  isBooting: boolean;
   login: (email: string, password?: string) => Promise<{ success: boolean; error?: string }>;
   register: (data: { email: string; name: string; phone?: string; password?: string }) => Promise<{ success: boolean; error?: string }>;
   logout: () => Promise<void>;
@@ -19,21 +20,23 @@ interface AuthContextType {
   updateCurrency: (curr: CurrencyCode) => void;
 }
 
-// Initial placeholder until API boots
-const INITIAL_BOOT_USER: UserProfile = {
-  id: 'usr-admin-01',
-  name: 'CyberPool SuperAdmin',
-  email: 'admin@cyberpool.vn',
-  avatar: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=100&auto=format&fit=crop&q=80',
-  walletBalance: 50000000,
+// CYBERPOOL FIX: boot user là GUEST trung tính — trước đây là SuperAdmin với
+// walletBalance 50.000.000 + isAuthenticated=true mặc định, UI hiển thị số dư
+// bịa cho MỌI visitor trước khi /auth/me kịp chạy.
+const GUEST_USER: UserProfile = {
+  id: 'guest',
+  name: 'Khách',
+  email: '',
+  avatar: 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=100&auto=format&fit=crop&q=80',
+  walletBalance: 0,
   escrowLocked: 0,
   currency: 'VND',
   language: 'vi',
-  reputationScore: 99.9,
-  role: 'admin',
-  affiliateCode: 'CYBER777',
-  affiliateEarnings: 2450000,
-  totalSpun: 15
+  reputationScore: 0,
+  role: 'buyer',
+  affiliateCode: '',
+  affiliateEarnings: 0,
+  totalSpun: 0
 };
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -42,15 +45,19 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   const [currentUser, setCurrentUser] = useState<UserProfile>(() => {
     try {
       const saved = localStorage.getItem('cyberpool_current_user');
-      if (saved) {
+      if (saved && api.getToken()) {
+        // Chỉ tin profile đã lưu khi còn token — tránh hiện user cũ sau logout
         return JSON.parse(saved);
       }
     } catch {
       // fallback
     }
-    return INITIAL_BOOT_USER;
+    return GUEST_USER;
   });
-  const [isAuthenticated, setIsAuthenticated] = useState<boolean>(true);
+  // CYBERPOOL FIX: xác thực dựa trên token thật đang lưu, không hardcode true
+  const [isAuthenticated, setIsAuthenticated] = useState<boolean>(() => Boolean(api.getToken()));
+  // Splash gate: chưa biết kết quả /auth/me lần đầu thì chưa kết luận gì
+  const [isBooting, setIsBooting] = useState<boolean>(true);
   const [isLoading, setIsLoading] = useState<boolean>(false);
 
   // Sync to localStorage whenever currentUser changes
@@ -115,11 +122,22 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
           };
         });
         setIsAuthenticated(true);
+      } else if (!res.success && api.getToken()) {
+        // CYBERPOOL FIX: token hết hạn/bị từ chối → xóa token + về guest,
+        // KHÔNG giữ profile cũ (trước đây chỉ set false khi không có token,
+        // token chết vẫn giữ state "đã đăng nhập").
+        api.setToken(null);
+        try { localStorage.removeItem('cyberpool_current_user'); } catch {}
+        setCurrentUser(GUEST_USER);
+        setIsAuthenticated(false);
       } else if (!api.getToken()) {
+        setCurrentUser(GUEST_USER);
         setIsAuthenticated(false);
       }
     } catch {
       // server sync fallback
+    } finally {
+      setIsBooting(false);
     }
   }, []);
 
@@ -174,8 +192,10 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   };
 
   const logout = async () => {
-    await authApi.logout();
+    try { await authApi.logout(); } catch {}
     api.setToken(null);
+    try { localStorage.removeItem('cyberpool_current_user'); } catch {}
+    setCurrentUser(GUEST_USER);
     setIsAuthenticated(false);
   };
 
@@ -242,6 +262,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     setCurrentUser,
     isAuthenticated,
     isLoading,
+    isBooting,
     login,
     register,
     logout,
@@ -255,6 +276,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     currentUser,
     isAuthenticated,
     isLoading,
+    isBooting,
     login,
     register,
     logout,

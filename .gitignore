@@ -7,6 +7,8 @@ coverage/
 .env*
 !.env.example
 server/data/games_catalog.json
+server/data/db_snapshot.json
+server/data/db_snapshot.json.tmp_*
 # CYBERPOOL FIX: runtime state do cron/sync ghi mỗi 60s — không track
 # (từng gây churn 2591 dòng/commit + lộ credential blob mã hóa bằng dev key cũ)
 server/data/supplier_hub/
