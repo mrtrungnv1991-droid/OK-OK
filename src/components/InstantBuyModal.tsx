@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useRef } from 'react';
 import { 
   X, 
   Zap, 
@@ -62,6 +62,17 @@ export const InstantBuyModal: React.FC<InstantBuyModalProps> = ({
   const [voucherError, setVoucherError] = useState<string | null>(null);
   const [paymentMethod, setPaymentMethod] = useState<'wallet' | 'vietqr' | 'telco'>('wallet');
   const [isProcessing, setIsProcessing] = useState<boolean>(false);
+  // CYBERPOOL FIX (#11): idempotencyKey ổn định cho mỗi lần bấm mua — server
+  // hỗ trợ chống double-charge (orderRoutes) nhưng client trước đây KHÔNG gửi,
+  // nên double-click/network-retry trừ tiền 2 lần. Key tạo 1 lần cho tới khi
+  // giao dịch thành công thì reset cho lần mua kế tiếp.
+  const idempotencyKeyRef = useRef<string>('');
+  const getIdempotencyKey = () => {
+    if (!idempotencyKeyRef.current) {
+      idempotencyKeyRef.current = `IB_${product.id}_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
+    }
+    return idempotencyKeyRef.current;
+  };
   const [deliveredOrder, setDeliveredOrder] = useState<UserOrder | null>(null);
   const [copiedField, setCopiedField] = useState<string | null>(null);
 
@@ -169,7 +180,8 @@ Thank you for trading on CyberPool Escrow Network!
         quantity,
         paymentMethod: method,
         voucherCode: voucherCode || undefined,
-        finalTotal
+        finalTotal,
+        idempotencyKey: getIdempotencyKey() // CYBERPOOL FIX (#11): chống double-charge khi retry/double-click
       });
 
       if (res.success && res.data?.order) {
@@ -208,6 +220,8 @@ Thank you for trading on CyberPool Escrow Network!
         setIsProcessing(false);
         setDeliveredOrder(orderForState);
         onSuccessOrder(orderForState, finalTotal, method);
+        // CYBERPOOL FIX (#11): reset key để lần mua sau dùng key mới
+        idempotencyKeyRef.current = '';
         if (serverFulfilled) {
           showToast('Đơn hàng thật đã được ghi nhận vào hệ thống và Kho Key!', 'success', {
             title: 'ĐẶT MUA THÀNH CÔNG'

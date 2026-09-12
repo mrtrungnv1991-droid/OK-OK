@@ -94,12 +94,15 @@ export const DepositHubModal: React.FC<DepositHubModalProps> = ({
   const bankAccount = {
     bankName: systemConfig?.bankName || 'MBBank - Ngân Hàng Quân Đội',
     bankCode: 'MB',
-    accountNumber: systemConfig?.bankAccountNo || '0988889999',
+    // CYBERPOOL FIX (#6 frontend audit): KHÔNG fallback số tài khoản giả —
+    // user sẽ chuyển tiền thật vào số placeholder. Rỗng = chưa cấu hình,
+    // UI hiển thị cảnh báo + chặn copy/QR.
+    accountNumber: systemConfig?.bankAccountNo || '',
     accountHolder: systemConfig?.bankAccountName || 'CYBERPOOL ESCROW GATEWAY'
   };
 
   const momoAccount = {
-    phone: systemConfig?.momoPhone || '0988889999',
+    phone: systemConfig?.momoPhone || '',
     holder: systemConfig?.momoName || 'CYBERPOOL VIETNAM'
   };
 
@@ -745,6 +748,14 @@ export const DepositHubModal: React.FC<DepositHubModalProps> = ({
           {activeChannel === 'vietqr' && (
             !isModuleEnabled('vietqr') ? (
               renderChannelMaintenance('vietqr', 'Cổng VietQR Ngân Hàng Napas 24/7')
+            ) : !bankAccount.accountNumber ? (
+              renderChannelNotConfigured(
+                'vietqr',
+                'Cổng VietQR Ngân Hàng Napas 24/7',
+                'Shop chưa cấu hình số tài khoản ngân hàng nhận tiền (systemConfig.bankAccountNo). ' +
+                'Quản trị vui lòng vào Admin Panel → Tài Chính → Nạp Tiền để nhập thông tin tài khoản thật ' +
+                'trước khi mở cổng này. Hiện cổng tạm khóa để tránh khách chuyển tiền sai địa chỉ.'
+              )
             ) : (
             <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
               {/* Left Column: QR Code Visual */}
@@ -910,6 +921,14 @@ export const DepositHubModal: React.FC<DepositHubModalProps> = ({
           {activeChannel === 'momo' && (
             !isModuleEnabled('momo') ? (
               renderChannelMaintenance('momo', 'Ví MoMo / ZaloPay')
+            ) : !momoAccount.phone ? (
+              renderChannelNotConfigured(
+                'momo',
+                'Ví MoMo / ZaloPay',
+                'Shop chưa cấu hình số điện thoại ví MoMo nhận tiền (systemConfig.momoPhone). ' +
+                'Quản trị vui lòng vào Admin Panel → Tài Chính → Nạp Tiền → mục MoMo để nhập SĐT ví thật ' +
+                'trước khi mở cổng này. Hiện cổng tạm khóa để tránh khách chuyển tiền sai ví.'
+              )
             ) : (
             <div className="space-y-4">
               {/* MoMo Amount Selector */}

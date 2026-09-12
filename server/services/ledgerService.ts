@@ -74,6 +74,7 @@ export class LedgerService {
         case 'WITHDRAWAL':
         case 'PURCHASE_INSTANT':
         case 'TOPUP_GAME':
+        case 'WHEEL_SPIN':
           balanceAfter = balanceBefore - Math.abs(amount);
           break;
 

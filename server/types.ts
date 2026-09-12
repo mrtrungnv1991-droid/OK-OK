@@ -38,6 +38,7 @@ export type TransactionType =
   | 'TOPUP_GAME' 
   | 'SELLER_PAYOUT' 
   | 'AFFILIATE_COMMISSION' 
+  | 'WHEEL_SPIN'
   | 'SYSTEM_ADJUSTMENT';
 
 export interface ServerUser {

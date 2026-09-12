@@ -72,19 +72,22 @@ const DEFAULT_SYSTEM_CONFIG: SystemConfiguration = {
   autoEscrowRelease: true,
   cronCheckLiveActive: true,
   bankName: 'MBBank',
-  bankAccountNo: '0388999999',
+  // CYBERPOOL FIX (#6 frontend audit): số tài khoản/điện thoại/ví placeholder
+  // là mục tiêu nạp TIỀN THẬT — để trống (fail-closed) thay vì fake, admin phải
+  // cấu hình giá trị thật; UI chặn kênh nạp khi chưa cấu hình.
+  bankAccountNo: '',
   bankAccountName: 'CYBERPOOL CORP',
   bankBin: '970422',
   bankQrCustomImage: '',
   qrDisplayMode: 'vietqr_auto',
-  vietQrApiToken: 'CYBER_API_TOKEN',
+  vietQrApiToken: '', // CYBERPOOL FIX (#15 frontend audit): bỏ placeholder secret
   telcoProvider: 'card24h',
     telcoPartnerId: '',
     telcoPartnerKey: '', // CYBERPOOL FIX: credentials were hardcoded in the public bundle — now empty, admin must input
     telcoWalletId: '',
   telcoCallbackUrl: '/api/v1/webhooks/card24h',
-  cryptoUsdtAddress: 'TXu9...cyber88',
-  momoPhone: '0388999999',
+  cryptoUsdtAddress: '', // CYBERPOOL FIX (#6): bỏ địa chỉ ví USDT rác 'TXu9...cyber88'
+  momoPhone: '', // CYBERPOOL FIX (#6): bỏ SĐT MoMo placeholder
   momoName: 'CYBERPOOL',
   depositModulesConfig: {
     vietqr: { enabled: true, maintenanceMessage: 'Cổng chuyển khoản / VietQR Napas 24/7 đang tạm bảo trì hệ thống.' },

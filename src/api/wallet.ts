@@ -105,6 +105,24 @@ export const walletApi = {
     return api.get<{ withdrawals: any[] }>('/wallet/withdrawals');
   },
 
+  // CYBERPOOL FIX (#5 frontend audit): Lucky Wheel server-authoritative
+  getWheelConfig: async (): Promise<ApiResponse<{ spinCost: number; prizes: any[] }>> => {
+    return api.get<{ spinCost: number; prizes: any[] }>('/wallet/wheel/config');
+  },
+
+  getWheelRecentWinners: async (): Promise<ApiResponse<{ winners: any[] }>> => {
+    return api.get<{ winners: any[] }>('/wallet/wheel/recent');
+  },
+
+  spinWheel: async (): Promise<ApiResponse<{
+    spinCost: number;
+    prize: { id: string; name: string; type: string; value: number; deliveredCode?: string };
+    ledgerTxId?: string;
+    newBalance?: number;
+  }>> => {
+    return api.post('/wallet/wheel/spin', {});
+  },
+
   verifyBinancePay: async (payload: {
     orderId: string;
     amount?: number;

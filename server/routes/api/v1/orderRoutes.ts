@@ -142,7 +142,7 @@ orderRouter.post('/instant-buy', requireAuth, async (req: AuthenticatedRequest, 
 
 // POST /api/v1/orders/topup-game - Direct Game Currency Top-Up
 orderRouter.post('/topup-game', requireAuth, async (req: AuthenticatedRequest, res) => {
-  const { gameId, tierId, uid, zoneId, server, characterName } = req.body;
+  const { gameId, tierId, uid, zoneId, server, characterName, mode } = req.body;
 
   if (!gameId || !tierId || !uid) {
     return res.status(400).json({ success: false, error: 'Missing required topup parameters' });
@@ -156,6 +156,8 @@ orderRouter.post('/topup-game', requireAuth, async (req: AuthenticatedRequest, r
     zoneId,
     server,
     characterName,
+    // CYBERPOOL FIX (#7): chỉ nhận mode hợp lệ — giá vẫn do server tự chọn
+    mode: mode === 'group_topup' ? 'group_topup' : 'instant_direct',
     ipAddress: req.ip
   });
 

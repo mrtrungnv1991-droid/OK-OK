@@ -91,8 +91,14 @@ export const CheckoutConfirmationModal: React.FC<CheckoutConfirmationModalProps>
 
     setIsProcessing(true);
 
+    // CYBERPOOL FIX (#11): mỗi item nhận idempotencyKey ổn định theo phiên
+    // checkout — retry/double-click không trừ tiền 2 lần (server đã hỗ trợ
+    // key này trong orderRoutes nhưng client chưa từng gửi).
+    const checkoutSessionKey = `CK_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
+
     try {
       const generatedOrders: UserOrder[] = [];
+      const failedItems: { title: string; error: string }[] = [];
 
       // Process each checkout item atomically through backend API
       for (let itemIndex = 0; itemIndex < checkoutTargetItems.length; itemIndex++) {
@@ -104,7 +110,8 @@ export const CheckoutConfirmationModal: React.FC<CheckoutConfirmationModalProps>
             productId: item.product.id,
             quantity: item.quantity,
             paymentMethod: 'wallet',
-            finalTotal: item.product.retailPrice * item.quantity
+            finalTotal: item.product.retailPrice * item.quantity,
+            idempotencyKey: `${checkoutSessionKey}_${itemIndex}_${item.product.id}`
           })
         });
 
@@ -116,11 +123,24 @@ export const CheckoutConfirmationModal: React.FC<CheckoutConfirmationModalProps>
                 const orderData = response.data || {};
 
                 if (!response.success || !orderData.order) {
-                  throw new Error(response.error || response.message || `Đặt hàng "${item.product.title}" không thành công`);
+                  // CYBERPOOL FIX (#11): KHÔNG throw giữa loop — các item trước đã
+                  // bị trừ tiền thật; throw sẽ hiện 1 lỗi chung và nuốt mất đơn đã
+                  // mua thành công. Ghi nhận lỗi từng item và tiếp tục; cuối cùng
+                  // báo cáo trung thực (thành công một phần / thất bại).
+                  failedItems.push({
+                    title: item.product.title,
+                    error: response.error || response.message || 'Không thành công'
+                  });
+                  continue;
                 }
 
                 const serverOrder = orderData.order;
                 const branch = serverOrder.deliveryBranch || item.product.deliveryBranch || detectDeliveryBranch(undefined, item.product.title, item.product.platform);
+
+                // CYBERPOOL FIX (#10 tương tự InstantBuyModal): status chỉ
+                // 'fulfilled' khi server COMPLETED + có key/card thật.
+                const realKey = serverOrder.deliveredData?.keys?.[0] || orderData.deliveredKey || '';
+                const isServerFulfilled = serverOrder.status === 'COMPLETED' && Boolean(realKey || serverOrder.deliveredData?.giftUpCard);
 
                 const order: UserOrder = {
                   id: serverOrder.id,
@@ -129,11 +149,11 @@ export const CheckoutConfirmationModal: React.FC<CheckoutConfirmationModalProps>
                   platform: serverOrder.platform || item.product.platform,
                   type: 'instant_single',
                   pricePaid: serverOrder.pricePaid || (item.product.retailPrice * item.quantity),
-                  status: 'fulfilled',
+                  status: isServerFulfilled ? 'fulfilled' : 'processing',
                   createdAt: serverOrder.createdAt ? new Date(serverOrder.createdAt).toLocaleString('vi-VN') : new Date().toLocaleString('vi-VN'),
                   deliveryBranch: branch,
-                  deliveredKey: serverOrder.deliveredKey || orderData.deliveredKey || '',
-                  deliveredData: serverOrder.deliveredData || (serverOrder.deliveredKey ? { keys: [serverOrder.deliveredKey] } : undefined),
+                  deliveredKey: realKey || '',
+                  deliveredData: serverOrder.deliveredData || (realKey ? { keys: [realKey] } : undefined),
                   txId: serverOrder.id
                 };
 
@@ -157,6 +177,16 @@ export const CheckoutConfirmationModal: React.FC<CheckoutConfirmationModalProps>
       });
 
       setCompletedOrders(generatedOrders);
+
+      // CYBERPOOL FIX (#11): báo cáo trung thực khi một phần thất bại
+      if (failedItems.length > 0) {
+        const failedList = failedItems.map(f => `${f.title}: ${f.error}`).join('\n');
+        setErrorMessage(
+          generatedOrders.length > 0
+            ? `Đã mua thành công ${generatedOrders.length} món. Các món sau THẤT BẠI (không bị trừ tiền):\n${failedList}`
+            : `Tất cả món hàng đều thất bại:\n${failedList}`
+        );
+      }
     } catch (err: any) {
       console.error('[Checkout] Purchase failed:', err);
       setErrorMessage(err.message || 'Giao dịch không thành công. Vui lòng kiểm tra lại số dư và tồn kho.');

@@ -41,10 +41,11 @@ class DatabaseStore {
   public processedWebhooks: Map<string, { amount: number; userId: string; status: string; processedAt: string; provider: string; memo?: string }> = new Map();
     public depositIntents: Map<string, { id: string; userId: string; amount: number; methodTitle: string; idempotencyKey: string; status: string; createdAt: string; expiresAt: string }> = new Map();
     public pendingUnmappedDeposits: Array<{ id: string; provider: string; transactionId: string; amount: number; memo: string; rawPayload: any; receivedAt: string; status: 'PENDING_REVIEW' | 'RESOLVED' | 'REJECTED' }> = [];
+    // CYBERPOOL FIX (#5 frontend audit): Lucky Wheel giờ server-authoritative —
+    // lưu lịch sử spin thật (trước đây client tự Math.random + bịa txId/winners).
+    public wheelSpins: Array<{ id: string; userId: string; userName: string; prizeId: string; prizeName: string; prizeType: string; value: number; deliveredCode?: string; ledgerTxId?: string; createdAt: string }> = [];
 
-  // Mutex lock trackers
-  private inventoryLocks: Set<string> = new Set();
-  private userLocks: Set<string> = new Set();
+  // Mutex lock trackers (CYBERPOOL FIX #15: thay bằng FIFO mutex lockState bên dưới)
 
   constructor() {
     this.seedDatabase();

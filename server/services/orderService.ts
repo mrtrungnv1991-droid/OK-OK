@@ -310,9 +310,10 @@ export class OrderService {
     zoneId?: string;
     server?: string;
     characterName?: string;
+    mode?: 'instant_direct' | 'group_topup';
     ipAddress?: string;
   }): Promise<{ success: boolean; order?: ServerOrder; error?: string }> {
-    const { buyer, gameId, tierId, uid, zoneId, server, characterName, ipAddress } = params;
+    const { buyer, gameId, tierId, uid, zoneId, server, characterName, mode, ipAddress } = params;
 
     const game = db.games.find(g => g.id === gameId);
     if (!game) {
@@ -325,7 +326,15 @@ export class OrderService {
     }
 
     // F15: Khắc phục lỗi NaN khi tier dùng retailPrice thay vì price
-    const price = Number(tier.retailPrice ?? tier.price ?? tier.retail_price ?? 0);
+    // CYBERPOOL FIX (#7 frontend audit): trước đây UI chế độ 'group_topup'
+    // hiển thị tier.groupPrice nhưng server LUÔN thu retailPrice → khách bị
+    // thu nhiều hơn số hiển thị. Giờ mode do client gửi, GIÁ do server chọn:
+    // group_topup + tier có groupPrice hợp lệ → thu groupPrice; ngược lại retail.
+    let price = Number(tier.retailPrice ?? tier.price ?? tier.retail_price ?? 0);
+    if (mode === 'group_topup') {
+      const groupPrice = Number((tier as any).groupPrice ?? 0);
+      if (groupPrice > 0) price = groupPrice;
+    }
     if (!price || isNaN(price) || price <= 0) {
       return { success: false, error: 'Giá gói nạp không hợp lệ hoặc chưa được cập nhật' };
     }

@@ -3,6 +3,7 @@ import crypto from 'crypto';
 import { db } from '../../../db/store';
 import { requireAuth, requireRole, AuthenticatedRequest } from '../../../middleware/authMiddleware';
 import { LedgerService } from '../../../services/ledgerService';
+import { InventoryService } from '../../../services/inventoryService';
 import { GatewayVerificationService } from '../../../services/gatewayVerificationService';
 
 export const walletRouter = Router();
@@ -474,4 +475,184 @@ walletRouter.post('/admin/adjust', requireAuth, requireRole('SUPER_ADMIN'), asyn
   });
 
   res.json(result);
+});
+
+// ============================================================================
+// CYBERPOOL FIX (#5 frontend audit): LUCKY WHEEL server-authoritative.
+// Trước đây toàn bộ vòng quay chạy client-side: prize chọn bằng Math.random,
+// SPIN_COST không bao giờ bị trừ, deliveredCode hardcode giả trong bundle,
+// "recent winners" bịa, banner "100% WIN". Giờ server: trừ phí qua ledger,
+// quay bằng crypto RNG với bảng giải thưởng cấu hình server, chỉ trả code
+// thật khi có inventory (không bịa), lưu lịch sử spin.
+// ============================================================================
+
+const WHEEL_SPIN_COST = 20000;
+
+// Bảng giải thưởng server-side (không chứa code giả — code chỉ đến từ inventory).
+interface ServerWheelPrize {
+  id: string;
+  name: string;
+  type: 'key' | 'wallet_cash' | 'voucher' | 'game_diamonds' | 'giftup_card' | 'bad_luck';
+  value: number;
+  probability: number; // 0..1, tổng phải = 1
+  productId?: string; // cho giải thưởng cần inventory thật (key/diamonds/giftup)
+}
+
+function getWheelPrizes(): ServerWheelPrize[] {
+  const configured = (db.systemConfig as any)?.wheelPrizes;
+  if (Array.isArray(configured) && configured.length > 0) {
+    return configured;
+  }
+  // Mặc định: KHÔNG có giải key/diamonds/giftup với code bịa. Chỉ wallet_cash
+  // (cộng ví thật qua ledger) + voucher (ghi vào db.vouchers) + bad_luck.
+  return [
+    { id: 'p-cash-50', name: '+50,000 Wallet Cash', type: 'wallet_cash', value: 50000, probability: 0.08 },
+    { id: 'p-cash-20', name: '+20,000 Wallet Cash', type: 'wallet_cash', value: 20000, probability: 0.17 },
+    { id: 'p-cash-10', name: '+10,000 Wallet Cash', type: 'wallet_cash', value: 10000, probability: 0.25 },
+    { id: 'p-voucher', name: 'Voucher CYBERWHEEL 10%', type: 'voucher', value: 10, probability: 0.10 },
+    { id: 'p-badluck', name: 'Chúc bạn may mắn lần sau', type: 'bad_luck', value: 0, probability: 0.40 }
+  ];
+}
+
+// GET /api/v1/wallet/wheel/config - bảng giải thưởng + chi phí (public cho UI)
+walletRouter.get('/wheel/config', (req, res) => {
+  res.json({
+    success: true,
+    spinCost: WHEEL_SPIN_COST,
+    prizes: getWheelPrizes().map(({ id, name, type, value, probability }) => ({ id, name, type, value, probability }))
+  });
+});
+
+// GET /api/v1/wallet/wheel/recent - lịch sử người trúng THẬT (không bịa)
+walletRouter.get('/wheel/recent', (req, res) => {
+  const recent = db.wheelSpins
+    .filter(s => s.value > 0)
+    .slice(0, 6)
+    .map(s => ({
+      id: s.id,
+      user: s.userName,
+      prizeName: s.prizeName,
+      prizeType: s.prizeType,
+      value: s.value,
+      timestamp: s.createdAt,
+      txId: s.ledgerTxId || s.id
+    }));
+  res.json({ success: true, winners: recent });
+});
+
+// POST /api/v1/wallet/wheel/spin - quay thật: trừ phí, RNG server, trả thưởng thật
+walletRouter.post('/wheel/spin', requireAuth, async (req: AuthenticatedRequest, res) => {
+  const userId = req.user!.id;
+
+  // 1. Trừ phí quay qua ledger THẬT (trước đây không trừ đồng nào)
+  const charge = await LedgerService.executeTransaction({
+    userId,
+    type: 'WHEEL_SPIN',
+    amount: -WHEEL_SPIN_COST,
+    description: `Phí quay Vòng Quay May Mắn (-${WHEEL_SPIN_COST.toLocaleString('vi-VN')}đ)`,
+    ipAddress: req.ip
+  });
+  if (!charge.success) {
+    return res.status(400).json({
+      success: false,
+      error: charge.error || `Số dư không đủ để quay (cần ${WHEEL_SPIN_COST.toLocaleString('vi-VN')}đ).`
+    });
+  }
+
+  // 2. Chọn giải bằng crypto RNG (không phải Math.random client)
+  const prizes = getWheelPrizes();
+  const totalProb = prizes.reduce((s, p) => s + p.probability, 0);
+  const roll = (crypto.randomInt(0, 1_000_000) / 1_000_000) * totalProb;
+  let cumulative = 0;
+  let selected = prizes[prizes.length - 1];
+  for (const p of prizes) {
+    cumulative += p.probability;
+    if (roll <= cumulative) { selected = p; break; }
+  }
+
+  // 3. Trả thưởng THẬT theo loại (không bịa code)
+  let deliveredCode: string | undefined;
+  let awardedValue = selected.value;
+  let creditTxId = charge.transaction?.id;
+
+  if (selected.type === 'wallet_cash' && selected.value > 0) {
+    const credit = await LedgerService.executeTransaction({
+      userId,
+      type: 'SYSTEM_ADJUSTMENT',
+      amount: selected.value,
+      description: `Trúng thưởng Vòng Quay: ${selected.name}`,
+      actorId: 'LUCKY_WHEEL',
+      actorName: 'Lucky Wheel Engine',
+      ipAddress: req.ip
+    });
+    creditTxId = credit.transaction?.id || creditTxId;
+  } else if (selected.type === 'voucher') {
+    // Phát voucher 1 lần dùng cho chính user
+    const code = `WHEEL-${crypto.randomBytes(3).toString('hex').toUpperCase()}`;
+    db.vouchers = db.vouchers || [];
+    db.vouchers.push({
+      id: `vouch-wheel-${Date.now()}`,
+      code,
+      discountType: 'percent',
+      discountValue: Math.min(100, Math.max(0, selected.value)),
+      minOrderValue: 100000,
+      usageLimit: 1,
+      usedCount: 0,
+      expiresAt: new Date(Date.now() + 7 * 86400000).toISOString(),
+      status: 'active',
+      singleUserId: userId
+    });
+    deliveredCode = code;
+  } else if ((selected.type === 'key' || selected.type === 'game_diamonds' || selected.type === 'giftup_card') && selected.productId) {
+    // Chỉ trả code khi inventory có key THẬT — không bịa 'CYBER-PUNK-8899'
+    const item = await InventoryService.reserveItem(selected.productId, userId, `wheel-${Date.now()}`);
+    if (item) {
+      InventoryService.markDelivered(item.id);
+      deliveredCode = item.keyCode;
+    } else {
+      // Không có key thật -> giáng xuống hoàn phí, không bịa giải thưởng
+      awardedValue = WHEEL_SPIN_COST;
+      const refund = await LedgerService.executeTransaction({
+        userId,
+        type: 'SYSTEM_ADJUSTMENT',
+        amount: WHEEL_SPIN_COST,
+        description: 'Hoàn phí quay: kho phần thưởng tạm hết hàng',
+        actorId: 'LUCKY_WHEEL',
+        actorName: 'Lucky Wheel Engine',
+        ipAddress: req.ip
+      });
+      creditTxId = refund.transaction?.id || creditTxId;
+      selected = { id: 'p-refund', name: 'Hoàn phí quay (kho tạm hết phần thưởng)', type: 'wallet_cash', value: 0, probability: 0 };
+    }
+  }
+
+  const spinRecord = {
+    id: `spin-${Date.now()}-${crypto.randomBytes(2).toString('hex')}`,
+    userId,
+    userName: req.user!.name || 'Thành viên',
+    prizeId: selected.id,
+    prizeName: selected.name,
+    prizeType: selected.type,
+    value: awardedValue,
+    deliveredCode,
+    ledgerTxId: creditTxId,
+    createdAt: new Date().toISOString()
+  };
+  db.wheelSpins.unshift(spinRecord);
+  if (db.wheelSpins.length > 200) db.wheelSpins.length = 200;
+
+  const freshUser = db.users.get(userId);
+  res.json({
+    success: true,
+    spinCost: WHEEL_SPIN_COST,
+    prize: {
+      id: selected.id,
+      name: selected.name,
+      type: selected.type,
+      value: awardedValue,
+      deliveredCode
+    },
+    ledgerTxId: creditTxId,
+    newBalance: freshUser?.walletBalance
+  });
 });

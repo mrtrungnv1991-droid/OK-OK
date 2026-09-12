@@ -40,7 +40,7 @@ interface WalletModalProps {
     accountName: string;
     method: 'bank' | 'momo' | 'usdt';
     type: 'wallet_balance';
-  }) => void;
+  }) => Promise<{ success: boolean; error?: string }> | void;
   withdrawals?: CTVWithdrawal[];
 }
 
@@ -101,7 +101,7 @@ export const WalletModal: React.FC<WalletModalProps> = ({
       }, 5000);
     };
 
-  const handleConfirmWithdraw = (e: React.FormEvent) => {
+  const handleConfirmWithdraw = async (e: React.FormEvent) => {
     e.preventDefault();
     if (withdrawAmount <= 0 || withdrawAmount > user.walletBalance) {
       showToast('Số tiền rút không hợp lệ hoặc vượt quá số dư khả dụng!', 'error', {
@@ -116,8 +116,18 @@ export const WalletModal: React.FC<WalletModalProps> = ({
       return;
     }
 
-    if (onRequestWithdrawal) {
-      onRequestWithdrawal({
+    // CYBERPOOL FIX (#4): gate toast theo KẾT QUẢ SERVER THẬT. Trước đây luôn
+    // toast "✓ GỬI YÊU CẦU THÀNH CÔNG" kể cả khi onRequestWithdrawal không tồn
+    // tại (chưa wire) hoặc server lỗi → fake withdrawal success.
+    if (!onRequestWithdrawal) {
+      showToast('Chức năng rút tiền chưa được kích hoạt. Vui lòng liên hệ hỗ trợ.', 'error', {
+        title: 'CHƯA SẴN SÀNG'
+      });
+      return;
+    }
+
+    try {
+      const result = await onRequestWithdrawal({
         amount: withdrawAmount,
         bankName: withdrawBank,
         accountNumber: withdrawAccountNo,
@@ -125,6 +135,18 @@ export const WalletModal: React.FC<WalletModalProps> = ({
         method: withdrawMethod as any,
         type: 'wallet_balance'
       });
+
+      if (result && result.success === false) {
+        showToast(result.error || 'Không thể gửi yêu cầu rút tiền. Vui lòng thử lại.', 'error', {
+          title: 'GỬI YÊU CẦU THẤT BẠI'
+        });
+        return;
+      }
+    } catch (err: any) {
+      showToast(err?.message || 'Lỗi kết nối khi gửi yêu cầu rút tiền.', 'error', {
+        title: 'LỖI HỆ THỐNG'
+      });
+      return;
     }
 
     showToast(`Đã gửi yêu cầu rút ${formatCurrency(withdrawAmount, user.currency)} về ${withdrawBank}! Đang chờ duyệt.`, 'success', {

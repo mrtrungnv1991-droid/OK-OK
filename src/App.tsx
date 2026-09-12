@@ -332,17 +332,21 @@ function AppContent() {
   };
 
   // Lucky Wheel Spin
+  // CYBERPOOL FIX (#5): server đã trừ phí + cộng thưởng thật qua ledger.
+  // Client chỉ refresh số dư từ server và chúc mừng — không tự cộng tiền.
   const handleSpinSuccess = (_cost: number, prize: WheelPrize) => {
-    triggerConfetti(90, 75);
-
-    showToast(
-      `Chúc mừng bạn đã trúng [${prize.name}]. Đã cập nhật vào tài khoản!`,
-      'success',
-      {
-        title: '🎉 TRÚNG THƯỞNG VÒNG QUAY MAY MẮN!',
-        duration: 5000
-      }
-    );
+    refreshUserProfile();
+    if (prize.type !== 'bad_luck' && prize.value > 0) {
+      triggerConfetti(90, 75);
+      showToast(
+        `Chúc mừng bạn đã trúng [${prize.name}]! Phần thưởng đã được cập nhật vào tài khoản.`,
+        'success',
+        {
+          title: '🎉 TRÚNG THƯỞNG VÒNG QUAY MAY MẮN!',
+          duration: 5000
+        }
+      );
+    }
   };
 
   // Join Group Buy Pool Handler
@@ -914,6 +918,14 @@ function AppContent() {
           onOpenTelcoCard={() => openModal('telcoCard')}
           onOpenLedger={() => openModal('txLedger')}
           onOpenAffiliate={() => openModal('affiliate')}
+          withdrawals={withdrawals}
+          onRequestWithdrawal={(req) => {
+            // CYBERPOOL FIX (#4): trước đây WalletModal mount KHÔNG có
+            // onRequestWithdrawal → handleConfirmWithdraw bỏ qua khối gửi server
+            // và vẫn toast "✓ GỬI YÊU CẦU THÀNH CÔNG" (fake success). Giờ wire
+            // vào requestWithdrawal thật (POST /wallet/withdraw + record server).
+            return requestWithdrawal(req.amount, req.bankName, req.accountNumber, req.accountName);
+          }}
         />
       )}
 

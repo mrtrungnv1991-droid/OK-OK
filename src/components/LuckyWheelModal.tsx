@@ -1,4 +1,4 @@
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { 
   X, 
   Sparkles, 
@@ -17,6 +17,7 @@ import { UserProfile, WheelPrize, WheelSpinRecord, CurrencyCode } from '../types
 import { formatCurrency } from '../utils/formatters';
 import { useTranslation } from '../i18n';
 import { useUI } from '../contexts/UIContext';
+import { walletApi } from '../api/wallet';
 
 interface LuckyWheelModalProps {
   isOpen: boolean;
@@ -28,87 +29,23 @@ interface LuckyWheelModalProps {
   onOpenWallet: () => void;
 }
 
-const WHEEL_PRIZES: WheelPrize[] = [
-  {
-    id: 'p1',
-    name: 'Key Cyberpunk 2077 AAA',
-    type: 'key',
-    value: 650000,
-    itemDescription: 'Steam Key Cyberpunk 2077 Ultimate Edition',
-    deliveredCode: 'CYBER-PUNK-8899-STEAM',
-    color: '#06b6d4',
-    probability: 0.05
-  },
-  {
-    id: 'p2',
-    name: '+50,000 Wallet Cash',
-    type: 'wallet_cash',
-    value: 50000,
-    itemDescription: 'Direct 50,000 cash added to wallet',
-    color: '#10b981',
-    probability: 0.20
-  },
-  {
-    id: 'p3',
-    name: '1,080 Diamonds Free Fire',
-    type: 'game_diamonds',
-    value: 120000,
-    itemDescription: '1,080 Diamonds Free Fire ID Package',
-    deliveredCode: 'FF-DIA-1080-VAL77',
-    color: '#f59e0b',
-    probability: 0.15
-  },
-  {
-    id: 'p4',
-    name: 'E-GiftUp Card 100,000',
-    type: 'giftup_card',
-    value: 100000,
-    itemDescription: 'GiftUp Multi-use Card',
-    deliveredCode: 'GIFTUP-9922-8811',
-    color: '#8b5cf6',
-    probability: 0.10
-  },
-  {
-    id: 'p5',
-    name: '+20,000 Wallet Cash',
-    type: 'wallet_cash',
-    value: 20000,
-    itemDescription: '100% spin cost cashback',
-    color: '#3b82f6',
-    probability: 0.25
-  },
-  {
-    id: 'p6',
-    name: '365 Game Gems Package',
-    type: 'game_diamonds',
-    value: 100000,
-    itemDescription: 'Direct reload gems via UID',
-    deliveredCode: 'LQ-QH-365-AUTO',
-    color: '#ec4899',
-    probability: 0.10
-  },
-  {
-    id: 'p7',
-    name: 'Voucher 50% Off Pool',
-    type: 'voucher',
-    value: 150000,
-    itemDescription: '50% discount coupon for pooled orders',
-    deliveredCode: 'VOUCHER-CYBER-50PCT',
-    color: '#eab308',
-    probability: 0.10
-  },
-  {
-    id: 'p8',
-    name: '+100,000 Super Jackpot',
-    type: 'wallet_cash',
-    value: 100000,
-    itemDescription: 'Mini Jackpot instant +100,000',
-    color: '#ef4444',
-    probability: 0.05
-  }
+// CYBERPOOL FIX (#5 frontend audit): bảng giải thưởng cũ hardcode
+// deliveredCode GIẢ ('CYBER-PUNK-8899-STEAM'...) trong bundle công khai và
+// prize được chọn bằng Math.random client-side, phí quay không bao giờ bị trừ.
+// Giờ: bảng giải thưởng + kết quả quay + lịch sử trúng đều đến TỪ SERVER
+// (walletApi.getWheelConfig / spinWheel / getWheelRecentWinners). Hằng số dưới
+// đây chỉ là fallback hiển thị khớp default server (KHÔNG chứa code giả).
+const DEFAULT_WHEEL_PRIZES: WheelPrize[] = [
+  { id: 'p-cash-50', name: '+50,000 Wallet Cash', type: 'wallet_cash', value: 50000, itemDescription: 'Cộng 50.000đ trực tiếp vào ví', color: '#10b981', probability: 0.08 },
+  { id: 'p-cash-20', name: '+20,000 Wallet Cash', type: 'wallet_cash', value: 20000, itemDescription: 'Hoàn 100% phí quay', color: '#3b82f6', probability: 0.17 },
+  { id: 'p-cash-10', name: '+10,000 Wallet Cash', type: 'wallet_cash', value: 10000, itemDescription: 'Cộng 10.000đ vào ví', color: '#06b6d4', probability: 0.25 },
+  { id: 'p-voucher', name: 'Voucher CYBERWHEEL 10%', type: 'voucher', value: 10, itemDescription: 'Voucher giảm 10% (7 ngày, 1 lần dùng)', color: '#eab308', probability: 0.10 },
+  { id: 'p-badluck', name: 'Chúc bạn may mắn lần sau', type: 'bad_luck', value: 0, itemDescription: 'Không trúng — thử lại lần sau!', color: '#64748b', probability: 0.40 }
 ];
 
-const SPIN_COST = 20000;
+const DEFAULT_SPIN_COST = 20000;
+
+const PRIZE_COLORS = ['#06b6d4', '#10b981', '#f59e0b', '#8b5cf6', '#3b82f6', '#ec4899', '#eab308', '#ef4444'];
 
 export const LuckyWheelModal: React.FC<LuckyWheelModalProps> = ({
   isOpen,
@@ -125,18 +62,51 @@ export const LuckyWheelModal: React.FC<LuckyWheelModalProps> = ({
   const [isSpinning, setIsSpinning] = useState(false);
   const [rotationDegrees, setRotationDegrees] = useState(0);
   const [wonPrize, setWonPrize] = useState<WheelPrize | null>(null);
-  const [recentWinners, setRecentWinners] = useState<WheelSpinRecord[]>([
-    { id: 'w1', user: 'HoangLong99', prizeName: 'Key Cyberpunk 2077 AAA', prizeType: 'key', value: 650000, timestamp: '1m ago', txId: 'TX-SPIN-991' },
-    { id: 'w2', user: 'ThanhBao_Gamer', prizeName: '+100,000 Super Jackpot', prizeType: 'wallet_cash', value: 100000, timestamp: '3m ago', txId: 'TX-SPIN-990' },
-    { id: 'w3', user: 'Viper_Cyber', prizeName: '1,080 Diamonds Free Fire', prizeType: 'game_diamonds', value: 120000, timestamp: '6m ago', txId: 'TX-SPIN-989' },
-    { id: 'w4', user: 'MinhAnh_HN', prizeName: 'E-GiftUp Card 100,000', prizeType: 'giftup_card', value: 100000, timestamp: '8m ago', txId: 'TX-SPIN-988' }
-  ]);
+  const [wonCode, setWonCode] = useState<string | undefined>(undefined);
+  const [recentWinners, setRecentWinners] = useState<WheelSpinRecord[]>([]);
+
+  // CYBERPOOL FIX: prizes + spinCost lấy từ server config (props override được)
+  const [serverPrizes, setServerPrizes] = useState<WheelPrize[]>(prizes && prizes.length > 0 ? prizes : DEFAULT_WHEEL_PRIZES);
+  const [spinCost, setSpinCost] = useState<number>(DEFAULT_SPIN_COST);
+
+  useEffect(() => {
+    if (!isOpen) return;
+    // Tải bảng giải thưởng + lịch sử trúng THẬT từ server
+    walletApi.getWheelConfig().then(res => {
+      if (res.success && res.data?.prizes?.length) {
+        const mapped: WheelPrize[] = res.data.prizes.map((p: any, idx: number) => ({
+          id: p.id,
+          name: p.name,
+          type: p.type,
+          value: p.value,
+          color: PRIZE_COLORS[idx % PRIZE_COLORS.length],
+          probability: p.probability
+        }));
+        if (!prizes || prizes.length === 0) setServerPrizes(mapped);
+        setSpinCost(res.data.spinCost || DEFAULT_SPIN_COST);
+      }
+    }).catch(() => {});
+    walletApi.getWheelRecentWinners().then(res => {
+      if (res.success && Array.isArray(res.data?.winners)) {
+        setRecentWinners(res.data.winners.map((w: any) => ({
+          id: w.id,
+          user: w.user,
+          prizeName: w.prizeName,
+          prizeType: w.prizeType,
+          value: w.value,
+          timestamp: w.timestamp ? new Date(w.timestamp).toLocaleString('vi-VN') : '',
+          txId: w.txId || ''
+        })));
+      }
+    }).catch(() => {});
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isOpen]);
 
   if (!isOpen) return null;
 
-  const handleStartSpin = () => {
-    if (user.walletBalance < SPIN_COST) {
-      showToast(`Số dư ví không đủ ${formatCurrency(SPIN_COST, user.currency)} để quay!`, 'warning', {
+  const handleStartSpin = async () => {
+    if (user.walletBalance < spinCost) {
+      showToast(`Số dư ví không đủ ${formatCurrency(spinCost, user.currency)} để quay!`, 'warning', {
         title: 'SỐ DƯ KHÔNG ĐỦ',
         action: { label: 'Nạp Tiền Ngay →', onClick: onOpenWallet }
       });
@@ -148,21 +118,42 @@ export const LuckyWheelModal: React.FC<LuckyWheelModalProps> = ({
 
     setIsSpinning(true);
     setWonPrize(null);
+    setWonCode(undefined);
 
-    // Pick prize based on probabilities
-    const rand = Math.random();
-    let cumulative = 0;
-    let selectedIndex = 0;
-    for (let i = 0; i < WHEEL_PRIZES.length; i++) {
-      cumulative += WHEEL_PRIZES[i].probability;
-      if (rand <= cumulative) {
-        selectedIndex = i;
-        break;
+    // CYBERPOOL FIX (#5 frontend audit): KẾT QUẢ ĐẾN TỪ SERVER — server trừ
+    // phí quay qua ledger, quay bằng crypto RNG, trả thưởng thật. Client chỉ
+    // quay animation tới ô server đã chọn. Trước đây: Math.random client,
+    // không trừ phí, code trúng thưởng hardcode giả.
+    let serverResult: any = null;
+    try {
+      const res = await walletApi.spinWheel();
+      if (res.success && res.data?.prize) {
+        serverResult = res.data;
+      } else {
+        setIsSpinning(false);
+        showToast(res.error || 'Không thể thực hiện lượt quay. Vui lòng thử lại.', 'error', {
+          title: 'QUAY THẤT BẠI'
+        });
+        return;
       }
+    } catch (err: any) {
+      setIsSpinning(false);
+      showToast(err?.message || 'Lỗi kết nối khi quay.', 'error', { title: 'LỖI HỆ THỐNG' });
+      return;
     }
 
-    const prize = WHEEL_PRIZES[selectedIndex];
-    const segmentAngle = 360 / WHEEL_PRIZES.length; // 45 deg per slice
+    const wonServerPrize = serverResult.prize;
+    const selectedIndex = Math.max(0, serverPrizes.findIndex(p => p.id === wonServerPrize.id));
+    const prize: WheelPrize = serverPrizes[selectedIndex] || {
+      id: wonServerPrize.id,
+      name: wonServerPrize.name,
+      type: wonServerPrize.type,
+      value: wonServerPrize.value,
+      color: PRIZE_COLORS[selectedIndex % PRIZE_COLORS.length],
+      probability: 0
+    };
+
+    const segmentAngle = 360 / Math.max(1, serverPrizes.length);
     const extraSpins = 5 * 360; // 5 full rounds
     const prizeAngle = segmentAngle * selectedIndex + segmentAngle / 2;
     const finalAngle = rotationDegrees + extraSpins + (360 - (prizeAngle % 360));
@@ -172,21 +163,23 @@ export const LuckyWheelModal: React.FC<LuckyWheelModalProps> = ({
     setTimeout(() => {
       setIsSpinning(false);
       setWonPrize(prize);
-      onSpinSuccess(SPIN_COST, prize);
+      setWonCode(wonServerPrize.deliveredCode);
+      onSpinSuccess(spinCost, prize);
 
-      // Add to winner list
-      setRecentWinners(prev => [
-        {
-          id: `w-${Date.now()}`,
-          user: user?.name || 'Thành viên',
-          prizeName: prize?.name || 'Phần thưởng',
-          prizeType: prize.type,
-          value: prize.value,
-          timestamp: 'Just now',
-          txId: `TX-SPIN-${Math.floor(1000 + Math.random() * 9000)}`
-        },
-        ...prev.slice(0, 5)
-      ]);
+      // Lịch sử người trúng: reload từ server (record thật, không bịa txId)
+      walletApi.getWheelRecentWinners().then(res => {
+        if (res.success && Array.isArray(res.data?.winners)) {
+          setRecentWinners(res.data.winners.map((w: any) => ({
+            id: w.id,
+            user: w.user,
+            prizeName: w.prizeName,
+            prizeType: w.prizeType,
+            value: w.value,
+            timestamp: w.timestamp ? new Date(w.timestamp).toLocaleString('vi-VN') : '',
+            txId: w.txId || ''
+          })));
+        }
+      }).catch(() => {});
     }, 4500);
   };
 
@@ -205,7 +198,7 @@ export const LuckyWheelModal: React.FC<LuckyWheelModalProps> = ({
                   {t('nav.lucky_wheel')} & JACKPOT
                 </h2>
                 <span className="px-2 py-0.5 rounded text-[10px] font-mono font-bold bg-amber-950 text-amber-400 border border-amber-500/30 uppercase">
-                  100% WIN
+                  SERVER RNG
                 </span>
               </div>
               <p className="text-xs text-slate-400 font-mono mt-0.5">
@@ -267,7 +260,7 @@ export const LuckyWheelModal: React.FC<LuckyWheelModalProps> = ({
                 ) : (
                   <>
                     <Sparkles className="w-5 h-5" />
-                    <span>{t('nav.lucky_wheel')} ({formatCurrency(SPIN_COST, user.currency)} / spin)</span>
+                    <span>{t('nav.lucky_wheel')} ({formatCurrency(spinCost, user.currency)} / spin)</span>
                   </>
                 )}
               </button>
@@ -282,9 +275,11 @@ export const LuckyWheelModal: React.FC<LuckyWheelModalProps> = ({
                 </div>
                 <div className="text-base font-mono font-black text-white">{wonPrize.name}</div>
                 <div className="text-xs text-slate-300 font-mono">{wonPrize.itemDescription}</div>
-                {wonPrize.deliveredCode && (
+                {/* CYBERPOOL FIX: hiển thị code THẬT do server trả (voucher phát
+                    hành / key từ inventory) — không còn code hardcode giả */}
+                {wonCode && (
                   <div className="text-xs font-mono bg-black/60 px-3 py-1 rounded inline-block text-cyan-300 border border-cyan-500/40">
-                    Code: <strong>{wonPrize.deliveredCode}</strong>
+                    Code: <strong>{wonCode}</strong>
                   </div>
                 )}
               </div>
@@ -297,11 +292,11 @@ export const LuckyWheelModal: React.FC<LuckyWheelModalProps> = ({
             <div className="p-4 rounded-xl bg-slate-900/60 border border-slate-800 space-y-2.5">
               <div className="flex items-center justify-between text-xs font-mono font-bold text-white border-b border-slate-800 pb-2">
                 <span>{t('common.info')}</span>
-                <span className="text-amber-400">8 VIP PRIZES</span>
+                <span className="text-amber-400">{serverPrizes.length} PRIZES</span>
               </div>
 
               <div className="space-y-1.5 max-h-48 overflow-y-auto pr-1">
-                {WHEEL_PRIZES.map((pz) => (
+                {serverPrizes.map((pz) => (
                   <div key={pz.id} className="p-2 rounded bg-black/40 border border-slate-800/80 flex items-center justify-between text-xs font-mono">
                     <div className="flex items-center gap-2">
                       <span className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: pz.color }}></span>

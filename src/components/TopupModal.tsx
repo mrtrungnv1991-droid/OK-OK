@@ -98,6 +98,11 @@ export const TopupModal: React.FC<TopupModalProps> = ({
   );
 
   // Check UID format
+  // CYBERPOOL FIX (#12 frontend audit): đây CHỈ là kiểm tra định dạng UID
+  // client-side (không gọi API game nào) — trước đây message "Đã kiểm tra cấu
+  // trúc UID hợp lệ" dễ gây hiểu nhầm là đã xác minh tài khoản thật trên
+  // hệ thống game. Nhãn trung thực: format-check, xác minh thật diễn ra
+  // khi đơn nạp được xử lý.
   const handleVerifyAccount = () => {
     if (!uid.trim()) return;
     setIsVerifying(true);
@@ -105,7 +110,13 @@ export const TopupModal: React.FC<TopupModalProps> = ({
 
     setTimeout(() => {
       setIsVerifying(false);
-      setVerifiedCharacter(`UID: ${uid.trim()} (Đã kiểm tra cấu trúc UID hợp lệ)`);
+      const uidValue = uid.trim();
+      const isNumeric = /^\d{6,12}$/.test(uidValue);
+      setVerifiedCharacter(
+        isNumeric
+          ? `UID: ${uidValue} (định dạng hợp lệ — sẽ được đối chiếu khi xử lý nạp)`
+          : `UID: ${uidValue} (định dạng tùy chỉnh — vui lòng kiểm tra kỹ trước khi nạp)`
+      );
     }, 400);
   };
 
@@ -128,7 +139,10 @@ export const TopupModal: React.FC<TopupModalProps> = ({
         uid: uid.trim(),
         zoneId: zoneId.trim() || undefined,
         server: selectedServer || undefined,
-        characterName: verifiedCharacter ? verifiedCharacter.replace(/\s*\(.*?\)/, '').trim() : undefined
+        characterName: verifiedCharacter ? verifiedCharacter.replace(/\s*\(.*?\)/, '').trim() : undefined,
+        // CYBERPOOL FIX (#7): gửi mode để server thu ĐÚNG giá hiển thị
+        // (group_topup → groupPrice; instant → retailPrice)
+        mode
       });
 
       if (!res.success || !res.data) {
@@ -149,7 +163,9 @@ export const TopupModal: React.FC<TopupModalProps> = ({
         tierName: currentTier?.name || 'Gói Tiêu Chuẩn',
         pricePaid: returnedOrder?.pricePaid || price,
         status: returnedOrder?.status === 'COMPLETED' ? 'completed' : 'processing',
-        txId: returnedOrder?.txHash || `TX-TOPUP-${Date.now().toString().slice(-6)}`,
+        // CYBERPOOL FIX (#12): txId phải đến từ server (order.txHash/order.id)
+        // — không bịa 'TX-TOPUP-<timestamp>' giả làm mã giao dịch.
+        txId: returnedOrder?.txHash || returnedOrder?.id || '',
         provider: selectedProvider,
         createdAt: new Date().toLocaleTimeString()
       };

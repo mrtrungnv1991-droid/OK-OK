@@ -70,6 +70,12 @@ const INITIAL_INVOICES_FALLBACK: TopupInvoice[] = [
 
 const WalletContext = createContext<WalletContextType | undefined>(undefined);
 
+// CYBERPOOL FIX (#13 frontend audit): dữ liệu fallback (giao dịch nạp 1M giả,
+// hóa đơn VietQR giả acct 0388999999, withdrawals mock) từng hiển thị NHƯ ledger
+// thật mỗi khi server trả list rỗng — user tưởng có tiền/giao dịch không tồn tại.
+// Production: seed rỗng; dev: giữ fallback cho demo UI.
+const IS_PROD = import.meta.env.PROD;
+
 export const WalletProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
   const { refreshUserProfile } = useAuth();
 
@@ -80,11 +86,11 @@ export const WalletProvider: React.FC<{ children: ReactNode }> = ({ children }) 
         return JSON.parse(saved);
       }
     } catch {}
-    return INITIAL_TRANSACTIONS_FALLBACK;
+    return IS_PROD ? [] : INITIAL_TRANSACTIONS_FALLBACK;
   });
   const [telcoCards, setTelcoCards] = useState<TelcoCardSubmission[]>([]);
-  const [topupInvoices, setTopupInvoices] = useState<TopupInvoice[]>(INITIAL_INVOICES_FALLBACK);
-  const [withdrawals, setWithdrawals] = useState<CTVWithdrawal[]>(INITIAL_CTV_WITHDRAWALS);
+  const [topupInvoices, setTopupInvoices] = useState<TopupInvoice[]>(IS_PROD ? [] : INITIAL_INVOICES_FALLBACK);
+  const [withdrawals, setWithdrawals] = useState<CTVWithdrawal[]>(IS_PROD ? [] : INITIAL_CTV_WITHDRAWALS);
   const [isLoading, setIsLoading] = useState<boolean>(false);
 
   // Sync to localStorage

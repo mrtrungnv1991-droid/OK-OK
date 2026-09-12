@@ -32,6 +32,7 @@ export const ordersApi = {
     zoneId?: string;
     server?: string;
     characterName?: string;
+    mode?: 'instant_direct' | 'group_topup';
     idempotencyKey?: string;
   }): Promise<ApiResponse<{ order: UserOrder; message: string }>> => {
     return api.post<{ order: UserOrder; message: string }>('/orders/topup-game', payload);
