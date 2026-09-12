@@ -14,6 +14,23 @@ export const ordersApi = {
     return api.get<{ order: UserOrder }>(`/orders/${orderId}`);
   },
 
+  // CYBERPOOL FIX (#8 frontend audit): validate voucher với db.vouchers thật
+  // trên server — client không còn hardcode mã/% sai lệch.
+  validateVoucher: async (code: string, amount?: number): Promise<ApiResponse<{
+    voucher: {
+      code: string;
+      discountType: 'percent' | 'fixed';
+      discountValue: number;
+      discountPercent: number;
+      minOrderValue: number;
+      maxDiscount?: number;
+      expiresAt?: string;
+    };
+    discountAmount: number;
+  }>> => {
+    return api.post('/orders/vouchers/validate', { code, amount });
+  },
+
   instantBuy: async (payload: { 
     productId: string; 
     quantity?: number; 

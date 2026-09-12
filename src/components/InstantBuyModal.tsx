@@ -29,6 +29,8 @@ import { formatCurrency, generateTxHash, generateRandomKey } from '../utils/form
 import { useTranslation } from '../i18n';
 import { useUI } from '../contexts/UIContext';
 import { ordersApi } from '../api/orders';
+import { priceSingleItem } from '../utils/pricing';
+import { AppliedCouponInfo } from '../contexts/CartContext';
 import { WebDeliveryOutput } from './WebDeliveryOutput';
 
 interface InstantBuyModalProps {
@@ -58,7 +60,7 @@ export const InstantBuyModal: React.FC<InstantBuyModalProps> = ({
                        product.isAvailable === false ||
                        (product.tags && product.tags.includes('OUT_OF_STOCK'));
   const [voucherCode, setVoucherCode] = useState<string>('');
-  const [appliedVoucher, setAppliedVoucher] = useState<{ code: string; discountPercent: number } | null>(null);
+  const [appliedVoucher, setAppliedVoucher] = useState<AppliedCouponInfo | null>(null);
   const [voucherError, setVoucherError] = useState<string | null>(null);
   const [paymentMethod, setPaymentMethod] = useState<'wallet' | 'vietqr' | 'telco'>('wallet');
   const [isProcessing, setIsProcessing] = useState<boolean>(false);
@@ -83,35 +85,52 @@ export const InstantBuyModal: React.FC<InstantBuyModalProps> = ({
 
   if (!isOpen || !product) return null;
 
-  // Pricing calculations
+  // Pricing calculations — CYBERPOOL FIX (#8): dùng priceSingleItem khớp CHÍNH
+  // XÁC công thức server (orderService): bulk ×0.97/×0.93 theo quantity rồi
+  // voucher (percent clamp+maxDiscount cap / fixed) trên giá sau bulk, check
+  // minOrderValue. Công thức cũ lệch 1-2% và bỏ qua cap/min → hiển thị một
+  // giá, server thu giá khác.
   const unitPrice = product.retailPrice;
-  const rawTotal = unitPrice * quantity;
-  
-  // Bulk discount: 2-4 items -> 3% off, >= 5 items -> 7% off
-  const bulkDiscountPercent = quantity >= 5 ? 7 : quantity >= 2 ? 3 : 0;
-  const bulkDiscountAmount = Math.round(rawTotal * (bulkDiscountPercent / 100));
-
-  // Voucher discount
-  const voucherDiscountPercent = appliedVoucher ? appliedVoucher.discountPercent : 0;
-  const voucherDiscountAmount = Math.round(rawTotal * (voucherDiscountPercent / 100));
+  const priceBreakdown = priceSingleItem(unitPrice, quantity, appliedVoucher);
+  const rawTotal = priceBreakdown.base;
+  const bulkDiscountAmount = priceBreakdown.base - priceBreakdown.afterBulk;
+  const bulkDiscountPercent = priceBreakdown.base > 0 ? Math.round((bulkDiscountAmount / priceBreakdown.base) * 100) : 0;
+  const afterBulkTotal = priceBreakdown.afterBulk;
+  const voucherDiscountAmount = priceBreakdown.voucherDiscount;
 
   const totalDiscount = bulkDiscountAmount + voucherDiscountAmount;
-  const finalTotal = Math.max(1000, rawTotal - totalDiscount);
+  const finalTotal = priceBreakdown.final;
 
   const hasEnoughBalance = user.walletBalance >= finalTotal;
   const balanceDifference = finalTotal - user.walletBalance;
 
-  const handleApplyVoucher = () => {
+  const handleApplyVoucher = async () => {
     setVoucherError(null);
     const code = voucherCode.trim().toUpperCase();
     if (!code) return;
 
-    if (code === 'CYBER2026' || code === 'VIP10') {
-      setAppliedVoucher({ code, discountPercent: 10 });
-    } else if (code === 'ESCROW50' || code === 'SUPER5') {
-      setAppliedVoucher({ code, discountPercent: 5 });
-    } else {
-      setVoucherError(t('errors.generic'));
+    // CYBERPOOL FIX (#8 frontend audit): validate voucher với SERVER (db.vouchers
+    // thật) thay vì hardcode mã/% lệch nhau. Server trả discountAmount chuẩn —
+    // đúng con số sẽ được trừ khi đặt hàng (kể cả voucher fixed/minOrder/max cap).
+    try {
+      const res = await ordersApi.validateVoucher(code, afterBulkTotal);
+      if (res.success && res.data?.voucher) {
+        const v = res.data.voucher;
+        setAppliedVoucher({
+          code: v.code,
+          discountType: v.discountType,
+          discountValue: v.discountValue,
+          discountPercent: v.discountType === 'percent' ? v.discountPercent : 0,
+          minOrderValue: v.minOrderValue,
+          maxDiscount: v.maxDiscount
+        });
+      } else {
+        setAppliedVoucher(null);
+        setVoucherError(res.error || t('errors.generic'));
+      }
+    } catch (err: any) {
+      setAppliedVoucher(null);
+      setVoucherError(err?.message || t('errors.generic'));
     }
   };
 
@@ -466,7 +485,7 @@ Thank you for trading on CyberPool Escrow Network!
                   </div>
                   {appliedVoucher && (
                     <div className="text-[11px] font-mono text-emerald-400 flex items-center gap-1">
-                      <CheckCircle2 className="w-3.5 h-3.5" /> -{appliedVoucher.discountPercent}% [{appliedVoucher.code}]
+                      <CheckCircle2 className="w-3.5 h-3.5" /> {appliedVoucher.discountType === 'percent' ? `-${appliedVoucher.discountPercent}%` : ''} [{appliedVoucher.code}]
                     </div>
                   )}
                   {voucherError && (
@@ -495,7 +514,7 @@ Thank you for trading on CyberPool Escrow Network!
                 )}
                 {voucherDiscountAmount > 0 && (
                   <div className="flex justify-between text-emerald-400">
-                    <span>{t('cart.voucher_discount')} ({appliedVoucher?.code} -{voucherDiscountPercent}%):</span>
+                    <span>{t('cart.voucher_discount')} ({appliedVoucher?.code}{appliedVoucher?.discountType === 'percent' ? ` -${appliedVoucher.discountPercent}%` : ''}):</span>
                     <span>-{formatCurrency(voucherDiscountAmount, user.currency)}</span>
                   </div>
                 )}

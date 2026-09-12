@@ -140,6 +140,75 @@ orderRouter.post('/instant-buy', requireAuth, async (req: AuthenticatedRequest, 
   res.json(result);
 });
 
+// POST /api/v1/orders/vouchers/validate - kiểm tra voucher THẬT từ db.vouchers
+// CYBERPOOL FIX (#8 frontend audit): client từng hardcode mã + % voucher
+// (CYBER2026=10%, VIP10, ESCROW50, "mã bất kỳ = 5%") KHÔNG khớp server
+// (CYBER2026 thật = 15%) → UI hiển thị giảm giá sai, server thu giá khác.
+// Giờ client validate qua endpoint này — một nguồn sự thật duy nhất.
+orderRouter.post('/vouchers/validate', requireAuth, (req: AuthenticatedRequest, res) => {
+  const code = String(req.body?.code || '').trim().toUpperCase();
+  const amount = Number(req.body?.amount || 0);
+  if (!code) {
+    return res.status(400).json({ success: false, error: 'Thiếu mã voucher' });
+  }
+
+  const v: any = (db.vouchers || []).find((x: any) => String(x.code || '').toUpperCase() === code);
+  if (!v) {
+    return res.status(404).json({ success: false, error: 'Mã voucher không tồn tại' });
+  }
+
+  const isActive = v.active ?? (v.status === 'active');
+  if (!isActive) {
+    return res.status(400).json({ success: false, error: 'Voucher không còn hoạt động' });
+  }
+  if (v.expiresAt && new Date(v.expiresAt) < new Date()) {
+    return res.status(400).json({ success: false, error: 'Voucher đã hết hạn' });
+  }
+  if (v.usageLimit != null && Number(v.usedCount || 0) >= Number(v.usageLimit)) {
+    return res.status(400).json({ success: false, error: 'Voucher đã hết lượt sử dụng' });
+  }
+  if (v.singleUserId && v.singleUserId !== req.user!.id) {
+    return res.status(403).json({ success: false, error: 'Voucher này dành cho tài khoản khác' });
+  }
+  const minOrder = Number(v.minOrderValue || 0);
+  if (amount > 0 && amount < minOrder) {
+    return res.status(400).json({
+      success: false,
+      error: `Đơn tối thiểu ${minOrder.toLocaleString('vi-VN')}đ để dùng voucher này`
+    });
+  }
+
+  const vType = v.type || v.discountType;
+  const vValue = Number(v.discount ?? v.discountValue ?? 0);
+
+  // Tính số giảm giá thật cho amount (để UI hiển thị đúng con số server sẽ thu)
+  let discountAmount = 0;
+  let discountPercent = 0;
+  if (vType === 'percent' && amount > 0) {
+    const clamped = Math.min(100, Math.max(0, vValue));
+    discountPercent = clamped;
+    discountAmount = Math.round((amount * clamped) / 100);
+    const maxDiscount = Number(v.maxDiscount || 0);
+    if (maxDiscount > 0) discountAmount = Math.min(discountAmount, maxDiscount);
+  } else if (vType === 'fixed') {
+    discountAmount = Math.min(vValue, amount > 0 ? amount : vValue);
+  }
+
+  res.json({
+    success: true,
+    voucher: {
+      code: v.code,
+      discountType: vType,
+      discountValue: vValue,
+      discountPercent: vType === 'percent' ? discountPercent : 0,
+      minOrderValue: minOrder,
+      maxDiscount: v.maxDiscount,
+      expiresAt: v.expiresAt
+    },
+    discountAmount
+  });
+});
+
 // POST /api/v1/orders/topup-game - Direct Game Currency Top-Up
 orderRouter.post('/topup-game', requireAuth, async (req: AuthenticatedRequest, res) => {
   const { gameId, tierId, uid, zoneId, server, characterName, mode } = req.body;

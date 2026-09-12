@@ -24,6 +24,7 @@ import { useCart } from '../contexts/CartContext';
 import { useAuth } from '../contexts/AuthContext';
 import { useWallet } from '../contexts/WalletContext';
 import { useOrders } from '../contexts/OrdersContext';
+import { computeCartTotals } from '../utils/pricing';
 import { formatCurrency } from '../utils/formatters';
 import { UserOrder } from '../types';
 import { useTranslation } from '../i18n';
@@ -44,7 +45,8 @@ export const CheckoutConfirmationModal: React.FC<CheckoutConfirmationModalProps>
     isCheckoutConfirmOpen,
     closeCheckoutConfirm,
     checkoutTargetItems,
-    removeFromCart
+    removeFromCart,
+    appliedCoupon
   } = useCart();
 
   const { currentUser, updateUserBalance, refreshUserProfile } = useAuth();
@@ -60,14 +62,16 @@ export const CheckoutConfirmationModal: React.FC<CheckoutConfirmationModalProps>
 
   if (!isCheckoutConfirmOpen) return null;
 
-  // Calculate totals
+  // Calculate totals — CYBERPOOL FIX (#8): dùng computeCartTotals khớp CÔNG
+  // THỨC SERVER (bulk theo quantity từng item, voucher từng dòng, cap/min
+  // đúng). Công thức cũ (bulk trên tổng món, không voucher) hiển thị sai số
+  // tiền sẽ bị thu.
   const totalItemCount = checkoutTargetItems.reduce((sum, item) => sum + item.quantity, 0);
-  const subtotal = checkoutTargetItems.reduce((sum, item) => sum + (item.product.retailPrice * item.quantity), 0);
-  
-  // Bulk discount
-  const bulkDiscountPercent = totalItemCount >= 5 ? 7 : totalItemCount >= 2 ? 3 : 0;
-  const bulkDiscountAmount = Math.round(subtotal * (bulkDiscountPercent / 100));
-  const finalTotal = Math.max(0, subtotal - bulkDiscountAmount);
+  const totals = computeCartTotals(checkoutTargetItems, appliedCoupon);
+  const subtotal = totals.subtotal;
+  const bulkDiscountAmount = totals.bulkDiscountAmount;
+  const voucherDiscountAmount = totals.voucherDiscountAmount;
+  const finalTotal = totals.finalTotal;
 
   const hasEnoughBalance = (currentUser.walletBalance || 0) >= finalTotal;
 
@@ -111,6 +115,9 @@ export const CheckoutConfirmationModal: React.FC<CheckoutConfirmationModalProps>
             quantity: item.quantity,
             paymentMethod: 'wallet',
             finalTotal: item.product.retailPrice * item.quantity,
+            // CYBERPOOL FIX (#8): gửi voucher đã validate — server tự tính lại
+            // giá (bulk + voucher từng dòng), KHÔNG tin finalTotal client.
+            voucherCode: appliedCoupon?.code || undefined,
             idempotencyKey: `${checkoutSessionKey}_${itemIndex}_${item.product.id}`
           })
         });
@@ -543,8 +550,15 @@ export const CheckoutConfirmationModal: React.FC<CheckoutConfirmationModalProps>
 
                 {bulkDiscountAmount > 0 && (
                   <div className="flex justify-between text-emerald-400">
-                    <span>{t('cart.bulk_discount', { percent: bulkDiscountPercent })}:</span>
+                    <span>{t('cart.bulk_discount', { percent: subtotal > 0 ? Math.round((bulkDiscountAmount / subtotal) * 100) : 0 })}:</span>
                     <span>-{formatCurrency(bulkDiscountAmount, currentUser.currency)}</span>
+                  </div>
+                )}
+
+                {voucherDiscountAmount > 0 && appliedCoupon && (
+                  <div className="flex justify-between text-emerald-400">
+                    <span>Voucher [{appliedCoupon.code}]:</span>
+                    <span>-{formatCurrency(voucherDiscountAmount, currentUser.currency)}</span>
                   </div>
                 )}
 

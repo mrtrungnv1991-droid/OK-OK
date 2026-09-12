@@ -22,9 +22,25 @@ interface CartContextType {
   checkoutTargetItems: CartItem[];
   openCheckoutConfirm: (items?: CartItem[]) => void;
   closeCheckoutConfirm: () => void;
+  // CYBERPOOL FIX (#8): voucher đã validate với server — chuyển tiếp sang
+  // CheckoutConfirmationModal để hiển thị + thu ĐÚNG số (trước đây coupon áp
+  // ở giỏ hàng bị rơi mất khi sang bước checkout).
+  appliedCoupon: AppliedCouponInfo | null;
+  setAppliedCoupon: (c: AppliedCouponInfo | null) => void;
   lastAddedProduct: Product | null;
   showAddedToast: boolean;
   dismissToast: () => void;
+}
+
+// Thông tin voucher do server validate trả về (đủ rule để tính per-item
+// khớp công thức server: percent/fixed, maxDiscount cap, minOrderValue).
+export interface AppliedCouponInfo {
+  code: string;
+  discountType: 'percent' | 'fixed';
+  discountValue: number;
+  discountPercent: number;
+  minOrderValue: number;
+  maxDiscount?: number;
 }
 
 const CartContext = createContext<CartContextType | undefined>(undefined);
@@ -43,6 +59,8 @@ export const CartProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   const [isCartOpen, setIsCartOpen] = useState(false);
   const [isCheckoutConfirmOpen, setIsCheckoutConfirmOpen] = useState(false);
   const [checkoutTargetItems, setCheckoutTargetItems] = useState<CartItem[]>([]);
+  // CYBERPOOL FIX (#8): voucher đã validate server, dùng chung Cart ↔ Checkout
+  const [appliedCoupon, setAppliedCoupon] = useState<AppliedCouponInfo | null>(null);
   const [lastAddedProduct, setLastAddedProduct] = useState<Product | null>(null);
   const [showAddedToast, setShowAddedToast] = useState(false);
 
@@ -165,6 +183,9 @@ export const CartProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   const closeCheckoutConfirm = () => {
     setIsCheckoutConfirmOpen(false);
     setCheckoutTargetItems([]);
+    // CYBERPOOL FIX (#8): clear voucher khi đóng checkout để lần sau không
+    // tự động áp lại mã cũ (server cũng sẽ reject nếu hết hạn/hết lượt).
+    setAppliedCoupon(null);
   };
 
   const dismissToast = () => setShowAddedToast(false);
@@ -192,6 +213,8 @@ export const CartProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         checkoutTargetItems,
         openCheckoutConfirm,
         closeCheckoutConfirm,
+        appliedCoupon,
+        setAppliedCoupon,
         lastAddedProduct,
         showAddedToast,
         dismissToast

@@ -20,6 +20,8 @@ import { useCart } from '../contexts/CartContext';
 import { useAuth } from '../contexts/AuthContext';
 import { formatCurrency } from '../utils/formatters';
 import { useTranslation } from '../i18n';
+import { ordersApi } from '../api/orders';
+import { computeCartTotals } from '../utils/pricing';
 
 interface CartModalProps {
   onClose?: () => void;
@@ -44,32 +46,46 @@ export const CartModal: React.FC<CartModalProps> = ({
     totalItemCount,
     selectedCount,
     selectedSubtotal,
-    openCheckoutConfirm
+    openCheckoutConfirm,
+    appliedCoupon,
+    setAppliedCoupon
   } = useCart();
 
   const { currentUser } = useAuth();
   const [couponCode, setCouponCode] = useState('');
-  const [appliedCoupon, setAppliedCoupon] = useState<{ code: string; discountPercent: number } | null>(null);
   const [couponError, setCouponError] = useState('');
 
   if (!isCartOpen) return null;
 
-  const handleApplyCoupon = (e: React.FormEvent) => {
+  const handleApplyCoupon = async (e: React.FormEvent) => {
     e.preventDefault();
     setCouponError('');
     const clean = couponCode.trim().toUpperCase();
     if (!clean) return;
 
-    if (clean === 'CYBER2026') {
-      setAppliedCoupon({ code: 'CYBER2026', discountPercent: 10 });
-    } else if (clean === 'VIP10') {
-      setAppliedCoupon({ code: 'VIP10', discountPercent: 10 });
-    } else if (clean === 'ESCROW50') {
-      setAppliedCoupon({ code: 'ESCROW50', discountPercent: 15 });
-    } else if (clean === 'FREESHIP' || clean === 'CYBER') {
-      setAppliedCoupon({ code: clean, discountPercent: 5 });
-    } else {
-      setCouponError(t('errors.invalid_coupon'));
+    // CYBERPOOL FIX (#8 frontend audit): validate voucher với SERVER thay vì
+    // hardcode (trước đây: CYBER2026=10% sai lệch server 15%, ESCROW50=15%
+    // không tồn tại, 'FREESHIP/CYBER' bất kỳ = 5% bịa). Server là nguồn thật.
+    try {
+      const afterBulkTotal = computeCartTotals(selectedItems, null).finalTotal;
+      const res = await ordersApi.validateVoucher(clean, afterBulkTotal);
+      if (res.success && res.data?.voucher) {
+        const v = res.data.voucher;
+        setAppliedCoupon({
+          code: v.code,
+          discountType: v.discountType,
+          discountValue: v.discountValue,
+          discountPercent: v.discountType === 'percent' ? v.discountPercent : 0,
+          minOrderValue: v.minOrderValue,
+          maxDiscount: v.maxDiscount
+        });
+      } else {
+        setAppliedCoupon(null);
+        setCouponError(res.error || t('errors.invalid_coupon'));
+      }
+    } catch (err: any) {
+      setAppliedCoupon(null);
+      setCouponError(err?.message || t('errors.invalid_coupon'));
     }
   };
 
@@ -80,16 +96,14 @@ export const CartModal: React.FC<CartModalProps> = ({
     setCouponError('');
   };
 
-  // Quantity discount (buy 2 items -3%, 5+ items -7%)
-  const bulkDiscountPercent = selectedCount >= 5 ? 7 : selectedCount >= 2 ? 3 : 0;
-  const bulkDiscountAmount = Math.round(selectedSubtotal * (bulkDiscountPercent / 100));
-
-  const couponDiscountAmount = appliedCoupon 
-    ? Math.round(selectedSubtotal * (appliedCoupon.discountPercent / 100))
-    : 0;
-
+  // CYBERPOOL FIX (#8): dùng chung computeCartTotals với CheckoutConfirmationModal
+  // (bulk theo quantity TỪNG item + voucher từng dòng — khớp công thức server).
+  const totals = computeCartTotals(selectedItems, appliedCoupon);
+  const bulkDiscountAmount = totals.bulkDiscountAmount;
+  const couponDiscountAmount = totals.voucherDiscountAmount;
+  const bulkDiscountPercent = totals.subtotal > 0 ? Math.round((bulkDiscountAmount / totals.subtotal) * 100) : 0;
   const totalDiscount = bulkDiscountAmount + couponDiscountAmount;
-  const finalTotal = Math.max(0, selectedSubtotal - totalDiscount);
+  const finalTotal = totals.finalTotal;
 
   const isAllSelected = cartItems.length > 0 && cartItems.every(i => i.selected);
 
@@ -381,7 +395,7 @@ export const CartModal: React.FC<CartModalProps> = ({
                       <Check className="w-4 h-4 text-emerald-400" />
                       <div>
                         <span className="font-bold text-emerald-300">{appliedCoupon.code}</span>
-                        <span className="text-emerald-400 ml-2">(-{appliedCoupon.discountPercent}%)</span>
+                        <span className="text-emerald-400 ml-2">{appliedCoupon.discountPercent > 0 ? `(-${appliedCoupon.discountPercent}%)` : ''}</span>
                       </div>
                     </div>
                     <button

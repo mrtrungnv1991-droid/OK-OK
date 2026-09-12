@@ -51,6 +51,7 @@ export class OrderService {
         if (isNaN(unitPrice) || unitPrice <= 0) {
           return { success: false, error: 'Giá sản phẩm không hợp lệ' };
         }
+        let appliedVoucherRef: any = null;
 
         let calculatedPrice = unitPrice * validQuantity;
 
@@ -77,7 +78,8 @@ export class OrderService {
         const vType = vRaw.type || vRaw.discountType;
         const vDiscount = Number(vRaw.discount ?? vRaw.discountValue ?? 0);
         const minOrder = Number(vRaw.minOrderValue ?? 0);
-        if (isActive && expiresOk && vDiscount > 0 && calculatedPrice >= minOrder) {
+        const usageOk = vRaw.usageLimit == null || Number(vRaw.usedCount || 0) < Number(vRaw.usageLimit);
+        if (isActive && expiresOk && usageOk && vDiscount > 0 && calculatedPrice >= minOrder) {
           if (vType === 'percent') {
             const clampedPercent = Math.min(100, Math.max(0, vDiscount)); // chặn >100% ⇒ giá 0
             let discount = Math.round((calculatedPrice * clampedPercent) / 100);
@@ -87,6 +89,9 @@ export class OrderService {
           } else if (vType === 'fixed') {
             calculatedPrice = Math.max(0, calculatedPrice - vDiscount);
           }
+          // CYBERPOOL FIX (#8): đếm lượt dùng voucher — trước đây usedCount
+          // không bao giờ tăng (usageLimit vô nghĩa, voucher dùng vô hạn).
+          appliedVoucherRef = vRaw;
         }
       }
     }
@@ -154,6 +159,12 @@ export class OrderService {
         InventoryService.releaseReservation(item.id);
       }
       return { success: false, error: ledgerRes.error || 'Trừ tiền ví thất bại' };
+    }
+
+    // CYBERPOOL FIX (#8): voucher đã thực sự được dùng (tiền đã trừ) → tăng
+    // usedCount để usageLimit có hiệu lực.
+    if (appliedVoucherRef) {
+      appliedVoucherRef.usedCount = Number(appliedVoucherRef.usedCount || 0) + 1;
     }
 
     // Step 3: Giao hàng
