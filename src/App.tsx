@@ -1057,10 +1057,11 @@ function AppContent() {
       )}
 
       {isModalOpen('admin') && (
-        <AdminPanelModal
-          isOpen={true}
-          onClose={closeModal}
-          products={products}
+              <AdminPanelModal
+                isOpen={true}
+                onClose={closeModal}
+                userRole={currentUser.role}
+                products={products}
           games={games}
           orders={orders}
           tickets={tickets}

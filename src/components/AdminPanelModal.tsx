@@ -100,6 +100,7 @@ export type AdminTabType =
 interface AdminPanelModalProps {
   isOpen: boolean;
   onClose: () => void;
+  userRole?: 'buyer' | 'seller_ctv' | 'admin'; // CYBERPOOL FIX: RBAC client-side
   products: Product[];
   games: GameItem[];
   orders: UserOrder[];
@@ -150,6 +151,7 @@ interface AdminPanelModalProps {
 export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({
   isOpen,
   onClose,
+  userRole = 'admin',
   products = [],
   games = [],
   orders = [],
@@ -214,7 +216,40 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({
     interface AdminNavItem { id: AdminTabType; label: string; icon: React.ComponentType<{ className?: string }>; badge?: string | number }
     interface AdminNavGroup { key: string; label: string; icon: React.ComponentType<{ className?: string }>; items: AdminNavItem[] }
 
-    const navGroups: AdminNavGroup[] = [
+    // CYBERPOOL FIX: RBAC client-side — map mức role tối thiểu cho từng tab.
+  // Server đã chặn bằng requireRole('ADMIN'), lớp này chỉ ẩn tab không được phép
+  // (tránh lộ UI + giảm nhầm lẫn). Role client: admin > seller_ctv > buyer.
+  const ROLE_LEVEL: Record<string, number> = { buyer: 1, seller_ctv: 2, admin: 3 };
+  const TAB_MIN_ROLE: Record<AdminTabType, number> = {
+    dashboard: 2,
+    hero_layout: 3,
+    payment_system: 3,
+    products: 2,
+    categories: 2,
+    manual_fulfillment: 2,
+    vouchers: 3,
+    banking: 3,
+    members: 3,
+    livechat: 2,
+    escrow_orders: 2,
+    games: 2,
+    tickets: 2,
+    roles: 3,
+    security_ip: 3,
+    automation_cron: 3,
+    logs: 3,
+    suppliers: 3,
+    source_automation: 3,
+    order_reliability: 3,
+    affiliate: 3,
+    giftup_admin: 3,
+    settings: 3,
+    audit_security: 3,
+    database_schema: 3
+  };
+  const currentRoleLevel = ROLE_LEVEL[userRole] || 1;
+
+  const navGroups: AdminNavGroup[] = [
       {
         key: 'overview', label: 'TỔNG QUAN', icon: TrendingUp,
         items: [
@@ -306,14 +341,15 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({
           {/* Navigation Sidebar / Mobile Tab Bar — grouped by function */}
                     <div className="w-full md:w-56 lg:w-60 bg-slate-950/90 border-b md:border-b-0 md:border-r border-slate-800/80 p-2 md:p-2.5 flex md:flex-col overflow-x-auto md:overflow-y-auto gap-1 md:space-y-2 scrollbar-thin">
                       {navGroups.map(group => (
-                        <div key={group.key} className="md:w-full shrink-0">
-                          {/* Group header */}
-                          <div className="hidden md:flex items-center gap-1.5 px-2 pt-1 pb-1 text-[10px] font-extrabold uppercase tracking-[0.15em] text-cyan-500/70">
-                            <span className="w-1 h-3 rounded-full bg-cyan-500/50" />
-                            {group.label}
-                          </div>
-                          <div className="flex md:flex-col gap-1 md:space-y-0.5 overflow-x-auto md:overflow-visible shrink-0">
-                            {group.items.map(tab => {
+                                    <div key={group.key} className="md:w-full shrink-0">
+                                      {/* Group header */}
+                                      <div className="hidden md:flex items-center gap-1.5 px-2 pt-1 pb-1 text-[10px] font-extrabold uppercase tracking-[0.15em] text-cyan-500/70">
+                                        <span className="w-1 h-3 rounded-full bg-cyan-500/50" />
+                                        {group.label}
+                                      </div>
+                                      <div className="flex md:flex-col gap-1 md:space-y-0.5 overflow-x-auto md:overflow-visible shrink-0">
+                                        {/* CYBERPOOL FIX: ẩn tab vượt quyền theo role (RBAC client-side) */}
+                                        {group.items.filter(tab => (TAB_MIN_ROLE[tab.id] || 3) <= currentRoleLevel).map(tab => {
                               const Icon = tab.icon;
                               const isActive = activeTab === tab.id;
 

@@ -1,19 +1,19 @@
-import React, { useState } from 'react';
-import { 
-  Lock, 
-  Unlock, 
-  ShieldCheck, 
-  ArrowRight, 
-  Users, 
-  Key, 
-  CheckCircle2, 
-  AlertCircle, 
-  RefreshCw, 
-  DollarSign, 
-  Clock, 
-  Layers, 
-  Send, 
-  Download, 
+import React, { useState, useEffect } from 'react';
+import {
+  Lock,
+  Unlock,
+  ShieldCheck,
+  ArrowRight,
+  Users,
+  Key,
+  CheckCircle2,
+  AlertCircle,
+  RefreshCw,
+  DollarSign,
+  Clock,
+  Layers,
+  Send,
+  Download,
   ExternalLink,
   Zap,
   Sparkles,
@@ -23,6 +23,7 @@ import {
 } from 'lucide-react';
 import { Product, GroupPool, UserOrder, CurrencyCode } from '../../types';
 import { formatCurrency } from '../../utils/formatters';
+import { authFetch } from '../../api/authFetch';
 
 interface AdminEscrowPoolsTabProps {
   products: Product[];
@@ -39,16 +40,79 @@ export const AdminEscrowPoolsTab: React.FC<AdminEscrowPoolsTabProps> = ({
   onForceEscrowAction
 }) => {
   const [searchTerm, setSearchTerm] = useState('');
-  const [statusFilter, setStatusFilter] = useState<'all' | 'filling' | 'completed' | 'full'>('all');
-  const [selectedPoolDetail, setSelectedPoolDetail] = useState<{ product: Product; pool: GroupPool } | null>(null);
+    const [statusFilter, setStatusFilter] = useState<'all' | 'filling' | 'completed' | 'full'>('all');
+    const [selectedPoolDetail, setSelectedPoolDetail] = useState<{ product: Product; pool: GroupPool } | null>(null);
 
-  // Aggregate all pools from products
-  const allPools = products.flatMap(prod => 
-    (prod.activePools || []).map(pool => ({
-      product: prod,
-      pool: pool
-    }))
-  );
+    // CYBERPOOL FIX: pools must come from the SERVER (/escrow/pools = db.escrowContracts),
+    // not from client-side products[].activePools which is fetched once at page load and
+    // goes stale the moment a user joins a pool. Admin refund/release decisions were
+    // being made on outdated slot/status data.
+    const [serverPools, setServerPools] = useState<any[] | null>(null);
+    const [poolsLoading, setPoolsLoading] = useState(false);
+    const [poolsError, setPoolsError] = useState<string | null>(null);
+
+    const fetchServerPools = async () => {
+      setPoolsLoading(true);
+      setPoolsError(null);
+      try {
+        const res = await authFetch('/api/v1/escrow/pools');
+        const data = await res.json();
+        if (data?.success && Array.isArray(data.pools)) {
+          setServerPools(data.pools);
+        } else {
+          setPoolsError(data?.error || 'Không đọc được danh sách pool từ server');
+        }
+      } catch (err: any) {
+        setPoolsError(err?.message || 'Lỗi kết nối khi tải pool từ server');
+      } finally {
+        setPoolsLoading(false);
+      }
+    };
+
+    useEffect(() => {
+      fetchServerPools();
+      // Refresh khi tab mở lại (user join/đổi trạng thái pool bên kia)
+      const iv = setInterval(fetchServerPools, 20000);
+      return () => clearInterval(iv);
+    }, []);
+
+    // Merge server contracts (authoritative) với products (để lấy title/ảnh hiển thị)
+        const allPools = (serverPools && serverPools.length > 0
+          ? serverPools.map((contract: any) => {
+              const prod = products.find(p => p.id === contract.productId);
+              const product: Product = prod || ({
+                id: contract.productId || '',
+                title: contract.productTitle || `Sản phẩm ${contract.productId || ''}`,
+                bannerImg: ''
+              } as Product);
+              const pool = (prod?.activePools || []).find((p: any) => (p.id === contract.poolId || p.poolId === contract.poolId)) as any;
+              const status: GroupPool['status'] = contract.status === 'COMPLETED' ? 'completed' : 'filling';
+              return {
+                product,
+                contract,
+                pool: {
+                  id: contract.poolId || contract.id,
+                  title: pool?.title || `Pool ${contract.poolId}`,
+                  targetSlots: contract.targetSlots,
+                  filledSlots: contract.filledSlots,
+                  pricePerSlot: contract.pricePerSlot,
+                  retailPrice: pool?.retailPrice || contract.pricePerSlot,
+                  savingsPercent: pool?.savingsPercent || 0,
+                  status,
+                  hostName: pool?.hostName || 'Hệ thống',
+                  expiresAt: contract.expiresAt || pool?.expiresAt || '',
+                  participants: contract.participants || [],
+                  keysVault: pool?.keysVault || []
+                } as GroupPool
+              };
+            })
+          : products.flatMap(prod =>
+              (prod.activePools || []).map(pool => ({
+                product: prod,
+                pool: pool
+              }))
+            )
+        );
 
   const filteredPools = allPools.filter(item => {
     const matchSearch = (item.pool?.title || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -150,7 +214,27 @@ export const AdminEscrowPoolsTab: React.FC<AdminEscrowPoolsTabProps> = ({
         </div>
 
         {/* Metric Bar */}
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 pt-1">
+                <div className="flex items-center gap-3 flex-wrap p-2">
+                  <span className={`text-[10px] font-bold flex items-center gap-1.5 ${
+                    poolsError ? 'text-rose-400' : 'text-cyan-400'
+                  }`}>
+                    <RefreshCw className={`w-3 h-3 ${poolsLoading ? 'animate-spin' : ''}`} />
+                    {poolsError
+                      ? `⚠ ${poolsError}`
+                      : serverPools
+                        ? `Nguồn: server /escrow/pools (tự làm mới 20s)`
+                        : 'Đang tải pool từ server...'}
+                  </span>
+                  <button
+                    onClick={fetchServerPools}
+                    disabled={poolsLoading}
+                    className="px-2.5 py-1 rounded-lg bg-slate-800 hover:bg-slate-700 text-cyan-300 text-[10px] font-bold flex items-center gap-1 cursor-pointer disabled:opacity-50"
+                  >
+                    <RefreshCw className={`w-3 h-3 ${poolsLoading ? 'animate-spin' : ''}`} />
+                    Làm mới
+                  </button>
+                </div>
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 pt-1">
           <div className="p-2.5 rounded-xl bg-black/40 border border-slate-800">
             <div className="text-[10px] text-slate-400 uppercase">Tổng Nhóm Gom</div>
             <div className="text-base font-bold text-cyan-400 mt-0.5">{allPools.length} Nhóm</div>
