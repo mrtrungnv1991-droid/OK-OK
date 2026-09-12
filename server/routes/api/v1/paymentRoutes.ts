@@ -274,11 +274,14 @@ paymentRouter.post('/webhooks/provider/:providerId', (req: Request, res: Respons
   }
 
   const webhookSecret = process.env.PAYMENT_PROVIDER_WEBHOOK_SECRET;
-  if (process.env.NODE_ENV === 'production' && !webhookSecret) {
-    return res.status(503).json({ error: { code: 'WEBHOOK_CONFIG_ERROR', message: 'PAYMENT_PROVIDER_WEBHOOK_SECRET is not configured.' } });
+  // CYBERPOOL FIX (#10 — fail-closed): trước đây chỉ production mới bắt buộc
+  // secret; ở env khác webhook được xử lý KHÔNG cần chữ ký → ai cũng forge được
+  // event SUCCESS để hoàn tất giao dịch. Giờ thiếu secret là từ chối ở MỌI env.
+  if (!webhookSecret) {
+    return res.status(503).json({ error: { code: 'WEBHOOK_CONFIG_ERROR', message: 'PAYMENT_PROVIDER_WEBHOOK_SECRET is not configured — webhook rejected (fail-closed).' } });
   }
 
-  if (webhookSecret) {
+  {
     if (!signature || typeof signature !== 'string') {
       return res.status(401).json({ error: { code: 'UNAUTHORIZED', message: 'Missing required signature header/field.' } });
     }

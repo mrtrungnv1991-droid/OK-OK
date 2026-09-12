@@ -63,8 +63,15 @@ async function startServer() {
   app.use('/api/v1/payments', paymentRouter);
   app.use('/api/v1/supplier-hub', supplierHubRouter);
   app.use('/api/v1/cron', cronRouter);
-  app.all('/cron.php', (req, res) => res.redirect('/api/v1/cron/ping'));
-  app.all('/api/cron', (req, res) => res.redirect('/api/v1/cron/ping'));
+  // CYBERPOOL FIX (#22): trước đây redirect sang /api/v1/cron/ping — endpoint đó
+  // giờ yêu cầu ADMIN (đã siết bảo mật) nên external cron provider (cron-job.org)
+  // nhận 401 và báo lỗi giả. Daemon nội bộ (CronService.init) đã tự chạy tick
+  // định kỳ, nên các URL legacy chỉ cần ack 200 để provider biết server sống.
+  const cronAck = (req: express.Request, res: express.Response) => {
+    res.json({ success: true, message: 'CYBERPOOL cron ack — internal daemon handles ticks', timestamp: new Date().toISOString() });
+  };
+  app.all('/cron.php', cronAck);
+  app.all('/api/cron', cronAck);
 
   // Initialize Background Daemon for Automated Cron Stock Checking
   CronService.init();

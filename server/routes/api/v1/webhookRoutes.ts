@@ -15,19 +15,21 @@ export const webhookRouter = Router();
 const devFallbackSecret = crypto.randomBytes(32).toString('hex');
 export const getVietQrSecret = (): string => {
   if (process.env.VIETQR_WEBHOOK_SECRET) return process.env.VIETQR_WEBHOOK_SECRET;
-  if (process.env.NODE_ENV === 'test') return 'TEST_VIETQR_KEY_SECRET_32B_MIN_VAL';
   if (process.env.NODE_ENV === 'production') {
     throw new Error('FATAL: VIETQR_WEBHOOK_SECRET is not configured in production environment.');
   }
+  // CYBERPOOL FIX (#20): bỏ secret tĩnh hardcode cho NODE_ENV=test — một deploy
+  // production bị gắn nhầm NODE_ENV=test sẽ dùng secret công khai trong repo
+  // (forge được webhook). Test/dev giờ dùng secret random mỗi lần boot.
   return devFallbackSecret;
 };
 
 export const getTelcoSecret = (): string => {
   if (process.env.TELCO_WEBHOOK_SECRET) return process.env.TELCO_WEBHOOK_SECRET;
-  if (process.env.NODE_ENV === 'test') return 'TEST_TELCO_KEY_SECRET_32B_MIN_VAL';
   if (process.env.NODE_ENV === 'production') {
     throw new Error('FATAL: TELCO_WEBHOOK_SECRET is not configured in production environment.');
   }
+  // CYBERPOOL FIX (#20): như trên — không hardcode secret tĩnh cho test.
   return devFallbackSecret;
 };
 

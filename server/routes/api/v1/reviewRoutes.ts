@@ -22,6 +22,14 @@ reviewRouter.post('/', requireAuth, (req: AuthenticatedRequest, res) => {
     return res.status(400).json({ success: false, error: 'productId and rating are required' });
   }
 
+  // CYBERPOOL FIX (#19): clamp rating về 1–5 — trước đây Number(rating) nhận
+  // mọi giá trị (100, -5, NaN), làm lệch trung bình rating của sản phẩm.
+  const ratingNum = Number(rating);
+  if (!Number.isFinite(ratingNum)) {
+    return res.status(400).json({ success: false, error: 'rating phải là số' });
+  }
+  const safeRating = Math.min(5, Math.max(1, Math.round(ratingNum)));
+
   // Server-side check: Did this user actually buy this product and complete the order?
   let isVerified = false;
   for (const order of db.orders.values()) {
@@ -38,7 +46,7 @@ reviewRouter.post('/', requireAuth, (req: AuthenticatedRequest, res) => {
     userAvatar: req.user!.avatar,
     productId,
     orderId: orderId || 'ord-verified',
-    rating: Number(rating),
+    rating: safeRating,
     comment: comment || 'Đã kích hoạt bản quyền thành công!',
     verifiedPurchase: isVerified,
     createdAt: new Date().toISOString()
