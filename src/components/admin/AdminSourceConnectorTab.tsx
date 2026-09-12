@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { authFetch } from '../../api/authFetch';
 import { 
   Server, 
   Globe, 
@@ -92,12 +93,12 @@ export const AdminSourceConnectorTab: React.FC<AdminSourceConnectorTabProps> = (
     setIsLoading(true);
     try {
       const [accRes, jobRes, prodRes, offRes, profRes, audRes] = await Promise.all([
-        fetch('/api/v1/source-connector/accounts').then(r => r.json()),
-        fetch('/api/v1/source-connector/scan/jobs').then(r => r.json()),
-        fetch('/api/v1/source-connector/products').then(r => r.json()),
-        fetch('/api/v1/source-connector/offers').then(r => r.json()),
-        fetch('/api/v1/source-connector/profiles').then(r => r.json()),
-        fetch('/api/v1/source-connector/audit-logs').then(r => r.json())
+        authFetch('/api/v1/source-connector/accounts').then(r => r.json()),
+        authFetch('/api/v1/source-connector/scan/jobs').then(r => r.json()),
+        authFetch('/api/v1/source-connector/products').then(r => r.json()),
+        authFetch('/api/v1/source-connector/offers').then(r => r.json()),
+        authFetch('/api/v1/source-connector/profiles').then(r => r.json()),
+        authFetch('/api/v1/source-connector/audit-logs').then(r => r.json())
       ]);
 
       if (accRes.success) setAccounts(accRes.data);
@@ -128,7 +129,7 @@ export const AdminSourceConnectorTab: React.FC<AdminSourceConnectorTabProps> = (
   const handleTestLogin = async (accountId: string) => {
     notify('Đang kiểm tra kết nối & Browser Session...', 'success');
     try {
-      const res = await fetch(`/api/v1/source-connector/accounts/${accountId}/test-login`, { method: 'POST' });
+      const res = await authFetch(`/api/v1/source-connector/accounts/${accountId}/test-login`, { method: 'POST' });
       const data = await res.json();
       if (data.success) {
         notify(`Xác thực thành công! Session hợp lệ, số dư: ${Number(data.data.balance).toLocaleString('vi-VN')} VND`);
@@ -145,7 +146,7 @@ export const AdminSourceConnectorTab: React.FC<AdminSourceConnectorTabProps> = (
   const handleTriggerScan = async (accountId: string, scanType: 'FULL' | 'INCREMENTAL') => {
     const endpoint = scanType === 'FULL' ? '/api/v1/source-connector/scan/full' : '/api/v1/source-connector/scan/incremental';
     try {
-      const res = await fetch(endpoint, {
+      const res = await authFetch(endpoint, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ accountId })
@@ -171,7 +172,7 @@ export const AdminSourceConnectorTab: React.FC<AdminSourceConnectorTabProps> = (
     const endpoint = account.is_active 
       ? `/api/v1/source-connector/accounts/${account.id}/pause`
       : `/api/v1/source-connector/accounts/${account.id}/resume`;
-    await fetch(endpoint, { method: 'POST' });
+    await authFetch(endpoint, { method: 'POST' });
     notify(`Đã ${account.is_active ? 'Tạm Dừng' : 'Kích Hoạt'} tài khoản nguồn ${account.name}`);
     fetchData();
   };
@@ -180,7 +181,7 @@ export const AdminSourceConnectorTab: React.FC<AdminSourceConnectorTabProps> = (
   const handleCreateAccount = async (e: React.FormEvent) => {
     e.preventDefault();
     try {
-      const res = await fetch('/api/v1/source-connector/accounts', {
+      const res = await authFetch('/api/v1/source-connector/accounts', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(newAccountForm)
@@ -201,7 +202,7 @@ export const AdminSourceConnectorTab: React.FC<AdminSourceConnectorTabProps> = (
   // Run Route Simulator
   const handleRunSimulator = async () => {
     try {
-      const res = await fetch('/api/v1/source-connector/offers/best-route', {
+      const res = await authFetch('/api/v1/source-connector/offers/best-route', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -757,7 +758,7 @@ export const AdminSourceConnectorTab: React.FC<AdminSourceConnectorTabProps> = (
                 <span className="text-xs text-slate-400">Đã chọn: {selectedProductIds.length}</span>
                 <button
                   onClick={async () => {
-                    await fetch('/api/v1/source-connector/products/bulk', {
+                    await authFetch('/api/v1/source-connector/products/bulk', {
                       method: 'POST',
                       headers: { 'Content-Type': 'application/json' },
                       body: JSON.stringify({ productIds: selectedProductIds, action: 'IGNORE' })
@@ -866,7 +867,7 @@ export const AdminSourceConnectorTab: React.FC<AdminSourceConnectorTabProps> = (
                         <td className="p-3 text-center">
                           <button
                             onClick={async () => {
-                              await fetch(`/api/v1/source-connector/products/${prod.id}`, {
+                              await authFetch(`/api/v1/source-connector/products/${prod.id}`, {
                                 method: 'PATCH',
                                 headers: { 'Content-Type': 'application/json' },
                                 body: JSON.stringify({ auto_sync_price: !prod.auto_sync_price })
@@ -896,7 +897,7 @@ export const AdminSourceConnectorTab: React.FC<AdminSourceConnectorTabProps> = (
                             </button>
                             <button
                               onClick={async () => {
-                                await fetch(`/api/v1/source-connector/products/${prod.id}`, {
+                                await authFetch(`/api/v1/source-connector/products/${prod.id}`, {
                                   method: 'PATCH',
                                   headers: { 'Content-Type': 'application/json' },
                                   body: JSON.stringify({ is_sync_ignored: !prod.is_sync_ignored })
@@ -1267,7 +1268,7 @@ export const AdminSourceConnectorTab: React.FC<AdminSourceConnectorTabProps> = (
               <div className="pt-3 border-t border-slate-800 flex justify-end gap-2">
                 <button
                   onClick={async () => {
-                    await fetch(`/api/v1/source-connector/products/${showOverrideModal.id}`, {
+                    await authFetch(`/api/v1/source-connector/products/${showOverrideModal.id}`, {
                       method: 'PATCH',
                       headers: { 'Content-Type': 'application/json' },
                       body: JSON.stringify({ price_override: undefined })
@@ -1282,7 +1283,7 @@ export const AdminSourceConnectorTab: React.FC<AdminSourceConnectorTabProps> = (
                 </button>
                 <button
                   onClick={async () => {
-                    await fetch(`/api/v1/source-connector/products/${showOverrideModal.id}`, {
+                    await authFetch(`/api/v1/source-connector/products/${showOverrideModal.id}`, {
                       method: 'PATCH',
                       headers: { 'Content-Type': 'application/json' },
                       body: JSON.stringify({ price_override: overridePriceInput })

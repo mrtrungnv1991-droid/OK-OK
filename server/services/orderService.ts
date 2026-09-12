@@ -17,15 +17,16 @@ export class OrderService {
    * Supports both local products and API source products (G2UP / ShopClone)
    */
   public static async createInstantPurchase(params: {
-    buyer: ServerUser;
-    productId: string;
-    quantity?: number;
-    paymentMethod?: 'wallet' | 'vietqr' | 'telco' | 'card';
-    voucherCode?: string;
-    finalTotal?: number;
-    ipAddress?: string;
-  }): Promise<{ success: boolean; order?: ServerOrder; deliveredKey?: string; error?: string }> {
-    const { buyer, productId, quantity = 1, paymentMethod = 'wallet', voucherCode, ipAddress } = params;
+      buyer: ServerUser;
+      productId: string;
+      quantity?: number;
+      paymentMethod?: 'wallet' | 'vietqr' | 'telco' | 'card';
+      voucherCode?: string;
+      finalTotal?: number;
+      idempotencyKey?: string;
+      ipAddress?: string;
+    }): Promise<{ success: boolean; order?: ServerOrder; deliveredKey?: string; error?: string }> {
+      const { buyer, productId, quantity = 1, paymentMethod = 'wallet', voucherCode, idempotencyKey, ipAddress } = params;
     const product = db.products.find(p => p.id === productId);
 
     if (!product) {
@@ -46,13 +47,24 @@ export class OrderService {
     }
 
     // F03: Server tự tính giá dựa trên retailPrice và voucher, client không được tự ý quyết định finalTotal
-    const unitPrice = Number(product.retailPrice || 0);
-    if (isNaN(unitPrice) || unitPrice <= 0) {
-      return { success: false, error: 'Giá sản phẩm không hợp lệ' };
-    }
+        const unitPrice = Number(product.retailPrice || 0);
+        if (isNaN(unitPrice) || unitPrice <= 0) {
+          return { success: false, error: 'Giá sản phẩm không hợp lệ' };
+        }
 
-    let calculatedPrice = unitPrice * validQuantity;
-    if (voucherCode) {
+        let calculatedPrice = unitPrice * validQuantity;
+
+        // CYBERPOOL FIX: bulk discount must be applied SERVER-side, matching the
+        // checkout UI (>=2 món 3%, >=5 món 7%). Previously the client showed the
+        // discounted total but the server charged the full price — the customer
+        // paid more than what was displayed.
+        if (validQuantity >= 5) {
+          calculatedPrice = Math.max(0, Math.round(calculatedPrice * 0.93)); // 7% off
+        } else if (validQuantity >= 2) {
+          calculatedPrice = Math.max(0, Math.round(calculatedPrice * 0.97)); // 3% off
+        }
+
+        if (voucherCode) {
       const voucher = db.vouchers?.find(v => v.code?.toUpperCase() === voucherCode.toUpperCase() && v.active);
       if (voucher) {
         if (voucher.type === 'percent') {
@@ -235,9 +247,12 @@ export class OrderService {
         pinCode: (parsedOutput as any).pinCode
       },
       createdAt: new Date().toISOString(),
-      completedAt: new Date().toISOString(),
-      txHash: `0x${Math.random().toString(16).substr(2, 32)}`
-    };
+            completedAt: new Date().toISOString(),
+            txHash: `0x${Math.random().toString(16).substr(2, 32)}`,
+            // CYBERPOOL FIX: persist the idempotency key on the order so a retry of
+            // the same client request re-returns this order instead of double-charging.
+            idempotencyKey
+          };
 
     if (supplierOrderInfo) {
       (order as any).supplierOrderInfo = supplierOrderInfo;

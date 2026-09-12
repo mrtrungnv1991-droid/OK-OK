@@ -334,50 +334,66 @@ export class ApiSupplierConnector implements ISupplierConnector {
         }, { timeoutMs: 15000 });
 
         if (res.status === 200) {
-          const ref = res.data?.order_id || res.data?.order_ref || `API-ORD-${Date.now()}`;
-          const delivered = res.data?.key || res.data?.license_key || res.data?.delivered_item;
-          this.liveBalance = Math.max(0, this.liveBalance - cost);
+                  const ref = res.data?.order_id || res.data?.order_ref || `API-ORD-${Date.now()}`;
+                  const delivered = res.data?.key || res.data?.license_key || res.data?.delivered_item;
+                  this.liveBalance = Math.max(0, this.liveBalance - cost);
 
-          return {
-            success: true,
-            status: 'COMPLETED',
-            supplierOrderReference: String(ref),
-            deliveredKey: delivered || `API-KEY-${request.supplierProductId}-${Math.floor(1000 + Math.random() * 9000)}`,
-            supplierCost: cost,
-            supplierBalanceAfter: this.liveBalance
-          };
-        }
-      } catch (err: any) {
-        return {
-          success: false,
-          status: 'FAILED',
-          supplierCost: cost,
-          errorCode: 'SUPPLIER_ERROR',
-          errorMessage: `Lỗi kết nối API đặt hàng: ${err.message}`
-        };
-      }
-    }
+                  // CYBERPOOL FIX (F04): never fabricate a delivery key. If the
+                  // supplier did not actually return a key/license, the order must NOT
+                  // be marked COMPLETED — the customer would have paid real money for
+                  // a fake key. Fail loudly so the order flow can refund.
+                  if (!delivered) {
+                    return {
+                      success: false,
+                      status: 'FAILED',
+                      supplierOrderReference: String(ref),
+                      supplierCost: cost,
+                      errorCode: 'SUPPLIER_NO_KEY',
+                      errorMessage: 'Supplier created the order but did not return a delivery key/license. Order will not be marked delivered.'
+                    };
+                  }
 
-    this.liveBalance = Math.max(0, this.liveBalance - cost);
-    return {
-      success: true,
-      status: 'COMPLETED',
-      supplierOrderReference: `API-REF-${Date.now()}`,
-      deliveredKey: `API-AUTO-LICENSE-${request.supplierProductId}-${Date.now().toString(36).toUpperCase()}`,
-      supplierCost: cost,
-      supplierBalanceAfter: this.liveBalance
-    };
-  }
+                  return {
+                    success: true,
+                    status: 'COMPLETED',
+                    supplierOrderReference: String(ref),
+                    deliveredKey: String(delivered),
+                    supplierCost: cost,
+                    supplierBalanceAfter: this.liveBalance
+                  };
+                }
+              } catch (err: any) {
+                return {
+                  success: false,
+                  status: 'FAILED',
+                  supplierCost: cost,
+                  errorCode: 'SUPPLIER_ERROR',
+                  errorMessage: `Lỗi kết nối API đặt hàng: ${err.message}`
+                };
+              }
+            }
+
+            // CYBERPOOL FIX (F04): no real createOrder endpoint is configured — this
+            // is a dead path that previously fabricated an "API-AUTO-LICENSE-..." key
+            // and charged the customer for it. Fail instead.
+            return {
+              success: false,
+              status: 'FAILED',
+              supplierCost: cost,
+              errorCode: 'SUPPLIER_ENDPOINT_MISSING',
+              errorMessage: 'Không có endpoint createOrder được cấu hình cho supplier này. Không thể giao hàng.'
+            };
+          }
 
   public async getOrderStatus(supplierOrderRef: string): Promise<{
-    status: string;
-    deliveredKey?: string;
-    completedAt?: string;
-  }> {
-    return {
-      status: 'COMPLETED',
-      deliveredKey: `API-KEY-${supplierOrderRef}`,
-      completedAt: new Date().toISOString()
-    };
-  }
+      status: string;
+      deliveredKey?: string;
+      completedAt?: string;
+    }> {
+      // CYBERPOOL FIX (F04): never fabricate a delivered key for a status poll.
+      return {
+        status: 'PENDING',
+        completedAt: new Date().toISOString()
+      };
+    }
 }

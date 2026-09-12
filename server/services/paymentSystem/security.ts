@@ -5,11 +5,21 @@
 
 import crypto from 'crypto';
 
-const ENCRYPTION_SECRET = process.env.ENCRYPTION_KEY || 'cyberpool-dev-vault-secret-key-32b-min-2026!';
-
-if (process.env.NODE_ENV === 'production' && !process.env.ENCRYPTION_KEY) {
-  console.warn('[SECURITY ADVISORY] ENCRYPTION_KEY environment variable is not explicitly configured. Using hardened fallback key.');
-}
+// Encryption key MUST come from the environment in production.
+// Fail-closed: if missing in production, refuse to boot instead of using a
+// hardcoded fallback key (anyone reading the repo could decrypt vault data).
+// In dev/test, generate a random per-boot key so no real key lives in source.
+const ENCRYPTION_SECRET = process.env.ENCRYPTION_KEY
+  || (process.env.NODE_ENV === 'production'
+    ? (() => {
+        console.error('[SECURITY FATAL] ENCRYPTION_KEY environment variable is REQUIRED in production. Refusing to start.');
+        process.exit(1);
+      })()
+    : (() => {
+        const dev = crypto.randomBytes(32).toString('hex');
+        console.warn('[SECURITY ADVISORY] ENCRYPTION_KEY not set — using a RANDOM per-boot key (dev only). Existing encrypted credentials will not decrypt after restart.');
+        return dev;
+      })());
 
 // Ensure exactly 32 bytes for aes-256-gcm
 const KEY_BUFFER = crypto.createHash('sha256').update(ENCRYPTION_SECRET).digest();

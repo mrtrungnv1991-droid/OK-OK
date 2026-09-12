@@ -121,8 +121,10 @@ adminRouter.put('/system-config', (req: AuthenticatedRequest, res) => {
 
 // POST /api/v1/admin/test-card24h - Live test ping to Card24h API
 adminRouter.post('/test-card24h', async (req: AuthenticatedRequest, res) => {
-  const partnerId = req.body?.partnerId || db.systemConfig?.telcoPartnerId || '16654919157';
-  const partnerKey = req.body?.partnerKey || db.systemConfig?.telcoPartnerKey || 'bc3299820230bb1ed2b2b729cac744e3';
+  // CYBERPOOL SECURITY FIX: real partner credentials were hardcoded as
+  // fallbacks. Now only env/systemConfig may supply them — never source code.
+  const partnerId = req.body?.partnerId || db.systemConfig?.telcoPartnerId || process.env.CARD24H_PARTNER_ID || '';
+  const partnerKey = req.body?.partnerKey || db.systemConfig?.telcoPartnerKey || process.env.CARD24H_PARTNER_KEY || '';
 
   if (!partnerId || !partnerKey) {
     return res.status(400).json({

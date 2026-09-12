@@ -16,7 +16,8 @@ export type OrderStatus =
   | 'COMPLETED' 
   | 'DISPUTED' 
   | 'REFUNDED' 
-  | 'CANCELLED';
+  | 'CANCELLED'
+  | 'PENDING_STOCK';
 
 export type InventoryState = 
   | 'AVAILABLE' 
@@ -140,8 +141,12 @@ export interface ServerOrder {
   poolId?: string;
   createdAt: string;
   completedAt?: string;
-  txHash: string;
-}
+    txHash: string;
+    // CYBERPOOL FIX: idempotency key honored server-side — the client already
+    // sends one (src/api/orders.ts:23) but it was ignored, so a network retry
+    // could double-charge the wallet and double-deliver the key.
+    idempotencyKey?: string;
+  }
 
 export interface ServerAuditLog {
   id: string;

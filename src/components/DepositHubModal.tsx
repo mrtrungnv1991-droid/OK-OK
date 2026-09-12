@@ -80,7 +80,13 @@ export const DepositHubModal: React.FC<DepositHubModalProps> = ({
     }
   }, [systemConfig?.qrDisplayMode, systemConfig?.bankQrCustomImage]);
 
-  const transferCode = `CYBER ${user.id.replace('user-', '').toUpperCase()}`;
+  // CYBERPOOL FIX: user ids are 'usr-<slug>'. The old `.replace('user-','')`
+  // never matched (prefix is 'usr-') so the memo contained the raw id in
+  // UPPERCASE ('CYBER USR-BUYER-01'), which the webhook lookup then failed to
+  // match against the lowercase key — every real deposit fell into the
+  // unmapped queue forever. Use the raw lowercase id and let the webhook
+  // normalize case on its side.
+  const transferCode = `CYBER ${user.id}`;
   const bankAccount = {
     bankName: systemConfig?.bankName || 'MBBank - Ngân Hàng Quân Đội',
     bankCode: 'MB',

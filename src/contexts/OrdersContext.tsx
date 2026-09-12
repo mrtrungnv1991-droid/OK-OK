@@ -218,7 +218,7 @@ export const OrdersProvider: React.FC<{ children: ReactNode }> = ({ children }) 
           status: pool.status === 'COMPLETED' ? 'fulfilled' : 'escrow_locked',
           poolId: pool.id,
           slotNumber: pool.filledSlots,
-          deliveredKey: pool.status === 'COMPLETED' ? `CYBER-KEY-${Math.floor(1000 + Math.random() * 9000)}` : undefined,
+          deliveredKey: undefined,
           txId: `TX-POOL-${pool.id.slice(-6).toUpperCase()}`,
           createdAt: new Date().toISOString()
         };

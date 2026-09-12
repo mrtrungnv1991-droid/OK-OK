@@ -30,16 +30,25 @@ walletRouter.post('/deposit', requireAuth, async (req: AuthenticatedRequest, res
   // F01: Chặn direct-credit từ request client. Request nạp chỉ tạo DepositIntent chờ thanh toán.
   // Số dư ví chỉ được cộng khi có đối soát / webhook xác thực từ ngân hàng hoặc cổng thanh toán.
   const intentId = `DEP-${Date.now()}-${Math.random().toString(36).substring(2, 7).toUpperCase()}`;
-  const depositIntent = {
-    id: intentId,
-    userId: req.user!.id,
-    amount: depositAmount,
-    methodTitle: methodTitle || 'Cổng Chuyển Khoản Tự Động',
-    idempotencyKey: idempotencyKey || intentId,
-    status: 'PENDING',
-    createdAt: new Date().toISOString(),
-    expiresAt: new Date(Date.now() + 15 * 60 * 1000).toISOString()
-  };
+    const depositIntent = {
+      id: intentId,
+      userId: req.user!.id,
+      amount: depositAmount,
+      methodTitle: methodTitle || 'Cổng Chuyển Khoản Tự Động',
+      idempotencyKey: idempotencyKey || intentId,
+      status: 'PENDING',
+      createdAt: new Date().toISOString(),
+      expiresAt: new Date(Date.now() + 15 * 60 * 1000).toISOString()
+    };
+
+    // CYBERPOOL FIX: persist the deposit intent. Previously it was created and
+    // returned but never stored, so the webhook side had no expected-amount
+    // record to reconcile against and the intent disappeared on restart.
+    try {
+      db.depositIntents.set(intentId, depositIntent);
+    } catch (err: any) {
+      console.warn('[WALLET_DEPOSIT] Không lưu được deposit intent:', err?.message);
+    }
 
   res.json({
     success: true,

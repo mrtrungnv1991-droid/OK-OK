@@ -117,7 +117,7 @@ export const TopupModal: React.FC<TopupModalProps> = ({
 
     setIsProcessing(true);
     try {
-      const token = localStorage.getItem('cyber_auth_token') || 'token_cyber_user';
+      const token = localStorage.getItem('cyberpool_auth_token') || localStorage.getItem('cyber_auth_token') || 'token_cyber_user';
       const response = await fetch('/api/v1/orders/topup-game', {
         method: 'POST',
         headers: {

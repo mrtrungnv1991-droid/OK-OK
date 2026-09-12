@@ -108,27 +108,34 @@ export const CheckoutConfirmationModal: React.FC<CheckoutConfirmationModalProps>
           })
         });
 
-        if (!response.success || !response.order) {
-          throw new Error(response.error || response.message || `Đặt hàng "${item.product.title}" không thành công`);
-        }
+        // CYBERPOOL FIX: api.request() wraps the server JSON in response.data
+                // (see api/client.ts:89-93), so the order lives at response.data.order.
+                // The old code read response.order — always undefined — and threw an
+                // error AFTER the server had already deducted the wallet and delivered
+                // the key, showing a fake failure to the customer.
+                const orderData = response.data || {};
 
-        const serverOrder = response.order;
-        const branch = serverOrder.deliveryBranch || item.product.deliveryBranch || detectDeliveryBranch(undefined, item.product.title, item.product.platform);
+                if (!response.success || !orderData.order) {
+                  throw new Error(response.error || response.message || `Đặt hàng "${item.product.title}" không thành công`);
+                }
 
-        const order: UserOrder = {
-          id: serverOrder.id,
-          productId: serverOrder.productId || item.product.id,
-          productTitle: serverOrder.productTitle || `${item.product.title} (x${item.quantity})`,
-          platform: serverOrder.platform || item.product.platform,
-          type: 'instant_single',
-          pricePaid: serverOrder.pricePaid || (item.product.retailPrice * item.quantity),
-          status: 'fulfilled',
-          createdAt: serverOrder.createdAt ? new Date(serverOrder.createdAt).toLocaleString('vi-VN') : new Date().toLocaleString('vi-VN'),
-          deliveryBranch: branch,
-          deliveredKey: serverOrder.deliveredKey || response.deliveredKey || '',
-          deliveredData: serverOrder.deliveredData || (serverOrder.deliveredKey ? { keys: [serverOrder.deliveredKey] } : undefined),
-          txId: serverOrder.id
-        };
+                const serverOrder = orderData.order;
+                const branch = serverOrder.deliveryBranch || item.product.deliveryBranch || detectDeliveryBranch(undefined, item.product.title, item.product.platform);
+
+                const order: UserOrder = {
+                  id: serverOrder.id,
+                  productId: serverOrder.productId || item.product.id,
+                  productTitle: serverOrder.productTitle || `${item.product.title} (x${item.quantity})`,
+                  platform: serverOrder.platform || item.product.platform,
+                  type: 'instant_single',
+                  pricePaid: serverOrder.pricePaid || (item.product.retailPrice * item.quantity),
+                  status: 'fulfilled',
+                  createdAt: serverOrder.createdAt ? new Date(serverOrder.createdAt).toLocaleString('vi-VN') : new Date().toLocaleString('vi-VN'),
+                  deliveryBranch: branch,
+                  deliveredKey: serverOrder.deliveredKey || orderData.deliveredKey || '',
+                  deliveredData: serverOrder.deliveredData || (serverOrder.deliveredKey ? { keys: [serverOrder.deliveredKey] } : undefined),
+                  txId: serverOrder.id
+                };
 
         addOrder(order);
         generatedOrders.push(order);

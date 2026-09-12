@@ -86,10 +86,10 @@ export class CronService {
     this.nextRunAt = new Date(Date.now() + intervalMs).toISOString();
 
     this.timer = setInterval(() => {
-      this.tick('auto_interval').catch(err => {
-        console.error('[CronService] Uncaught tick error:', err);
-      });
-    }, intervalMs);
+          this.tick('auto_interval').catch(err => {
+            console.error('[CronService] Uncaught tick error:', err);
+          });
+        }, intervalMs).unref(); // .unref: don't keep the process alive in tests
   }
 
   private static loadConfig() {

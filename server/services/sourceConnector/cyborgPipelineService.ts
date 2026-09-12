@@ -11,6 +11,7 @@ import { sourceConnectorService } from './sourceConnectorService';
 import { db } from '../../db/store';
 import { getScannerProfile } from './scannerProfile';
 import { RawScannedProduct, SourceAccount } from './types';
+import { SupplierManagerService } from '../supplierHub/services/SupplierManagerService';
 
 export interface CyborgPricingConfig {
   marginPercent: number; // e.g. 20%
@@ -555,15 +556,35 @@ class CyborgPipelineService {
       };
 
       // Upsert into db.products
-      const existingIdx = db.products.findIndex(p => p.id === productId);
-      if (existingIdx >= 0) {
-        db.products[existingIdx] = { ...db.products[existingIdx], ...storeProduct };
-      } else {
-        // Add to front of products catalog
-        db.products.unshift(storeProduct);
-      }
+            const existingIdx = db.products.findIndex(p => p.id === productId);
+            if (existingIdx >= 0) {
+              db.products[existingIdx] = { ...db.products[existingIdx], ...storeProduct };
+            } else {
+              // Add to front of products catalog
+              db.products.unshift(storeProduct);
+            }
 
-      publishedList.push(storeProduct);
+            // CYBERPOOL FIX (Critical: Cyborg products were never deliverable).
+            // Published G2UP products carry source_info, so the order flow treats
+            // them as supplier products — but without a product mapping,
+            // dispatchSupplierOrder returned isSupplierProduct=false and the buyer
+            // was auto-refunded with "hết hàng" on every purchase. Register the
+            // mapping so the G2UP connector can actually fulfill the order.
+            try {
+              SupplierManagerService.upsertProductMappingForLocalProduct({
+                localProductId: productId,
+                supplierId: 'sup_g2up_net_api',
+                supplierProductId: raw.source_product_id,
+                supplierPrice: raw.original_price,
+                calculatedPrice: pricing.retailPrice,
+                finalSellingPrice: pricing.retailPrice,
+                deliveryBranch: 'KEY'
+              });
+            } catch (mapErr: any) {
+              console.warn('[CyborgPipeline] Không tạo được product mapping cho', productId, ':', mapErr?.message);
+            }
+
+            publishedList.push(storeProduct);
     }
 
     this.lastStatus.step4_storefront = {

@@ -56,9 +56,26 @@ orderRouter.get('/:id', requireAuth, (req: AuthenticatedRequest, res) => {
 
 // POST /api/v1/orders/instant-buy - Instant Single Key/Account Purchase
 orderRouter.post('/instant-buy', requireAuth, async (req: AuthenticatedRequest, res) => {
-  const { productId, quantity, paymentMethod, voucherCode, finalTotal } = req.body;
+  const { productId, quantity, paymentMethod, voucherCode, finalTotal, idempotencyKey } = req.body;
   if (!productId) {
     return res.status(400).json({ success: false, error: 'productId is required' });
+  }
+
+  // CYBERPOOL FIX: honor the client idempotency key. If the same buyer already
+  // placed this order (network retry / double-click), return the existing order
+  // instead of charging the wallet again.
+  if (typeof idempotencyKey === 'string' && idempotencyKey.length > 0) {
+    for (const existing of db.orders.values()) {
+      if (existing.buyerId === req.user!.id && existing.idempotencyKey === idempotencyKey) {
+        return res.json({
+          success: true,
+          order: existing,
+          deliveredKey: existing.deliveredData?.keys?.[0] || '',
+          message: 'Đơn hàng đã được xử lý trước đó (idempotent replay).',
+          idempotent_replay: true
+        });
+      }
+    }
   }
 
   const result = await OrderService.createInstantPurchase({
@@ -68,6 +85,7 @@ orderRouter.post('/instant-buy', requireAuth, async (req: AuthenticatedRequest, 
     paymentMethod: paymentMethod || 'wallet',
     voucherCode,
     finalTotal: typeof finalTotal === 'number' ? finalTotal : undefined,
+    idempotencyKey: typeof idempotencyKey === 'string' ? idempotencyKey : undefined,
     ipAddress: req.ip
   });
 

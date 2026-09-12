@@ -1,7 +1,12 @@
 import { Router } from 'express';
 import { CronService } from '../../../services/cronService';
+import { requireAuth, requireRole } from '../../../middleware/authMiddleware';
 
 export const cronRouter = Router();
+
+// CYBERPOOL SECURITY FIX: cron endpoints can trigger arbitrary jobs and change
+// daemon configuration — previously mounted with zero authentication.
+cronRouter.use(requireAuth, requireRole('ADMIN'));
 
 // GET /api/v1/cron/status - Get background cron daemon status and logs
 cronRouter.get('/status', (req, res) => {

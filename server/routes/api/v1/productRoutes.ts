@@ -9,7 +9,7 @@ import { SupplierManagerService } from '../../../services/supplierHub/services/S
 export const productRouter = Router();
 
 // POST /api/v1/products/auto-translate - Real-time language detection & translation
-productRouter.post('/auto-translate', async (req, res) => {
+productRouter.post('/auto-translate', requireAuth, requireRole('ADMIN'), async (req, res) => {
   try {
     const { title, subtitle, description, deliveryEstimate, features, instructions, tags, originalLanguage } = req.body;
     if (!title && !description) {
@@ -105,7 +105,7 @@ productRouter.get('/:id/translations', (req, res) => {
 });
 
 // POST /api/v1/products/:id/translate - Trigger re-translation
-productRouter.post('/:id/translate', async (req, res) => {
+productRouter.post('/:id/translate', requireAuth, requireRole('ADMIN'), async (req, res) => {
   const product = db.products.find(p => p.id === req.params.id);
   if (!product) {
     return res.status(404).json({ success: false, error: 'Product not found' });
@@ -151,7 +151,7 @@ productRouter.get('/:id', (req, res) => {
 });
 
 // POST /api/v1/products - Create Product (Admin/Seller) with Automatic Translation
-productRouter.post('/', async (req, res) => {
+productRouter.post('/', requireAuth, requireRole('ADMIN'), async (req, res) => {
   const body = req.body;
   const productId = body.id || `prod-${Date.now()}`;
 
@@ -200,7 +200,7 @@ productRouter.post('/', async (req, res) => {
 });
 
 // PUT /api/v1/products/:id - Update Product
-productRouter.put('/:id', async (req, res) => {
+productRouter.put('/:id', requireAuth, requireRole('ADMIN'), async (req, res) => {
   const productId = req.params.id;
   const index = db.products.findIndex(p => p.id === productId);
   if (index === -1) {
@@ -255,7 +255,7 @@ productRouter.put('/:id', async (req, res) => {
 });
 
 // DELETE /api/v1/products/:id
-productRouter.delete('/:id', (req, res) => {
+productRouter.delete('/:id', requireAuth, requireRole('ADMIN'), (req, res) => {
   const productId = req.params.id;
   const index = db.products.findIndex(p => p.id === productId);
   if (index === -1) {

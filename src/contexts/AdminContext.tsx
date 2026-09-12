@@ -79,9 +79,9 @@ const DEFAULT_SYSTEM_CONFIG: SystemConfiguration = {
   qrDisplayMode: 'vietqr_auto',
   vietQrApiToken: 'CYBER_API_TOKEN',
   telcoProvider: 'card24h',
-  telcoPartnerId: '16654919157',
-  telcoPartnerKey: 'bc3299820230bb1ed2b2b729cac744e3',
-  telcoWalletId: '0059134947',
+    telcoPartnerId: '',
+    telcoPartnerKey: '', // CYBERPOOL FIX: credentials were hardcoded in the public bundle — now empty, admin must input
+    telcoWalletId: '',
   telcoCallbackUrl: '/api/v1/webhooks/card24h',
   cryptoUsdtAddress: 'TXu9...cyber88',
   momoPhone: '0388999999',

@@ -1,12 +1,22 @@
 import crypto from 'crypto';
 import { UserRole } from '../types';
 
-// Use JWT secret from environment or secure production-grade fallback
-const JWT_SECRET = process.env.JWT_SECRET || 'cyberpool-jwt-secret-key-production-fallback-32b-2026!';
-
-if (process.env.NODE_ENV === 'production' && !process.env.JWT_SECRET) {
-  console.warn('[SECURITY ADVISORY] JWT_SECRET environment variable is not explicitly configured. Using hardened fallback secret.');
-}
+// JWT secret MUST come from the environment in production.
+// Fail-closed: if missing in production, refuse to boot instead of using a
+// hardcoded fallback (a public repo fallback secret lets anyone forge tokens).
+// In dev/test, generate a random per-boot secret (sessions die on restart —
+// acceptable for local work) so no real secret ever lives in source.
+const JWT_SECRET = process.env.JWT_SECRET
+  || (process.env.NODE_ENV === 'production'
+    ? (() => {
+        console.error('[SECURITY FATAL] JWT_SECRET environment variable is REQUIRED in production. Refusing to start.');
+        process.exit(1);
+      })()
+    : (() => {
+        const dev = crypto.randomBytes(32).toString('hex');
+        console.warn('[SECURITY ADVISORY] JWT_SECRET not set — using a RANDOM per-boot secret (dev only). All sessions will be invalidated on restart.');
+        return dev;
+      })());
 
 export interface JwtPayload {
   sub: string;       // User ID

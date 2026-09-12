@@ -10,11 +10,12 @@ export class NotificationQueueService {
   private dlqAlerts: Array<{ notification_id: string; order_id: string; error: string; timestamp: string }> = [];
 
   private constructor() {
-    // Background worker to process pending retries every 3 seconds
-    setInterval(() => {
-      this.processRetryQueue();
-    }, 3000);
-  }
+      // Background worker to process pending retries every 3 seconds
+      // (.unref: don't keep the process alive in tests — server listener does)
+      setInterval(() => {
+        this.processRetryQueue();
+      }, 3000).unref();
+    }
 
   public static getInstance(): NotificationQueueService {
     if (!NotificationQueueService.instance) {

@@ -22,7 +22,7 @@ export const paymentRouter = Router();
 // ------------------------------------------------------------------------------
 // 1. CREATE PAYMENT (Section 38, 11 - Idempotent, Authenticated)
 // ------------------------------------------------------------------------------
-paymentRouter.post('/', requireAuth, async (req: AuthenticatedRequest, res: Response) => {
+paymentRouter.post('/', requireAuth, requireRole('ADMIN'), async (req: AuthenticatedRequest, res: Response) => {
   try {
     const {
       idempotency_key,
@@ -168,7 +168,7 @@ paymentRouter.post('/', requireAuth, async (req: AuthenticatedRequest, res: Resp
 // ------------------------------------------------------------------------------
 // 2. GET PAYMENT STATUS (Section 39 - Redacted)
 // ------------------------------------------------------------------------------
-paymentRouter.get('/:id', (req: Request, res: Response) => {
+paymentRouter.get('/:id', requireAuth, (req: AuthenticatedRequest, res: Response) => {
   const tx = paymentStore.transactions.get(req.params.id);
   if (!tx) {
     return res.status(404).json({
@@ -176,6 +176,16 @@ paymentRouter.get('/:id', (req: Request, res: Response) => {
         code: 'PAYMENT_NOT_FOUND',
         message: `Payment ${req.params.id} does not exist.`
       }
+    });
+  }
+
+  // CYBERPOOL SECURITY FIX (IDOR): users may only view their own payments,
+  // unless they hold ADMIN or higher (payments are treasury/ops data).
+  const user = req.user!;
+  const isAdmin = user.role === 'ADMIN' || user.role === 'SUPER_ADMIN' || user.role === 'MODERATOR' || user.role === 'FINANCE';
+  if (tx.user_id !== user.id && !isAdmin) {
+    return res.status(403).json({
+      error: { code: 'FORBIDDEN', message: 'You do not have permission to view this payment.' }
     });
   }
 
@@ -200,11 +210,22 @@ paymentRouter.get('/:id', (req: Request, res: Response) => {
 // ------------------------------------------------------------------------------
 // 3. CANCEL PAYMENT (Section 40 - Only when CREATED, QUEUED, RETRY_WAIT)
 // ------------------------------------------------------------------------------
-paymentRouter.post('/:id/cancel', (req: Request, res: Response) => {
+paymentRouter.post('/:id/cancel', requireAuth, (req: AuthenticatedRequest, res: Response) => {
   const tx = paymentStore.transactions.get(req.params.id);
   if (!tx) {
     return res.status(404).json({
       error: { code: 'PAYMENT_NOT_FOUND', message: 'Payment does not exist.' }
+    });
+  }
+
+  // CYBERPOOL SECURITY FIX (IDOR): only the payment owner or an admin may
+  // cancel it — previously anyone (even unauthenticated) could cancel another
+  // user's in-flight payment.
+  const user = req.user!;
+  const isAdmin = user.role === 'ADMIN' || user.role === 'SUPER_ADMIN' || user.role === 'MODERATOR' || user.role === 'FINANCE';
+  if (tx.user_id !== user.id && !isAdmin) {
+    return res.status(403).json({
+      error: { code: 'FORBIDDEN', message: 'You do not have permission to cancel this payment.' }
     });
   }
 

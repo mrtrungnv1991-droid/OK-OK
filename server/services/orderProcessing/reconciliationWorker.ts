@@ -46,23 +46,23 @@ export class PurchaseReconciliationWorker {
     if (this.intervalTimer) clearInterval(this.intervalTimer);
 
     this.intervalTimer = setInterval(async () => {
-      if (this.isRunning) return;
-      this.isRunning = true;
-      try {
-        const unknownOrders = getUnknownOrders().filter(
-          o => o.status === 'PURCHASE_UNKNOWN' || o.status === 'PURCHASE_RECONCILING'
-        );
+          if (this.isRunning) return;
+          this.isRunning = true;
+          try {
+            const unknownOrders = getUnknownOrders().filter(
+              o => o.status === 'PURCHASE_UNKNOWN' || o.status === 'PURCHASE_RECONCILING'
+            );
 
-        for (const order of unknownOrders) {
-          await this.reconcileSingleOrder(order, updateOrder, deliverOrder);
-        }
-      } catch (err) {
-        console.error('Lỗi trong Reconciliation Worker loop:', err);
-      } finally {
-        this.isRunning = false;
+            for (const order of unknownOrders) {
+              await this.reconcileSingleOrder(order, updateOrder, deliverOrder);
+            }
+          } catch (err) {
+            console.error('Lỗi trong Reconciliation Worker loop:', err);
+          } finally {
+            this.isRunning = false;
+          }
+        }, intervalMs).unref(); // .unref: don't keep the process alive in tests
       }
-    }, intervalMs);
-  }
 
   public stopScheduler() {
     if (this.intervalTimer) {

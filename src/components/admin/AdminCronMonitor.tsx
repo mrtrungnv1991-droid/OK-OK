@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { authFetch } from '../../api/authFetch';
 import { 
   RefreshCw, 
   Activity, 
@@ -54,7 +55,7 @@ export const AdminCronMonitor: React.FC = () => {
 
   const fetchStatus = async () => {
     try {
-      const res = await fetch('/api/v1/cron/status');
+      const res = await authFetch('/api/v1/cron/status');
       const data = await res.json();
       if (data.success && data.data) {
         setStatus(data.data);
@@ -76,7 +77,7 @@ export const AdminCronMonitor: React.FC = () => {
     setTriggering(true);
     setActionMessage(null);
     try {
-      const res = await fetch('/api/v1/cron/trigger', { method: 'POST' });
+      const res = await authFetch('/api/v1/cron/trigger', { method: 'POST' });
       const data = await res.json();
       if (data.success && data.result) {
         setStatus(data.status);
@@ -94,7 +95,7 @@ export const AdminCronMonitor: React.FC = () => {
 
   const handleUpdateConfig = async (newConfig: Partial<CronStatus['config']>) => {
     try {
-      const res = await fetch('/api/v1/cron/config', {
+      const res = await authFetch('/api/v1/cron/config', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(newConfig)

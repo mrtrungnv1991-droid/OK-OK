@@ -846,6 +846,56 @@ export class SupplierManagerService {
     return this.syncJobs.get(jobId) || null;
   }
 
+  // CYBERPOOL FIX: create (or update) a supplier-product mapping for a local
+  // product. Used by the Cyborg pipeline so products it publishes are actually
+  // deliverable: without a mapping, dispatchSupplierOrder returns
+  // isSupplierProduct=false and the buyer gets an auto-refund ("hết hàng")
+  // even though the product shows in the catalog as available.
+  public static upsertProductMappingForLocalProduct(params: {
+    localProductId: string;
+    supplierId: string;
+    supplierProductId: string;
+    supplierPrice: number;
+    calculatedPrice: number;
+    finalSellingPrice: number;
+    deliveryBranch?: DeliveryBranch;
+  }): ProductMappingModel {
+    const mappingKey = `${params.supplierId}_${params.supplierProductId}`;
+    let mapping = this.productMappings.get(mappingKey);
+
+    if (!mapping) {
+      mapping = {
+        id: `map_${Date.now()}_${Math.random().toString(36).substring(2, 6)}`,
+        supplierId: params.supplierId,
+        supplierProductId: params.supplierProductId,
+        localProductId: params.localProductId,
+        supplierPrice: params.supplierPrice,
+        calculatedPrice: params.calculatedPrice,
+        manualPriceOverride: false,
+        finalSellingPrice: params.finalSellingPrice,
+        status: 'ACTIVE',
+        deliveryBranch: params.deliveryBranch,
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString()
+      };
+      this.productMappings.set(mappingKey, mapping);
+    } else {
+      mapping.localProductId = params.localProductId;
+      mapping.supplierPrice = params.supplierPrice;
+      mapping.calculatedPrice = params.calculatedPrice;
+      if (!mapping.manualPriceOverride) {
+        mapping.finalSellingPrice = params.finalSellingPrice;
+      }
+      mapping.deliveryBranch = params.deliveryBranch || mapping.deliveryBranch;
+      mapping.status = 'ACTIVE';
+      mapping.updatedAt = new Date().toISOString();
+    }
+
+    this.localToMapping.set(params.localProductId, mapping);
+    PersistentSupplierStorage.saveProductMappings(this.productMappings);
+    return mapping;
+  }
+
   public static updateProductMapping(mappingId: string, updates: Partial<ProductMappingModel>): boolean {
     for (const mapping of this.productMappings.values()) {
       if (mapping.id === mappingId) {

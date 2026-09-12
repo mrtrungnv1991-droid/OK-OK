@@ -3,8 +3,15 @@ import { SupplierManagerService } from '../../../services/supplierHub/services/S
 import { PRESET_ADAPTERS } from '../../../services/supplierHub/core/ProviderAdapterConfig';
 import { db } from '../../../db/store';
 import { detectDeliveryBranch, BRANCH_CONFIGS, DeliveryBranch } from '../../../services/supplierHub/utils/deliveryBranchDetector';
+import { requireAuth, requireRole, AuthenticatedRequest } from '../../../middleware/authMiddleware';
 
 export const supplierHubRouter = Router();
+
+// CYBERPOOL SECURITY FIX: the entire supplier-hub surface (create/delete
+// suppliers, sync, mappings, diagnostics) mutates the supply chain. It must be
+// ADMIN-only. Previously mounted with zero authentication — any anonymous user
+// could create/delete suppliers and trigger syncs.
+supplierHubRouter.use(requireAuth, requireRole('ADMIN'));
 
 // 1. Get all suppliers
 supplierHubRouter.get('/suppliers', (req, res) => {

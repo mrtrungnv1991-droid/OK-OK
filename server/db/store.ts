@@ -1,13 +1,14 @@
-import { 
-  ServerUser, 
-  ServerWalletTransaction, 
-  ServerInventoryItem, 
-  ServerEscrowContract, 
-  ServerOrder, 
-  ServerAuditLog, 
+import {
+  ServerUser,
+  ServerWalletTransaction,
+  ServerInventoryItem,
+  ServerEscrowContract,
+  ServerOrder,
+  ServerAuditLog,
   ServerReview,
-  ServerProductTranslation 
+  ServerProductTranslation
 } from '../types';
+import crypto from 'crypto';
 import { hashPassword } from '../utils/authSecurity';
 import { INITIAL_PRODUCTS } from '../../src/data/mockProducts';
 import { INITIAL_GAMES, INITIAL_SUPPLIERS } from '../../src/data/mockTopupGames';
@@ -34,7 +35,8 @@ class DatabaseStore {
   public systemConfig: any = {};
   public telcoCards: Map<string, any> = new Map();
   public processedWebhooks: Map<string, { amount: number; userId: string; status: string; processedAt: string; provider: string; memo?: string }> = new Map();
-  public pendingUnmappedDeposits: Array<{ id: string; provider: string; transactionId: string; amount: number; memo: string; rawPayload: any; receivedAt: string; status: 'PENDING_REVIEW' | 'RESOLVED' | 'REJECTED' }> = [];
+    public depositIntents: Map<string, { id: string; userId: string; amount: number; methodTitle: string; idempotencyKey: string; status: string; createdAt: string; expiresAt: string }> = new Map();
+    public pendingUnmappedDeposits: Array<{ id: string; provider: string; transactionId: string; amount: number; memo: string; rawPayload: any; receivedAt: string; status: 'PENDING_REVIEW' | 'RESOLVED' | 'REJECTED' }> = [];
 
   // Mutex lock trackers
   private inventoryLocks: Set<string> = new Set();
@@ -45,15 +47,30 @@ class DatabaseStore {
   }
 
   private seedDatabase() {
-    // 1. Users
-    const defaultUsers: ServerUser[] = [
-      {
-        id: 'usr-admin-01',
-        email: 'admin@cyberpool.vn',
-        name: 'CyberPool SuperAdmin',
-        role: 'SUPER_ADMIN',
-        passwordHash: hashPassword('Admin@CyberPool2026!'),
-        walletBalance: 50000000,
+      // 1. Users
+      const isProduction = process.env.NODE_ENV === 'production';
+
+      // CYBERPOOL SECURITY FIX: the default SUPER_ADMIN credential
+      // (admin@cyberpool.vn / Admin@CyberPool2026!) is hardcoded in this public
+      // repo. In production we never seed it — instead generate a random
+      // one-time password logged to the operator so the known default cannot be
+      // used to log into a live system.
+      const adminSeedPassword = isProduction
+        ? (() => {
+            const gen = crypto.randomBytes(9).toString('base64url');
+            console.warn('[SECURITY] Seeded SUPER_ADMIN with a RANDOM one-time password: ' + gen);
+            return gen;
+          })()
+        : 'Admin@CyberPool2026!';
+
+      const defaultUsers: ServerUser[] = [
+        {
+          id: 'usr-admin-01',
+          email: 'admin@cyberpool.vn',
+          name: 'CyberPool SuperAdmin',
+          role: 'SUPER_ADMIN',
+          passwordHash: hashPassword(adminSeedPassword),
+          walletBalance: 50000000,
         escrowLocked: 0,
         affiliateEarnings: 2450000,
         avatar: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=150&q=80',

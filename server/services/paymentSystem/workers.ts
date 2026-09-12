@@ -392,45 +392,47 @@ export class PaymentWorkerService {
    * - Reconciliation Check (Section 33, 34)
    */
   private startBackgroundLoops(): void {
-    // 1. Balance check worker (every 60 seconds)
-    setInterval(async () => {
-      try {
-        const accounts = Array.from(paymentStore.accounts.values());
-        for (const account of accounts) {
-          if (account.status === 'ACTIVE' || account.status === 'LOW_BALANCE') {
-            const adapter = this.getAdapter(account.provider_id);
-            const res = await adapter.getBalance(account);
-            account.balance = res.verifiedBalance;
-            account.available_balance = account.balance - account.reserved_balance;
-            account.last_balance_check = new Date().toISOString();
+      // 1. Balance check worker (every 60 seconds)
+      // (.unref() on all background loops: they must not keep the process alive
+      //  during tests — the HTTP server listener keeps production alive)
+      setInterval(async () => {
+        try {
+          const accounts = Array.from(paymentStore.accounts.values());
+          for (const account of accounts) {
+            if (account.status === 'ACTIVE' || account.status === 'LOW_BALANCE') {
+              const adapter = this.getAdapter(account.provider_id);
+              const res = await adapter.getBalance(account);
+              account.balance = res.verifiedBalance;
+              account.available_balance = account.balance - account.reserved_balance;
+              account.last_balance_check = new Date().toISOString();
 
-            // Auto-flag low balance
-            if (account.available_balance < 500000 && account.status === 'ACTIVE') {
-              account.status = 'LOW_BALANCE';
-            } else if (account.available_balance >= 500000 && account.status === 'LOW_BALANCE') {
-              account.status = 'ACTIVE';
+              // Auto-flag low balance
+              if (account.available_balance < 500000 && account.status === 'ACTIVE') {
+                account.status = 'LOW_BALANCE';
+              } else if (account.available_balance >= 500000 && account.status === 'LOW_BALANCE') {
+                account.status = 'ACTIVE';
+              }
             }
           }
+        } catch (e) {
+          console.error('[BalanceWorker] Error in periodic polling:', e);
         }
-      } catch (e) {
-        console.error('[BalanceWorker] Error in periodic polling:', e);
-      }
-    }, 60000);
+      }, 60000).unref();
 
-    // 2. Reservation GC (clean stale reservations from crashed workers)
-    setInterval(() => {
-      try {
-        balanceReservationEngine.cleanExpiredReservations(paymentStore.accounts);
-      } catch (e) {
-        console.error('[ReservationGC] Error cleaning expired reservations:', e);
-      }
-    }, 30000);
+      // 2. Reservation GC (clean stale reservations from crashed workers)
+      setInterval(() => {
+        try {
+          balanceReservationEngine.cleanExpiredReservations(paymentStore.accounts);
+        } catch (e) {
+          console.error('[ReservationGC] Error cleaning expired reservations:', e);
+        }
+      }, 30000).unref();
 
-    // 3. Automated Reconciliation Worker (every 15 minutes / 900s or on demand)
-    setInterval(() => {
-      this.runReconciliation();
-    }, 900000);
-  }
+      // 3. Automated Reconciliation Worker (every 15 minutes / 900s or on demand)
+      setInterval(() => {
+        this.runReconciliation();
+      }, 900000).unref();
+    }
 
   /**
    * Run full Reconciliation cross-check (Section 33, 34)

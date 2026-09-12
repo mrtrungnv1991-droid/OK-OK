@@ -4,6 +4,7 @@
 // ==============================================================================
 
 import React, { useState, useEffect } from 'react';
+import { authFetch } from '../../api/authFetch';
 import {
   DollarSign,
   ShieldCheck,
@@ -156,12 +157,12 @@ export const AdminPaymentSystemTab: React.FC<{ currency: CurrencyCode }> = ({ cu
     setIsLoading(true);
     try {
       const [healthRes, accRes, txRes, recRes, dlqRes, audRes] = await Promise.all([
-        fetch('/api/v1/payments/admin/system-health'),
-        fetch('/api/v1/payments/admin/accounts'),
-        fetch('/api/v1/payments/admin/transactions?limit=50'),
-        fetch('/api/v1/payments/admin/reconciliation'),
-        fetch('/api/v1/payments/admin/dlq'),
-        fetch('/api/v1/payments/admin/audit-logs?limit=30')
+        authFetch('/api/v1/payments/admin/system-health'),
+        authFetch('/api/v1/payments/admin/accounts'),
+        authFetch('/api/v1/payments/admin/transactions?limit=50'),
+        authFetch('/api/v1/payments/admin/reconciliation'),
+        authFetch('/api/v1/payments/admin/dlq'),
+        authFetch('/api/v1/payments/admin/audit-logs?limit=30')
       ]);
 
       if (healthRes.ok) setHealthData(await healthRes.json());
@@ -194,7 +195,7 @@ export const AdminPaymentSystemTab: React.FC<{ currency: CurrencyCode }> = ({ cu
   // Actions
   const handlePauseAccount = async (id: string) => {
     try {
-      const res = await fetch(`/api/v1/payments/admin/accounts/${id}/pause`, { method: 'POST' });
+      const res = await authFetch(`/api/v1/payments/admin/accounts/${id}/pause`, { method: 'POST' });
       if (res.ok) {
         setStatusMessage(`Tài khoản nguồn ${id} đã chuyển sang trạng thái PAUSED.`);
         fetchData();
@@ -206,7 +207,7 @@ export const AdminPaymentSystemTab: React.FC<{ currency: CurrencyCode }> = ({ cu
 
   const handleResumeAccount = async (id: string) => {
     try {
-      const res = await fetch(`/api/v1/payments/admin/accounts/${id}/resume`, { method: 'POST' });
+      const res = await authFetch(`/api/v1/payments/admin/accounts/${id}/resume`, { method: 'POST' });
       if (res.ok) {
         setStatusMessage(`Tài khoản nguồn ${id} đã được kích hoạt lại (ACTIVE).`);
         fetchData();
@@ -218,7 +219,7 @@ export const AdminPaymentSystemTab: React.FC<{ currency: CurrencyCode }> = ({ cu
 
   const handleCheckBalance = async (id: string) => {
     try {
-      const res = await fetch(`/api/v1/payments/admin/accounts/${id}/check-balance`, { method: 'POST' });
+      const res = await authFetch(`/api/v1/payments/admin/accounts/${id}/check-balance`, { method: 'POST' });
       if (res.ok) {
         const d = await res.json();
         setStatusMessage(`Đã đối soát số dư thực tế tài khoản ${id}: ${formatMoney(d.verified_balance)} (Delta: ${d.delta})`);
@@ -232,7 +233,7 @@ export const AdminPaymentSystemTab: React.FC<{ currency: CurrencyCode }> = ({ cu
   const handleCreateAccount = async (e: React.FormEvent) => {
     e.preventDefault();
     try {
-      const res = await fetch('/api/v1/payments/admin/accounts', {
+      const res = await authFetch('/api/v1/payments/admin/accounts', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(newAccountForm)
@@ -250,7 +251,7 @@ export const AdminPaymentSystemTab: React.FC<{ currency: CurrencyCode }> = ({ cu
   const handleManualReview = async (action: 'MANUAL_SUCCESS' | 'MANUAL_FAIL') => {
     if (!selectedTx) return;
     try {
-      const res = await fetch(`/api/v1/payments/admin/transactions/${selectedTx.id}/review`, {
+      const res = await authFetch(`/api/v1/payments/admin/transactions/${selectedTx.id}/review`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ action, notes: manualReviewNote || 'Admin resolved manual review' })
@@ -268,7 +269,7 @@ export const AdminPaymentSystemTab: React.FC<{ currency: CurrencyCode }> = ({ cu
 
   const handleForceRetry = async (txId: string) => {
     try {
-      const res = await fetch(`/api/v1/payments/admin/transactions/${txId}/retry`, { method: 'POST' });
+      const res = await authFetch(`/api/v1/payments/admin/transactions/${txId}/retry`, { method: 'POST' });
       if (res.ok) {
         setStatusMessage(`Đã đưa giao dịch ${txId} trở lại hàng đợi Worker để thử lại.`);
         fetchData();
@@ -280,7 +281,7 @@ export const AdminPaymentSystemTab: React.FC<{ currency: CurrencyCode }> = ({ cu
 
   const handleResetCircuit = async (providerId: string) => {
     try {
-      const res = await fetch(`/api/v1/payments/admin/providers/${providerId}/reset-circuit`, { method: 'POST' });
+      const res = await authFetch(`/api/v1/payments/admin/providers/${providerId}/reset-circuit`, { method: 'POST' });
       if (res.ok) {
         setStatusMessage(`Đã reset Circuit Breaker cho nhà cung cấp ${providerId} về trạng thái CLOSED.`);
         fetchData();
@@ -293,7 +294,7 @@ export const AdminPaymentSystemTab: React.FC<{ currency: CurrencyCode }> = ({ cu
   const handleRunReconciliation = async () => {
     try {
       setIsLoading(true);
-      const res = await fetch('/api/v1/payments/admin/reconciliation/run', { method: 'POST' });
+      const res = await authFetch('/api/v1/payments/admin/reconciliation/run', { method: 'POST' });
       if (res.ok) {
         const report = await res.json();
         setStatusMessage(`Hoàn tất đối soát: Đã quét ${report.checkedTransactions} giao dịch & ${report.checkedAccounts} tài khoản nguồn.`);
@@ -313,7 +314,7 @@ export const AdminPaymentSystemTab: React.FC<{ currency: CurrencyCode }> = ({ cu
   const confirmToggleLiveMode = async () => {
     const nextMode = !healthData?.live_mode;
     try {
-      const res = await fetch('/api/v1/payments/admin/system-config', {
+      const res = await authFetch('/api/v1/payments/admin/system-config', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ payment_live_mode: nextMode })
@@ -341,7 +342,7 @@ export const AdminPaymentSystemTab: React.FC<{ currency: CurrencyCode }> = ({ cu
         addLog(`Tạo khóa Idempotency duy nhất: ${idempotencyKey}`);
 
         addLog('Request 1: POST /api/v1/payments (Số tiền: 200,000 VND, Recipient: UID_PLAYER_99)');
-        const res1 = await fetch('/api/v1/payments', {
+        const res1 = await authFetch('/api/v1/payments', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
@@ -355,7 +356,7 @@ export const AdminPaymentSystemTab: React.FC<{ currency: CurrencyCode }> = ({ cu
         addLog(`Kết quả Request 1: HTTP ${res1.status} -> Payment ID: ${d1.payment_id}, Trạng thái: ${d1.status}`);
 
         addLog('Request 2: Gửi LẠI CÙNG Khóa Idempotency (Mô phỏng mạng giật, client retry 2 lần)');
-        const res2 = await fetch('/api/v1/payments', {
+        const res2 = await authFetch('/api/v1/payments', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
@@ -372,7 +373,7 @@ export const AdminPaymentSystemTab: React.FC<{ currency: CurrencyCode }> = ({ cu
       } else if (type === 'TIMEOUT_UNKNOWN_RECOVERY') {
         addLog('--- BẮT ĐẦU TEST TIMEOUT & TRẠNG THÁI UNKNOWN ---');
         addLog('Cấu hình Mock Adapter kịch bản: TIMEOUT (Simulated 504 Gateway Timeout)');
-        await fetch('/api/v1/payments/dev/mock/simulate', {
+        await authFetch('/api/v1/payments/dev/mock/simulate', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ scenario: 'TIMEOUT', latencyMs: 400 })
@@ -380,7 +381,7 @@ export const AdminPaymentSystemTab: React.FC<{ currency: CurrencyCode }> = ({ cu
 
         const txKey = `TEST_TIMEOUT_${Date.now()}`;
         addLog(`Gửi giao dịch kiểm thử: ${txKey}`);
-        const res = await fetch('/api/v1/payments', {
+        const res = await authFetch('/api/v1/payments', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
@@ -395,13 +396,13 @@ export const AdminPaymentSystemTab: React.FC<{ currency: CurrencyCode }> = ({ cu
 
         // Wait 1.5s to let worker process
         await new Promise(r => setTimeout(r, 1500));
-        const statusRes = await fetch(`/api/v1/payments/${d.payment_id}`);
+        const statusRes = await authFetch(`/api/v1/payments/${d.payment_id}`);
         const statusData = await statusRes.json();
         addLog(`Trạng thái sau timeout: ${statusData.status} (Mã lỗi: ${statusData.last_error_code})`);
         addLog('=> TUÂN THỦ SECTION 18: Không lập tức tạo transaction mới khi UNKNOWN; hệ thống tự động đưa vào quy trình tra soát hoặc Manual Review!');
 
         // Reset adapter scenario
-        await fetch('/api/v1/payments/dev/mock/simulate', {
+        await authFetch('/api/v1/payments/dev/mock/simulate', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ scenario: 'SUCCESS', latencyMs: 200 })
@@ -410,7 +411,7 @@ export const AdminPaymentSystemTab: React.FC<{ currency: CurrencyCode }> = ({ cu
       } else if (type === 'CIRCUIT_BREAKER_TEST') {
         addLog('--- BẮT ĐẦU TEST CIRCUIT BREAKER ---');
         addLog('Cấu hình kịch bản lỗi liên tiếp để kiểm tra ngắt mạch');
-        await fetch('/api/v1/payments/dev/mock/simulate', {
+        await authFetch('/api/v1/payments/dev/mock/simulate', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ scenario: 'SERVER_500', latencyMs: 50 })
@@ -418,7 +419,7 @@ export const AdminPaymentSystemTab: React.FC<{ currency: CurrencyCode }> = ({ cu
 
         for (let i = 1; i <= 5; i++) {
           addLog(`Gửi request lỗi #${i}...`);
-          await fetch('/api/v1/payments', {
+          await authFetch('/api/v1/payments', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
@@ -432,19 +433,19 @@ export const AdminPaymentSystemTab: React.FC<{ currency: CurrencyCode }> = ({ cu
         }
 
         addLog('Đã chạm ngưỡng 5 lỗi liên tiếp. Kiểm tra trạng thái Circuit Breaker...');
-        const healthRes = await fetch('/api/v1/payments/admin/system-health');
+        const healthRes = await authFetch('/api/v1/payments/admin/system-health');
         const h = await healthRes.json();
         const p = h.providers.find((item: any) => item.provider_id === 'mock_game_topup_v1');
         addLog(`Trạng thái Circuit Breaker: ${p?.circuit_breaker_current?.state || 'OPEN'}`);
         addLog('=> Cầu dao đã chuyển sang OPEN để bảo vệ hệ thống khỏi quá tải lỗi đối tác!');
 
         // Reset
-        await fetch('/api/v1/payments/dev/mock/simulate', {
+        await authFetch('/api/v1/payments/dev/mock/simulate', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ scenario: 'SUCCESS', latencyMs: 200 })
         });
-        await fetch('/api/v1/payments/admin/providers/mock_game_topup_v1/reset-circuit', { method: 'POST' });
+        await authFetch('/api/v1/payments/admin/providers/mock_game_topup_v1/reset-circuit', { method: 'POST' });
         addLog('Đã khôi phục cầu dao về CLOSED.');
       }
       fetchData();

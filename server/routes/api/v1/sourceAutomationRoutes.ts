@@ -1,7 +1,12 @@
 import { Router } from 'express';
 import { sourceAutomationService } from '../../../services/sourceAutomationService';
+import { requireAuth, requireRole } from '../../../middleware/authMiddleware';
 
 export const sourceAutomationRouter = Router();
+
+// CYBERPOOL SECURITY FIX: source automation controls supplier accounts and
+// telegram integration — previously mounted with zero authentication.
+sourceAutomationRouter.use(requireAuth, requireRole('ADMIN'));
 
 // GET all configurations and state
 sourceAutomationRouter.get('/config', (req, res) => {

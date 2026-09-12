@@ -15,11 +15,12 @@ export class DistributedOrderLock {
   private locks: Map<string, LockEntry> = new Map();
 
   private constructor() {
-    // Periodic garbage collector for expired locks every 10 seconds
-    setInterval(() => {
-      this.cleanupExpiredLocks();
-    }, 10000);
-  }
+      // Periodic garbage collector for expired locks every 10 seconds
+      // (.unref: don't keep the process alive in tests — server listener does)
+      setInterval(() => {
+        this.cleanupExpiredLocks();
+      }, 10000).unref();
+    }
 
   public static getInstance(): DistributedOrderLock {
     if (!DistributedOrderLock.instance) {

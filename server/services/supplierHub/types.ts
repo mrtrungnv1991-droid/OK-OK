@@ -42,7 +42,9 @@ export type SupplierErrorCode =
   | 'TIMEOUT'
   | 'SUPPLIER_ERROR'
   | 'UNKNOWN'
-  | 'ACTION_REQUIRED';
+  | 'ACTION_REQUIRED'
+  | 'SUPPLIER_NO_KEY'
+  | 'SUPPLIER_ENDPOINT_MISSING';
 
 export interface ConnectionCapabilities {
   balance: boolean;

@@ -71,21 +71,35 @@ export const WalletModal: React.FC<WalletModalProps> = ({
 
   const quickAmounts = [100000, 200000, 500000, 1000000, 2000000];
 
-  const handleConfirmDeposit = () => {
-    setIsProcessing(true);
-    setSuccessMsg('');
-    setTimeout(() => {
-      onDeposit(depositAmount);
-      setIsProcessing(false);
-      showToast(`Đã nạp thành công +${formatCurrency(depositAmount, user.currency)} vào ví Escrow!`, 'success', {
-        title: '⚡ NẠP TIỀN THÀNH CÔNG'
-      });
-      setSuccessMsg(`✓ Successfully deposited +${formatCurrency(depositAmount, user.currency)} into Escrow Wallet!`);
+  const handleConfirmDeposit = async () => {
+      setIsProcessing(true);
+      setSuccessMsg('');
+      try {
+        // CYBERPOOL FIX: the deposit API only creates a PENDING intent — the
+        // wallet is credited later by the bank webhook after real transfer
+        // verification. The old UI claimed "Đã nạp thành công" unconditionally,
+        // showing a fake success while no money was added.
+        const result = await onDeposit(depositAmount, 'Chuyển Khoản Ngân Hàng');
+        setIsProcessing(false);
+        if (result?.success) {
+          showToast(`⚠️ Yêu cầu nạp ${formatCurrency(depositAmount, user.currency)} đã được ghi nhận — chờ đối soát ngân hàng tự động (PENDING).`, 'info', {
+            title: '⚡ CHỜ XÁC NHẬN'
+          });
+          setSuccessMsg(`✓ Yêu cầu nạp ${formatCurrency(depositAmount, user.currency)} đã được ghi nhận. Tiền sẽ được cộng vào ví sau khi ngân hàng xác nhận (thường 1-5 phút).`);
+        } else {
+          showToast(result?.error || 'Yêu cầu nạp tiền thất bại!', 'error', {
+            title: 'LỖI NẠP TIỀN'
+          });
+        }
+      } catch (err: any) {
+        setIsProcessing(false);
+        showToast(err?.message || 'Lỗi mạng khi yêu cầu nạp tiền!', 'error', { title: 'LỖI NẠP TIỀN' });
+        return;
+      }
       setTimeout(() => {
         setSuccessMsg('');
-      }, 3000);
-    }, 800);
-  };
+      }, 5000);
+    };
 
   const handleConfirmWithdraw = (e: React.FormEvent) => {
     e.preventDefault();

@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { authFetch } from '../../api/authFetch';
 import { 
   Server, 
   Plus, 
@@ -193,7 +194,7 @@ export const AdminSuppliersTab: React.FC<AdminSuppliersTabProps> = ({
     if (!supplierToDelete) return;
     setIsDeleting(true);
     try {
-      const res = await fetch(`/api/v1/supplier-hub/suppliers/${supplierToDelete.id}`, {
+      const res = await authFetch(`/api/v1/supplier-hub/suppliers/${supplierToDelete.id}`, {
         method: 'DELETE'
       });
       const data = await res.json();
@@ -232,7 +233,7 @@ export const AdminSuppliersTab: React.FC<AdminSuppliersTabProps> = ({
   const fetchSuppliers = async () => {
     try {
       setLoading(true);
-      const res = await fetch('/api/v1/supplier-hub/suppliers');
+      const res = await authFetch('/api/v1/supplier-hub/suppliers');
       const data = await res.json();
       if (data.success) {
         setSuppliersList(data.data || []);
@@ -247,7 +248,7 @@ export const AdminSuppliersTab: React.FC<AdminSuppliersTabProps> = ({
   // Verify DB Persistence status
   const fetchDbVerification = async () => {
     try {
-      const res = await fetch('/api/v1/supplier-hub/diagnostics/database');
+      const res = await authFetch('/api/v1/supplier-hub/diagnostics/database');
       const data = await res.json();
       if (data.success) {
         setDbVerification(data.data);
@@ -279,7 +280,7 @@ export const AdminSuppliersTab: React.FC<AdminSuppliersTabProps> = ({
     setTestingId(supplier.id);
     setActionNotice(null);
     try {
-      const res = await fetch(`/api/v1/supplier-hub/suppliers/${supplier.id}/test-connection`, {
+      const res = await authFetch(`/api/v1/supplier-hub/suppliers/${supplier.id}/test-connection`, {
         method: 'POST'
       });
       const data = await res.json();
@@ -328,7 +329,7 @@ export const AdminSuppliersTab: React.FC<AdminSuppliersTabProps> = ({
   // Refresh Balance
   const handleRefreshBalance = async (supplierId: string) => {
     try {
-      const res = await fetch(`/api/v1/supplier-hub/suppliers/${supplierId}/refresh-balance`, {
+      const res = await authFetch(`/api/v1/supplier-hub/suppliers/${supplierId}/refresh-balance`, {
         method: 'POST'
       });
       const data = await res.json();
@@ -371,7 +372,7 @@ export const AdminSuppliersTab: React.FC<AdminSuppliersTabProps> = ({
     });
 
     try {
-      const res = await fetch(`/api/v1/supplier-hub/suppliers/${supplier.id}/sync-products`, {
+      const res = await authFetch(`/api/v1/supplier-hub/suppliers/${supplier.id}/sync-products`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ mode: 'FULL' })
@@ -416,7 +417,7 @@ export const AdminSuppliersTab: React.FC<AdminSuppliersTabProps> = ({
     setSelectedSupplier(supplier);
     setIsMappingModalOpen(true);
     try {
-      const res = await fetch(`/api/v1/supplier-hub/suppliers/${supplier.id}/mappings`);
+      const res = await authFetch(`/api/v1/supplier-hub/suppliers/${supplier.id}/mappings`);
       const data = await res.json();
       if (data.success) {
         setSupplierMappings(data.data || []);
@@ -430,7 +431,7 @@ export const AdminSuppliersTab: React.FC<AdminSuppliersTabProps> = ({
   const handleOpenOrders = async () => {
     setIsOrdersModalOpen(true);
     try {
-      const res = await fetch('/api/v1/supplier-hub/orders');
+      const res = await authFetch('/api/v1/supplier-hub/orders');
       const data = await res.json();
       if (data.success) {
         setSupplierOrders(data.data || []);
@@ -468,7 +469,7 @@ export const AdminSuppliersTab: React.FC<AdminSuppliersTabProps> = ({
         payload.apiSecret = newApiSecret;
       }
 
-      const res = await fetch('/api/v1/supplier-hub/suppliers', {
+      const res = await authFetch('/api/v1/supplier-hub/suppliers', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(payload)
@@ -500,7 +501,7 @@ export const AdminSuppliersTab: React.FC<AdminSuppliersTabProps> = ({
   const handleToggleManualOverride = async (mapping: ProductMapping, enableOverride: boolean, customPrice?: number) => {
     try {
       const price = customPrice !== undefined ? customPrice : (mapping.manualPrice || mapping.calculatedPrice);
-      await fetch(`/api/v1/supplier-hub/mappings/${mapping.id}`, {
+      await authFetch(`/api/v1/supplier-hub/mappings/${mapping.id}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -560,7 +561,7 @@ export const AdminSuppliersTab: React.FC<AdminSuppliersTabProps> = ({
         }
       }
 
-      const res = await fetch(`/api/v1/supplier-hub/mappings/${mapping.id}`, {
+      const res = await authFetch(`/api/v1/supplier-hub/mappings/${mapping.id}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({

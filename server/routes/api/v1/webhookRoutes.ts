@@ -44,14 +44,15 @@ function resolveUserFromTransaction(content: string = ''): ServerUser | null {
   const rawMemo = (content || '').trim();
   if (!rawMemo) return null;
 
-  // 1. Search for usr-* pattern in content
-  const userPatternMatch = rawMemo.match(/(usr-[a-zA-Z0-9_-]+)/i);
-  if (userPatternMatch) {
-    const candidateId = userPatternMatch[1];
-    if (db.users.has(candidateId)) {
-      return db.users.get(candidateId)!;
+  // 1. Search for usr-* pattern in content (case-insensitive on BOTH sides:
+    // banks often normalize memo to uppercase, and our keys are lowercase)
+    const userPatternMatch = rawMemo.match(/(usr-[a-zA-Z0-9_-]+)/i);
+    if (userPatternMatch) {
+      const candidateId = userPatternMatch[1].toLowerCase();
+      if (db.users.has(candidateId)) {
+        return db.users.get(candidateId)!;
+      }
     }
-  }
 
   // 2. Search for email in content
   const emailMatch = rawMemo.match(/([a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,})/i);
@@ -551,5 +552,87 @@ webhookRouter.get('/unmapped-deposits', requireAuth, requireRole('ADMIN'), (req:
     unmappedDeposits: db.pendingUnmappedDeposits,
     processedCount: db.processedWebhooks.size
   });
+});
+
+// POST /api/v1/webhooks/unmapped-deposits/:id/resolve - Admin manually maps an
+// unmapped deposit to a user and credits the wallet (with idempotency guard).
+// CYBERPOOL FIX: previously there was NO way to process pendingUnmappedDeposits —
+// real deposits that could not be matched to a user were stuck forever.
+webhookRouter.post('/unmapped-deposits/:id/resolve', requireAuth, requireRole('ADMIN'), async (req: AuthenticatedRequest, res: Response) => {
+  const recordIdx = db.pendingUnmappedDeposits.findIndex(r => r.id === req.params.id);
+  if (recordIdx === -1) {
+    return res.status(404).json({ success: false, error: 'Không tìm thấy giao dịch chưa đối soát với id này.' });
+  }
+
+  const record = db.pendingUnmappedDeposits[recordIdx];
+  if (record.status !== 'PENDING_REVIEW') {
+    return res.status(400).json({ success: false, error: 'Giao dịch này đã được xử lý trước đó (RESOLVED/REJECTED).' });
+  }
+
+  const { userId, action } = req.body || {};
+  if (action === 'REJECT') {
+    record.status = 'REJECTED';
+    db.pendingUnmappedDeposits[recordIdx] = record;
+    return res.json({ success: true, message: 'Đã từ chối giao dịch chưa đối soát.', record });
+  }
+
+  if (!userId || typeof userId !== 'string') {
+    return res.status(400).json({ success: false, error: 'Thiếu userId để đối soát thủ công.' });
+  }
+  const targetUser = db.users.get(userId);
+  if (!targetUser) {
+    return res.status(400).json({ success: false, error: `Người dùng ${userId} không tồn tại.` });
+  }
+
+  // Idempotency guard: never credit the same bank transaction twice.
+  if (IdempotencyService.isProcessed(record.transactionId)) {
+    record.status = 'RESOLVED';
+    db.pendingUnmappedDeposits[recordIdx] = record;
+    return res.json({ success: false, error: 'Giao dịch này đã được cộng tiền trước đó.', idempotent: true });
+  }
+
+  const lockAcquired = await IdempotencyService.acquireLock(record.transactionId);
+  if (!lockAcquired) {
+    return res.status(429).json({ success: false, error: 'Giao dịch đang được xử lý đồng thời.' });
+  }
+
+  try {
+    await LedgerService.executeTransaction({
+      userId: targetUser.id,
+      amount: Number(record.amount),
+      type: 'DEPOSIT',
+      description: `Đối soát thủ công admin: ${record.memo || record.transactionId}`,
+      referenceId: record.transactionId,
+      actorId: req.user?.id || 'ADMIN',
+      actorName: req.user?.name || 'Admin Support'
+    });
+
+    record.status = 'RESOLVED';
+    db.pendingUnmappedDeposits[recordIdx] = record;
+    db.processedWebhooks.set(record.transactionId, {
+      amount: Number(record.amount),
+      userId: targetUser.id,
+      status: 'COMPLETED',
+      processedAt: new Date().toISOString(),
+      provider: record.provider
+    });
+
+    IdempotencyService.commit({
+      primaryKey: record.transactionId,
+      provider: record.provider || 'MANUAL',
+      referenceId: record.transactionId,
+      memo: record.memo,
+      amount: Number(record.amount),
+      userId: targetUser.id
+    });
+
+    return res.json({
+      success: true,
+      message: `Đã cộng ${Number(record.amount).toLocaleString('vi-VN')}đ vào ví ${targetUser.name} (${targetUser.id}).`,
+      record
+    });
+  } catch (err: any) {
+    return res.status(500).json({ success: false, error: `Lỗi khi cộng tiền: ${err?.message}` });
+  }
 });
 

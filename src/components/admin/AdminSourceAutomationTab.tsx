@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { authFetch } from '../../api/authFetch';
 import { 
   Bot, 
   Send, 
@@ -169,7 +170,7 @@ export const AdminSourceAutomationTab: React.FC<AdminSourceAutomationTabProps> =
     setTestNotice('Đang gửi thông báo kiểm tra đến Telegram...');
     
     try {
-      const res = await fetch('/api/v1/source-automation/test-telegram', {
+      const res = await authFetch('/api/v1/source-automation/test-telegram', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({

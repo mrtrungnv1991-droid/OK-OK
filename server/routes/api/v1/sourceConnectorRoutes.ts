@@ -6,8 +6,13 @@ import { sourceConnectorService } from '../../../services/sourceConnector/source
 import { BUILT_IN_SCANNER_PROFILES } from '../../../services/sourceConnector/scannerProfile';
 import { categoryMapper } from '../../../services/sourceConnector/categoryMapper';
 import { cyborgPipelineService } from '../../../services/sourceConnector/cyborgPipelineService';
+import { requireAuth, requireRole } from '../../../middleware/authMiddleware';
 
 export const sourceConnectorRouter = Router();
+
+// CYBERPOOL SECURITY FIX: source connector manages supplier accounts, scan jobs
+// and product publishing — previously mounted with zero authentication.
+sourceConnectorRouter.use(requireAuth, requireRole('ADMIN'));
 
 // 1. Get Accounts
 sourceConnectorRouter.get('/accounts', (req, res) => {

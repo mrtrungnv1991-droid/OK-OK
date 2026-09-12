@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { authFetch } from '../../api/authFetch';
 import {
   ShieldAlert,
   ShieldCheck,
@@ -75,12 +76,12 @@ export const AdminOrderReliabilityTab: React.FC<AdminOrderReliabilityTabProps> =
     try {
       setLoading(true);
       const [ordersRes, metricsRes, breakersRes, locksRes, notifsRes, vaultRes] = await Promise.all([
-        fetch(`/api/v1/reliable-orders?status=${selectedStatusFilter}`).then(r => r.json()),
-        fetch('/api/v1/reliable-orders/metrics').then(r => r.json()),
-        fetch('/api/v1/reliable-orders/circuit-breakers').then(r => r.json()),
-        fetch('/api/v1/reliable-orders/locks').then(r => r.json()),
-        fetch('/api/v1/reliable-orders/notifications').then(r => r.json()),
-        fetch('/api/v1/reliable-orders/vault/overview').then(r => r.json())
+        authFetch(`/api/v1/reliable-orders?status=${selectedStatusFilter}`).then(r => r.json()),
+        authFetch('/api/v1/reliable-orders/metrics').then(r => r.json()),
+        authFetch('/api/v1/reliable-orders/circuit-breakers').then(r => r.json()),
+        authFetch('/api/v1/reliable-orders/locks').then(r => r.json()),
+        authFetch('/api/v1/reliable-orders/notifications').then(r => r.json()),
+        authFetch('/api/v1/reliable-orders/vault/overview').then(r => r.json())
       ]);
 
       if (ordersRes.success) setOrders(ordersRes.data || []);
@@ -105,7 +106,7 @@ export const AdminOrderReliabilityTab: React.FC<AdminOrderReliabilityTabProps> =
   // Load chat messages when selectedChatOrderId changes
   useEffect(() => {
     if (selectedChatOrderId) {
-      fetch(`/api/v1/reliable-orders/${selectedChatOrderId}/chat`)
+      authFetch(`/api/v1/reliable-orders/${selectedChatOrderId}/chat`)
         .then(r => r.json())
         .then(data => {
           if (data.success) setChatMessages(data.data || []);
@@ -117,7 +118,7 @@ export const AdminOrderReliabilityTab: React.FC<AdminOrderReliabilityTabProps> =
   const handleReconcileOrder = async (orderId: string) => {
     setActionNotice(`Đang chạy đối soát cho đơn #${orderId}...`);
     try {
-      const res = await fetch(`/api/v1/reliable-orders/${orderId}/reconcile`, { method: 'POST' });
+      const res = await authFetch(`/api/v1/reliable-orders/${orderId}/reconcile`, { method: 'POST' });
       const data = await res.json();
       setActionNotice(data.message);
       fetchData();
@@ -130,7 +131,7 @@ export const AdminOrderReliabilityTab: React.FC<AdminOrderReliabilityTabProps> =
   const handleReconcileAll = async () => {
     setActionNotice('Đang chạy Reconciliation Worker trên toàn bộ đơn chưa xác định...');
     try {
-      const res = await fetch('/api/v1/reliable-orders/reconcile-all', { method: 'POST' });
+      const res = await authFetch('/api/v1/reliable-orders/reconcile-all', { method: 'POST' });
       const data = await res.json();
       setActionNotice(data.message);
       fetchData();
@@ -143,7 +144,7 @@ export const AdminOrderReliabilityTab: React.FC<AdminOrderReliabilityTabProps> =
   const handleConfirmBalance = async (orderId: string) => {
     setActionNotice(`Đang xác nhận nạp tiền và kích hoạt mua đơn #${orderId}...`);
     try {
-      const res = await fetch(`/api/v1/reliable-orders/${orderId}/confirm-balance`, { method: 'POST' });
+      const res = await authFetch(`/api/v1/reliable-orders/${orderId}/confirm-balance`, { method: 'POST' });
       const data = await res.json();
       setActionNotice(data.message);
       fetchData();
@@ -156,7 +157,7 @@ export const AdminOrderReliabilityTab: React.FC<AdminOrderReliabilityTabProps> =
   const handleAutoFixOrder = async (orderId: string) => {
     setActionNotice(`Đang tự động xử lý & khắc phục lỗi cho đơn #${orderId}...`);
     try {
-      const res = await fetch(`/api/v1/reliable-orders/${orderId}/auto-fix`, { method: 'POST' });
+      const res = await authFetch(`/api/v1/reliable-orders/${orderId}/auto-fix`, { method: 'POST' });
       const data = await res.json();
       setActionNotice(data.message || (data.success ? 'Đã khắc phục thành công!' : 'Thao tác không thành công'));
       fetchData();
@@ -169,7 +170,7 @@ export const AdminOrderReliabilityTab: React.FC<AdminOrderReliabilityTabProps> =
   const handleAutoFixAll = async () => {
     setActionNotice('Đang tự động kiểm tra và khắc phục toàn bộ đơn hàng có lỗi/chờ xử lý...');
     try {
-      const res = await fetch('/api/v1/reliable-orders/fix-all', { method: 'POST' });
+      const res = await authFetch('/api/v1/reliable-orders/fix-all', { method: 'POST' });
       const data = await res.json();
       setActionNotice(data.message || 'Đã khắc phục xong toàn bộ đơn hàng!');
       fetchData();
@@ -182,7 +183,7 @@ export const AdminOrderReliabilityTab: React.FC<AdminOrderReliabilityTabProps> =
   const handleManualAction = async (orderId: string, action: string, extraData?: any) => {
     setActionNotice(`Đang thực thi lệnh ${action} cho đơn #${orderId}...`);
     try {
-      const res = await fetch(`/api/v1/reliable-orders/${orderId}/manual-action`, {
+      const res = await authFetch(`/api/v1/reliable-orders/${orderId}/manual-action`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ action, ...extraData })
@@ -203,7 +204,7 @@ export const AdminOrderReliabilityTab: React.FC<AdminOrderReliabilityTabProps> =
     }
 
     try {
-      const res = await fetch(`/api/v1/reliable-orders/${orderId}/key?actor_id=admin-ui`);
+      const res = await authFetch(`/api/v1/reliable-orders/${orderId}/key?actor_id=admin-ui`);
       const data = await res.json();
       if (data.success) {
         setDecryptedKeys(prev => ({
@@ -223,7 +224,7 @@ export const AdminOrderReliabilityTab: React.FC<AdminOrderReliabilityTabProps> =
   const handleViewEvents = async (orderId: string) => {
     setSelectedOrderForEvents(orderId);
     try {
-      const res = await fetch(`/api/v1/reliable-orders/${orderId}/events`);
+      const res = await authFetch(`/api/v1/reliable-orders/${orderId}/events`);
       const data = await res.json();
       if (data.success) setOrderEvents(data.data || []);
     } catch (err) {
@@ -236,7 +237,7 @@ export const AdminOrderReliabilityTab: React.FC<AdminOrderReliabilityTabProps> =
     if (!chatInputText.trim()) return;
 
     try {
-      const res = await fetch(`/api/v1/reliable-orders/${selectedChatOrderId}/chat`, {
+      const res = await authFetch(`/api/v1/reliable-orders/${selectedChatOrderId}/chat`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -262,7 +263,7 @@ export const AdminOrderReliabilityTab: React.FC<AdminOrderReliabilityTabProps> =
     setRunningScenario(scenarioKey);
     setScenarioReport(null);
     try {
-      const res = await fetch('/api/v1/reliable-orders/simulate-scenario', {
+      const res = await authFetch('/api/v1/reliable-orders/simulate-scenario', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ scenario: scenarioKey })
@@ -1026,7 +1027,7 @@ export const AdminOrderReliabilityTab: React.FC<AdminOrderReliabilityTabProps> =
                       {item.is_dlq && (
                         <button
                           onClick={async () => {
-                            await fetch(`/api/v1/reliable-orders/notifications/${item.id}/retry`, { method: 'POST' });
+                            await authFetch(`/api/v1/reliable-orders/notifications/${item.id}/retry`, { method: 'POST' });
                             fetchData();
                           }}
                           className="px-2.5 py-1 rounded bg-rose-500/20 hover:bg-rose-500 text-rose-300 hover:text-white font-bold text-xs border border-rose-500/40 cursor-pointer"
@@ -1089,7 +1090,7 @@ export const AdminOrderReliabilityTab: React.FC<AdminOrderReliabilityTabProps> =
                   <div className="flex items-center gap-2 pt-1">
                     <button
                       onClick={async () => {
-                        await fetch('/api/v1/reliable-orders/circuit-breakers/reset', {
+                        await authFetch('/api/v1/reliable-orders/circuit-breakers/reset', {
                           method: 'POST',
                           headers: { 'Content-Type': 'application/json' },
                           body: JSON.stringify({ provider: cb.provider })
@@ -1103,7 +1104,7 @@ export const AdminOrderReliabilityTab: React.FC<AdminOrderReliabilityTabProps> =
 
                     <button
                       onClick={async () => {
-                        await fetch('/api/v1/reliable-orders/circuit-breakers/trip', {
+                        await authFetch('/api/v1/reliable-orders/circuit-breakers/trip', {
                           method: 'POST',
                           headers: { 'Content-Type': 'application/json' },
                           body: JSON.stringify({ provider: cb.provider })

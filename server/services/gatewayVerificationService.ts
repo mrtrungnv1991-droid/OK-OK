@@ -336,22 +336,53 @@ export class GatewayVerificationService {
         console.warn('[TRONSCAN_API_LOOKUP_WARN]', tronErr);
       }
     } else {
-      // BEP20 (BSC)
-      explorerUrl = `https://bscscan.com/tx/${cleanHash}`;
-      try {
-        const bscScanUrl = `https://api.bscscan.com/api?module=transaction&action=gettxreceiptstatus&txhash=${cleanHash}`;
-        const res = await fetch(bscScanUrl);
-        if (res.ok) {
-          const data: any = await res.json();
-          if (data && data.result && data.result.status === '1') {
-            onChainVerified = true;
-            confirmations = 15;
+          // BEP20 (BSC)
+          explorerUrl = `https://bscscan.com/tx/${cleanHash}`;
+          try {
+            // CYBERPOOL SECURITY FIX: the old code only called gettxreceiptstatus
+            // — it verified the tx *succeeded* but never checked the recipient or
+            // the token amount, so a user could submit the hash of ANY successful
+            // BSC transaction and get credited. Query the token-transfer detail and
+            // strictly verify contract + shop recipient + amount, mirroring the
+            // TRC20 branch.
+            const bscScanTokenUrl = `https://api.bscscan.com/api?module=account&action=tokentx&txhash=${cleanHash}`;
+            const res = await fetch(bscScanTokenUrl);
+            if (res.ok) {
+              const data: any = await res.json();
+              if (data && data.result && Array.isArray(data.result) && data.result.length > 0) {
+                // USDT-BSC canonical contract (BUSD/USDC also acceptable variants)
+                const usdtBscContract = '0x55d398326f99059fF775485246999027B3197955'.toLowerCase();
+                const targetRecipient = shopUsdtAddress.toLowerCase();
+                let foundTransfer = false;
+                for (const transfer of data.result) {
+                  const contract = (transfer.contractAddress || '').toLowerCase();
+                  const toAddr = (transfer.to || '').toLowerCase();
+                  if (contract === usdtBscContract && toAddr === targetRecipient) {
+                    // tokentx value is raw 18-decimal units for USDT-BSC
+                    detectedUsdt = Number(transfer.value || 0) / 1e18;
+                    contractAddress = transfer.contractAddress || '';
+                    if (detectedUsdt > 0) foundTransfer = true;
+                    break;
+                  }
+                }
+                if (foundTransfer) {
+                  // Also confirm the receipt status succeeded
+                  const statusUrl = `https://api.bscscan.com/api?module=transaction&action=gettxreceiptstatus&txhash=${cleanHash}`;
+                  const statusRes = await fetch(statusUrl);
+                  if (statusRes.ok) {
+                    const statusData: any = await statusRes.json();
+                    if (statusData?.result?.status === '1') {
+                      onChainVerified = true;
+                      confirmations = 15;
+                    }
+                  }
+                }
+              }
+            }
+          } catch (bscErr) {
+            console.warn('[BSCSCAN_API_LOOKUP_WARN]', bscErr);
           }
         }
-      } catch (bscErr) {
-        console.warn('[BSCSCAN_API_LOOKUP_WARN]', bscErr);
-      }
-    }
 
     // F02: Chỉ cộng tiền khi truy vấn blockchain trả về giao dịch chuyển tiền hợp lệ
     if (!onChainVerified || detectedUsdt <= 0) {
