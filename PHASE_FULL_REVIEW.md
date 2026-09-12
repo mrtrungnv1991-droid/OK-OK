@@ -13,7 +13,7 @@ Phương pháp: 3 subagent audit song song (backend security, frontend contracts
 | `npx tsc --noEmit` | PASS (0 lỗi) |
 | Test suite `tests/{unit,integration,concurrency}` | 17/17 PASS |
 | Production build `vite build` | PASS (4.47s) |
-| Commit trong phase này | 19 (từ baseline `8984d87` → `a609de9`) |
+| Commit trong phase này | 22 (từ baseline `8984d87` → `eed90fd`) |
 | Backend findings | 26/26 xử lý (5 CRITICAL, 10 MAJOR, 11 MINOR) |
 | Frontend findings | 19/19 xử lý (8 CRITICAL, 7 MAJOR, 4 MINOR) |
 
@@ -129,11 +129,31 @@ Mọi fix tiền tệ (escrow, withdrawal, voucher, lucky wheel, card24h, momo) 
 
 ## 6. Giới hạn còn lại (trung thực, chưa sửa)
 
-1. **Systemic — in-memory store**: `db/store.ts` là in-memory + JSON persist một phần (idempotency records, games, supplier data). Restart **xóa balances/orders/users**. Đây là thiết kế prototype; production thật cần PostgreSQL (đã có trong roadmap P4 của REVIEW_REPORT.md, chưa làm trong phase này vì là thay đổi kiến trúc lớn, không phải "lỗi logic").
+1. ~~**Systemic — in-memory store**~~ → **ĐÃ SỬA** (`468347b`): snapshot persistence
+   `server/data/db_snapshot.json` (atomic write, 10s + flush shutdown, load-on-boot,
+   skip khi test). Verify runtime: adjust +1000 → restart → balance khôi phục đúng.
+   Lưu ý: đây vẫn là JSON snapshot 1 instance — production đa instance cần
+   PostgreSQL/Redis (roadmap P4).
 2. **Rate limit 1 instance**: xem mục 5.
 3. **g2up/cmsnt API key dùng chung** hardcode trong connector (`885e5...`) — là key nền tảng công khai có chủ đích (không phải secret thanh toán), xóa sẽ phá connector out-of-box. **Flag, không tự xóa.**
 4. **Forgot-password** vẫn chưa có reset flow thật (chỉ trả thông báo trung thực thay vì báo thành công giả).
 5. **Chưa test giao dịch tiền thật** với Binance/MoMo/Card24h/USDT/LTC (không có credential thật) — chỉ verify được fail-closed, chữ ký, cấu trúc request, logic nội bộ (đúng như đã thống nhất từ trước).
+6. **Reliable-orders `escrow_locked=true` không đi qua ledger** — sau khi xem kỹ:
+   đây là **pipeline mô phỏng vận hành** (tham số `simulateTimeout`,
+   `simulateInsufficientBalance`; chỉ ADMIN gọi được sau fix #14, không UI khách
+   nào dùng). Nối vào ledger thật sẽ sai nghiệp vụ (admin không "mua hàng" —
+   họ đang test pipeline giao hàng nguồn). Giữ nguyên cờ mô phỏng, đã ADMIN-gated
+   + giá tra server-side. Nếu sau này reliable-orders thành checkout khách thật
+   thì BẮT BUỘC nối ledger như escrowService đã làm.
+
+## 6b. Các fix bổ sung sau audit (cùng phase)
+
+| Fix | Commit | Verify |
+|---|---|---|
+| DB snapshot persistence (systemic #1) | `468347b` | restart giữ balance 2.451.000đ ✅ |
+| AuthGate — màn hình đăng nhập/đăng ký thật (regression guard sau khi bỏ auto-login) | `468347b` | tsc + build ✅ |
+| GUEST_USER thay boot user SuperAdmin/50M; isAuthenticated theo token thật; dead token → xóa + về guest | `468347b` | tsc ✅ |
+| Security headers + CORS whitelist (không dep mới) | `eed90fd` | headers có đủ; evil.com blocked; preflight 403 ✅ |
 
 ---
 
@@ -174,6 +194,9 @@ TSC_EXIT_0 · # tests 17 # pass 17 # fail 0 · vite build ✓ 4.47s
 ## 8. Commit list (phase này)
 
 ```
+eed90fd feat(security): hardening middleware — security headers + CORS whitelist
+468347b fix(core): DB snapshot persistence + real login gate (AuthGate)
+6e9f0aa docs: PHASE_FULL_REVIEW.md
 a609de9 feat(admin): mount 3 orphan tabs into panel (frontend audit #16)
 eb8b56a feat(security): in-process rate limiting for login/register (backend audit #7)
 48e1c81 fix(ui): real force-refund button, live flash-sale hunt button, drop fake escrow client code
