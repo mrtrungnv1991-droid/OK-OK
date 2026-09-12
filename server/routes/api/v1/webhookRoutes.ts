@@ -582,9 +582,21 @@ webhookRouter.post('/momo', async (req: Request, res: Response) => {
     const resultCode = Number(payload.resultCode);
     const amountPaid = Number(payload.amount || 0);
     const requestId = String(payload.requestId || '');
+    // CYBERPOOL FIX (double-credit): MoMo transId là định danh giao dịch CANONICAL
+    // dùng chung với verifyMoMo (đường query thủ công). IPN trước đây chỉ khóa theo
+    // `MOMO_${orderId}_${requestId}` — nếu cùng 1 thanh toán vừa đi qua IPN vừa được
+    // verify thủ công (key = transId) thì 2 đường dùng 2 idempotency key KHÁC nhau
+    // → cộng tiền 2 lần. Giờ IPN check + mark luôn theo transId.
+    const canonicalTransId = String(payload.transId || orderId || '');
 
     if (resultCode !== 0) {
       return res.json({ success: true, message: 'Thanh toán chưa thành công (không credit).' });
+    }
+
+    // Cross-path replay guard: nếu transId này đã được credit (bởi IPN trước đó
+    // HOẶC bởi verifyMoMo thủ công) thì không cộng lại.
+    if (canonicalTransId && GatewayVerificationService.isAlreadyRedeemed(canonicalTransId)) {
+      return res.json({ success: true, message: 'Giao dịch MoMo đã được cộng tiền trước đó (chống nạp trùng IPN/verify).' });
     }
 
     // Idempotency: chống double-credit khi MoMo retry IPN
@@ -622,7 +634,7 @@ webhookRouter.post('/momo', async (req: Request, res: Response) => {
         amount: amountPaid,
         type: 'DEPOSIT',
         description: `Nạp tự động Ví MoMo IPN (${amountPaid.toLocaleString('vi-VN')}đ) - Mã: ${orderId}`,
-        referenceId: orderId,
+        referenceId: canonicalTransId || orderId,
         actorId: 'MOMO_IPN',
         actorName: 'MoMo IPN Gateway'
       });
@@ -637,6 +649,17 @@ webhookRouter.post('/momo', async (req: Request, res: Response) => {
         amount: amountPaid,
         userId: targetUser.id
       });
+
+      // CYBERPOOL FIX: đánh dấu transId canonical đã redeem để đường verifyMoMo
+      // (query thủ công) nhận biết và từ chối cộng lại cùng giao dịch.
+      if (canonicalTransId) {
+        GatewayVerificationService.markRedeemed(canonicalTransId, {
+          gateway: 'MOMO',
+          amount: amountPaid,
+          userId: targetUser.id,
+          memo: payload.orderInfo || ''
+        });
+      }
 
       AuditService.log({
         actorId: 'MOMO_IPN',
