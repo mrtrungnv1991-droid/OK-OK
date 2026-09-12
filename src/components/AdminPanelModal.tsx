@@ -69,6 +69,7 @@ import { AdminSettingsTab } from './admin/AdminSettingsTab';
 import { AdminHeroLayoutTab } from './admin/AdminHeroLayoutTab';
 import { AdminOrderReliabilityTab } from './admin/AdminOrderReliabilityTab';
 import { AdminPaymentSystemTab } from './admin/AdminPaymentSystemTab';
+import { AdminSoldOrdersTab } from './admin/AdminSoldOrdersTab';
 
 export type AdminTabType =
   | 'dashboard'
@@ -89,13 +90,12 @@ export type AdminTabType =
   | 'automation_cron'
   | 'logs'
   | 'suppliers'
-  | 'source_automation'
-  | 'order_reliability'
-  | 'affiliate'
-  | 'giftup_admin'
-  | 'settings'
-  | 'audit_security'
-  | 'database_schema';
+    | 'order_reliability'
+    | 'affiliate'
+    | 'giftup_admin'
+    | 'settings'
+    | 'sold_orders'
+    | 'database_schema';
 
 interface AdminPanelModalProps {
   isOpen: boolean;
@@ -239,12 +239,11 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({
     automation_cron: 3,
     logs: 3,
     suppliers: 3,
-    source_automation: 3,
     order_reliability: 3,
     affiliate: 3,
     giftup_admin: 3,
     settings: 3,
-    audit_security: 3,
+    sold_orders: 3,
     database_schema: 3
   };
   const currentRoleLevel = ROLE_LEVEL[userRole] || 1;
@@ -264,6 +263,7 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({
           { id: 'games', label: t('nav.game_topup') + ' & Bulk Giá', icon: Gamepad2, badge: `${games.length} Games` },
           { id: 'vouchers', label: 'Vouchers & Coupons', icon: Tag, badge: vouchers?.length },
           { id: 'manual_fulfillment', label: t('nav.orders') + ' (Queue)', icon: Tag, badge: manualOrders?.filter(o => o.status === 'pending_process' || o.status === 'processing').length },
+          { id: 'sold_orders', label: 'Đơn Đã Bán (Tất Cả)', icon: ShoppingBag },
           { id: 'giftup_admin', label: 'GiftUp Cards', icon: Gift }
         ]
       },
@@ -532,12 +532,10 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({
               <AdminPaymentSystemTab currency={currency} />
             )}
 
-            {activeTab === 'source_automation' && (
-              <AdminSuppliersTab
-                suppliers={suppliers}
-                currency={currency}
-                onUpdateSupplierBalance={onUpdateSupplierBalance}
-              />
+            {/* CYBERPOOL FIX: tab id 'source_automation' (trùng AdminSuppliersTab) đã xóa */}
+
+            {activeTab === 'sold_orders' && (
+              <AdminSoldOrdersTab currency={currency} />
             )}
 
             {activeTab === 'order_reliability' && (
@@ -562,12 +560,7 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({
               />
             )}
 
-            {activeTab === 'audit_security' && (
-              <AdminSecurityIpTab
-                systemConfig={systemConfig}
-                onUpdateSystemConfig={onUpdateSystemConfig}
-              />
-            )}
+            {/* CYBERPOOL FIX: tab id 'audit_security' (trùng AdminSecurityIpTab) đã xóa */}
 
             {activeTab === 'database_schema' && (
               <AdminDatabaseSchemaTab />
