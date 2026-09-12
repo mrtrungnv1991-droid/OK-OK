@@ -8,6 +8,24 @@ import { SupplierManagerService } from '../../../services/supplierHub/services/S
 
 export const productRouter = Router();
 
+// CYBERPOOL SECURITY FIX (CRITICAL): product.activePools chứa keysVault (key
+// bản quyền THẬT chưa bán) và participants[].deliveredKey (key đã giao) —
+// các endpoint GET product là public không auth. Strip toàn bộ key material
+// khỏi response công khai; UI chỉ cần số lượng slot/trạng thái pool.
+function sanitizeProductForPublic<T extends { activePools?: any[] }>(product: T): T {
+  if (!product || !Array.isArray(product.activePools)) return product;
+  return {
+    ...product,
+    activePools: product.activePools.map((pool: any) => {
+      const { keysVault, ...poolSafe } = pool || {};
+      return {
+        ...poolSafe,
+        participants: (pool?.participants || []).map(({ deliveredKey, ...rest }: any) => rest)
+      };
+    })
+  };
+}
+
 // POST /api/v1/products/auto-translate - Real-time language detection & translation
 productRouter.post('/auto-translate', requireAuth, requireRole('ADMIN'), async (req, res) => {
   try {
@@ -72,7 +90,7 @@ productRouter.get('/', (req, res) => {
     results.sort((a, b) => (b.discountPercent || 0) - (a.discountPercent || 0));
   }
 
-  const paginated = results.slice(Number(offset), Number(offset) + Number(limit));
+  const paginated = results.slice(Number(offset), Number(offset) + Number(limit)).map(sanitizeProductForPublic);
 
   res.json({
     success: true,
@@ -144,7 +162,7 @@ productRouter.get('/:id', (req, res) => {
   res.json({
     success: true,
     product: {
-      ...product,
+      ...sanitizeProductForPublic(product),
       reviews
     }
   });

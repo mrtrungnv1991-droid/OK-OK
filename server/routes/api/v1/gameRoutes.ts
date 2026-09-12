@@ -1,6 +1,7 @@
 import { Router } from 'express';
 import { db } from '../../../db/store';
 import { GameStorageService } from '../../../services/gameStorageService';
+import { requireAuth, requireRole } from '../../../middleware/authMiddleware';
 import { GameItem, TopupTier } from '../../../../src/types';
 
 export const gameRouter = Router();
@@ -22,6 +23,12 @@ gameRouter.get('/:id', (req, res) => {
   }
   res.json({ success: true, game });
 });
+
+// CYBERPOOL SECURITY FIX (CRITICAL): toàn bộ route mutating bên dưới trước đây
+// KHÔNG có auth — ai cũng POST /games, PUT/DELETE /:id, bulk-adjust (repricing
+// cả catalog, vd percentDelta:-90), reset, và thay đổi được ghi thẳng ra đĩa
+// (GameStorageService). Giờ mọi mutation yêu cầu ADMIN.
+gameRouter.use(requireAuth, requireRole('ADMIN'));
 
 // POST /api/v1/games - Add a new game
 gameRouter.post('/', (req, res) => {

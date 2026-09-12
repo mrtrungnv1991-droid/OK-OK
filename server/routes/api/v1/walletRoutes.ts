@@ -245,6 +245,16 @@ walletRouter.post('/telco-card', requireAuth, async (req: AuthenticatedRequest, 
   const requestId = `CP_${req.user!.id.replace(/[^a-zA-Z0-9]/g, '')}_${Date.now()}`;
   const sign = crypto.createHash('md5').update(`${partnerKey}${cleanPin}${cleanSerial}`).digest('hex');
 
+  // CYBERPOOL FIX (#5): chặn submit lại thẻ đã được credit trước đó (một thẻ
+  // cào chỉ có giá trị MỘT lần) — kể cả khi user khác thử lại cùng mã/seri.
+  const cardIdentityKey = `CARD24H_${cleanPin}_${cleanSerial}`;
+  if (db.processedWebhooks.has(cardIdentityKey)) {
+    return res.status(409).json({
+      success: false,
+      error: 'Thẻ cào này đã được hệ thống ghi nhận và cộng tiền trước đó (mỗi thẻ chỉ dùng được một lần).'
+    });
+  }
+
   // If using Card24h gateway
   if (provider === 'card24h' && partnerId && partnerKey) {
     try {
@@ -288,6 +298,38 @@ walletRouter.post('/telco-card', requireAuth, async (req: AuthenticatedRequest, 
             description: `Gạch thẻ cào ${normalizedTelco} ${numAmount.toLocaleString()}đ qua Card24h (Thực nhận +${receivedAmount.toLocaleString()}đ)`,
             referenceId: requestId,
             ipAddress: req.ip
+          });
+
+          // CYBERPOOL FIX (#5 — double-credit by design): sync path credit ngay
+          // nhưng trước đây KHÔNG commit idempotency → callback async của Card24h
+          // cho cùng thẻ sẽ credit lần 2. Đánh dấu danh tính thẻ + trans_id +
+          // requestId bằng đúng key mà handleCard24hCallback kiểm tra.
+          const cardIdentityKey = `CARD24H_${cleanPin}_${cleanSerial}`;
+          db.processedWebhooks.set(cardIdentityKey, {
+            amount: receivedAmount,
+            userId: req.user!.id,
+            status: 'COMPLETED',
+            processedAt: new Date().toISOString(),
+            provider: 'CARD24H',
+            memo: `Sync charge ${cleanPin}/${cleanSerial}`
+          });
+          if (data.trans_id) {
+            db.processedWebhooks.set(`CARD24H_TRANS_${String(data.trans_id)}`, {
+              amount: receivedAmount,
+              userId: req.user!.id,
+              status: 'COMPLETED',
+              processedAt: new Date().toISOString(),
+              provider: 'CARD24H',
+              memo: `Sync charge trans_id ${data.trans_id}`
+            });
+          }
+          db.processedWebhooks.set(requestId, {
+            amount: receivedAmount,
+            userId: req.user!.id,
+            status: 'COMPLETED',
+            processedAt: new Date().toISOString(),
+            provider: 'CARD24H',
+            memo: 'Sync charge request_id'
           });
 
           return res.json({

@@ -8,9 +8,16 @@ export const escrowRouter = Router();
 // GET /api/v1/escrow/pools - Get Active Escrow Group Pools
 escrowRouter.get('/pools', (req, res) => {
   const pools = Array.from(db.escrowContracts.values());
+  // CYBERPOOL SECURITY FIX (CRITICAL): contract.participants chứa deliveredKey
+  // (license key THẬT đã bán) + PII người mua — endpoint này public không auth.
+  // Strip deliveredKey khỏi response công khai; chỉ giữ thông tin hiển thị pool.
+  const sanitized = pools.map((c: any) => ({
+    ...c,
+    participants: (c.participants || []).map(({ deliveredKey, ...rest }: any) => rest)
+  }));
   res.json({
     success: true,
-    pools
+    pools: sanitized
   });
 });
 
@@ -35,9 +42,15 @@ escrowRouter.post('/join', requireAuth, async (req: AuthenticatedRequest, res) =
 
   // CYBERPOOL FIX: trả về shape khớp client (escrowApi.joinPool đọc pool/message)
   const completed = result.contract.status === 'COMPLETED';
+  // SECURITY: strip deliveredKey của participants khỏi response (key của người
+  // khác không được lộ); key của chính user nằm trong order.deliveredData.
+  const { participants: rawParts, ...contractSafe } = result.contract as any;
   res.json({
     success: true,
-    pool: result.contract,
+    pool: {
+      ...contractSafe,
+      participants: (rawParts || []).map(({ deliveredKey, ...rest }: any) => rest)
+    },
     order: result.order,
     message: completed
       ? '🎉 Nhóm gom đơn đã ĐỦ thành viên — key bản quyền thật đã được chuyển vào Kho Key của bạn!'

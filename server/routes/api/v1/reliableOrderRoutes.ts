@@ -3,6 +3,7 @@
 // ==============================================================================
 
 import { Router } from 'express';
+import crypto from 'crypto';
 import { orderProcessingService } from '../../../services/orderProcessing/orderProcessingService';
 import { orderLock } from '../../../services/orderProcessing/distributedLock';
 import { sourceCircuitBreaker } from '../../../services/orderProcessing/circuitBreaker';
@@ -259,7 +260,32 @@ reliableOrderRouter.get('/vault/overview', requireAuth, requireRole('ADMIN'), (r
 });
 
 // 15. Telegram Action Callback Webhook
+// CYBERPOOL SECURITY FIX (CRITICAL): trước đây endpoint này KHÔNG auth, không
+// chữ ký — bất kỳ ai cũng POST {order_id, action:'CONFIRM_FUNDS'} để resume/
+// xác nhận giải ngân đơn hàng. Giờ yêu cầu HMAC-SHA256 shared secret
+// (TELEGRAM_CALLBACK_SECRET) trên header X-Telegram-Signature; thiếu secret
+// trong env = từ chối (fail-closed, mọi env).
 reliableOrderRouter.post('/telegram/callback', async (req, res) => {
+  const secret = process.env.TELEGRAM_CALLBACK_SECRET;
+  if (!secret) {
+    return res.status(503).json({
+      success: false,
+      message: 'TELEGRAM_CALLBACK_SECRET chưa được cấu hình — callback bị từ chối (fail-closed).'
+    });
+  }
+
+  const signature = String(req.header('X-Telegram-Signature') || '');
+  if (!signature) {
+    return res.status(401).json({ success: false, message: 'Thiếu chữ ký X-Telegram-Signature.' });
+  }
+
+  const expected = crypto.createHmac('sha256', secret).update(JSON.stringify(req.body || {})).digest('hex');
+  const expectedBuf = Buffer.from(expected, 'utf8');
+  const actualBuf = Buffer.from(signature, 'utf8');
+  if (expectedBuf.length !== actualBuf.length || !crypto.timingSafeEqual(expectedBuf, actualBuf)) {
+    return res.status(401).json({ success: false, message: 'Chữ ký Telegram callback không hợp lệ.' });
+  }
+
   const result = await orderProcessingService.handleTelegramAction(req.body);
   res.json(result);
 });

@@ -439,8 +439,22 @@ export async function handleCard24hCallback(req: Request, res: Response) {
 
     const strRequestId = String(request_id);
 
-    // Persistent Idempotency check
-    if (IdempotencyService.isProcessed(strRequestId) || db.processedWebhooks.has(strRequestId)) {
+    // CYBERPOOL SECURITY FIX (#5 — replay/double-credit):
+    // Chữ ký md5(partnerKey+code+serial) KHÔNG bao phủ request_id/trans_id →
+    // attacker resend cùng thẻ với request_id MỚI sẽ được credit lần nữa.
+    // Idempotency giờ khóa theo DANH TÍNH THẺ (code+serial) và trans_id —
+    // một thẻ cào chỉ được cộng tiền MỘT lần bất kể bao nhiêu callback.
+    const cardIdentityKey = `CARD24H_${cleanCode}_${cleanSerial}`;
+    const transIdKey = trans_id ? `CARD24H_TRANS_${String(trans_id)}` : '';
+
+    // Persistent Idempotency check (card identity trước, rồi request_id/trans_id)
+    if (
+      IdempotencyService.isProcessed(cardIdentityKey) ||
+      db.processedWebhooks.has(cardIdentityKey) ||
+      (transIdKey && (IdempotencyService.isProcessed(transIdKey) || db.processedWebhooks.has(transIdKey))) ||
+      IdempotencyService.isProcessed(strRequestId) ||
+      db.processedWebhooks.has(strRequestId)
+    ) {
       return res.send('Thẻ hợp lệ');
     }
 
@@ -495,6 +509,26 @@ export async function handleCard24hCallback(req: Request, res: Response) {
         provider: 'CARD24H',
         memo: `Mã nạp: ${cleanCode}, Seri: ${cleanSerial}, TransId: ${trans_id}`
       });
+      // CYBERPOOL FIX (#5): đánh dấu DANH TÍNH THẺ + trans_id đã xử lý để chặn
+      // replay cùng thẻ với request_id mới (signature không bao phủ request_id).
+      db.processedWebhooks.set(cardIdentityKey, {
+        amount: creditedAmount,
+        userId: targetUserId || 'unknown',
+        status: 'COMPLETED',
+        processedAt: new Date().toISOString(),
+        provider: 'CARD24H',
+        memo: `Card identity ${cleanCode}/${cleanSerial}`
+      });
+      if (transIdKey) {
+        db.processedWebhooks.set(transIdKey, {
+          amount: creditedAmount,
+          userId: targetUserId || 'unknown',
+          status: 'COMPLETED',
+          processedAt: new Date().toISOString(),
+          provider: 'CARD24H',
+          memo: `TransId ${trans_id}`
+        });
+      }
 
       return res.send('Thẻ hợp lệ');
     } else if (statusCode === 2) {
@@ -509,6 +543,25 @@ export async function handleCard24hCallback(req: Request, res: Response) {
           actorId: 'CARD24H_WEBHOOK',
           actorName: 'Card24h.com Auto Charging'
         });
+        // CYBERPOOL FIX (#5): status 2 cũng cộng tiền — phải đánh dấu card identity.
+        db.processedWebhooks.set(cardIdentityKey, {
+          amount: creditedAmount,
+          userId: targetUserId || 'unknown',
+          status: 'COMPLETED_WRONG_AMOUNT',
+          processedAt: new Date().toISOString(),
+          provider: 'CARD24H',
+          memo: `Card identity ${cleanCode}/${cleanSerial} (sai mệnh giá)`
+        });
+        if (transIdKey) {
+          db.processedWebhooks.set(transIdKey, {
+            amount: creditedAmount,
+            userId: targetUserId || 'unknown',
+            status: 'COMPLETED_WRONG_AMOUNT',
+            processedAt: new Date().toISOString(),
+            provider: 'CARD24H',
+            memo: `TransId ${trans_id} (sai mệnh giá)`
+          });
+        }
 
         notificationService.send(
           targetUserId,
