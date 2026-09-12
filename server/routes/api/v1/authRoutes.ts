@@ -1,6 +1,7 @@
 import { Router } from 'express';
 import { db } from '../../../db/store';
 import { requireAuth, AuthenticatedRequest } from '../../../middleware/authMiddleware';
+import { loginRateLimit, registerRateLimit } from '../../../middleware/rateLimit';
 import { AuditService } from '../../../services/auditService';
 import { ServerUser } from '../../../types';
 import { hashPassword, verifyPassword, generateToken } from '../../../utils/authSecurity';
@@ -22,7 +23,8 @@ authRouter.get('/me', requireAuth, (req: AuthenticatedRequest, res) => {
 });
 
 // POST /api/v1/auth/login
-authRouter.post('/login', (req, res) => {
+// CYBERPOOL FIX (backend audit #7): rate limit chống brute-force
+authRouter.post('/login', loginRateLimit, (req, res) => {
   const { email, password } = req.body;
 
   if (!email || typeof email !== 'string') {
@@ -92,7 +94,8 @@ authRouter.post('/login', (req, res) => {
 });
 
 // POST /api/v1/auth/register
-authRouter.post('/register', (req, res) => {
+// CYBERPOOL FIX (backend audit #7): rate limit chống mass-register farm quà
+authRouter.post('/register', registerRateLimit, (req, res) => {
   const { email, name, phone, password } = req.body;
 
   if (!email || typeof email !== 'string' || !email.includes('@')) {
