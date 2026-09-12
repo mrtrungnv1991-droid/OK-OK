@@ -21,6 +21,7 @@ import { paymentRouter } from './server/routes/api/v1/paymentRoutes';
 import { supplierHubRouter } from './server/routes/api/v1/supplierHubRoutes';
 import { cronRouter } from './server/routes/api/v1/cronRoutes';
 import { CronService } from './server/services/cronService';
+import { securityHeaders, corsPolicy } from './server/middleware/securityHeaders';
 
 async function startServer() {
   const app = express();
@@ -29,6 +30,11 @@ async function startServer() {
   // Middleware
   app.use(express.json({ limit: '10mb' }));
   app.use(express.urlencoded({ extended: true }));
+
+  // CYBERPOOL FIX (audit #7 systemic): security headers + CORS whitelist —
+  // trước đây server không có helmet/CORS policy nào.
+  app.use(securityHeaders);
+  app.use(corsPolicy);
 
   // Basic API Health check
   app.get('/api/health', (req, res) => {
