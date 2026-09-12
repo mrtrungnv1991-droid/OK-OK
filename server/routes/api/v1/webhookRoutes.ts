@@ -146,13 +146,18 @@ webhookRouter.post('/vietqr', async (req: Request, res: Response) => {
     }
 
     // PERSISTENT IDEMPOTENCY CHECK
-    if (IdempotencyService.isProcessed(transactionId) || (content && IdempotencyService.isProcessed(content))) {
-      return res.json({ 
-        success: true, 
-        message: 'Giao dịch đã được xử lý trước đó (Idempotent OK)',
-        transactionId
-      });
-    }
+        // CYBERPOOL FIX: dedupe on transactionId ONLY. The old code also checked
+        // the memo content as an alias — but the memo ("CYBER usr-buyer-01") is
+        // CONSTANT per user, so a user's SECOND real deposit with the same memo
+        // was wrongly flagged as a replay and silently never credited (the money
+        // left their bank account but never reached the wallet).
+        if (IdempotencyService.isProcessed(transactionId)) {
+          return res.json({ 
+            success: true, 
+            message: 'Giao dịch đã được xử lý trước đó (Idempotent OK)',
+            transactionId
+          });
+        }
 
     // Acquire atomic lock on transaction ID to prevent concurrent duplicate execution
     const lockAcquired = await IdempotencyService.acquireLock(transactionId);
@@ -236,16 +241,17 @@ webhookRouter.post('/vietqr', async (req: Request, res: Response) => {
         newValue: { transactionId, amount, bankCode, userId: targetUser.id }
       });
 
-      // Commit persistent idempotency
-      IdempotencyService.commit({
-        primaryKey: transactionId,
-        aliasKeys: content ? [content] : [],
-        provider: 'VIETQR',
-        referenceId: transactionId,
-        memo: content,
-        amount: Number(amount),
-        userId: targetUser.id
-      });
+      // Commit persistent idempotency (transactionId only — see FIX above for
+            // why the memo must NOT be an alias: it is constant per user and would
+            // swallow subsequent real deposits)
+            IdempotencyService.commit({
+              primaryKey: transactionId,
+              provider: 'VIETQR',
+              referenceId: transactionId,
+              memo: content,
+              amount: Number(amount),
+              userId: targetUser.id
+            });
 
       db.processedWebhooks.set(transactionId, {
         amount: Number(amount),
