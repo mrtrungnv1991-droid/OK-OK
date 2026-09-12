@@ -48,6 +48,23 @@ export const adminApi = {
     return api.get<{ config: any }>('/admin/system-config');
   },
 
+  // CYBERPOOL FIX: category CRUD — persist tab Danh Mục xuống server
+  getCategories: async (): Promise<ApiResponse<{ categories: any[] }>> => {
+    return api.get<{ categories: any[] }>('/admin/categories');
+  },
+
+  createCategory: async (category: any): Promise<ApiResponse<{ category: any; categories: any[] }>> => {
+    return api.post<{ category: any; categories: any[] }>('/admin/categories', category);
+  },
+
+  updateCategory: async (id: string, category: any): Promise<ApiResponse<{ category: any; categories: any[] }>> => {
+    return api.put<{ category: any; categories: any[] }>(`/admin/categories/${id}`, category);
+  },
+
+  deleteCategory: async (id: string): Promise<ApiResponse<{ removedCount: number; categories: any[] }>> => {
+    return api.delete<{ removedCount: number; categories: any[] }>(`/admin/categories/${id}`);
+  },
+
   updateSystemConfig: async (config: any): Promise<ApiResponse<{ config: any }>> => {
     return api.put<{ config: any }>('/admin/system-config', config);
   },

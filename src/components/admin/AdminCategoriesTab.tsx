@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { 
   FolderPlus, 
   Plus, 
@@ -36,6 +36,14 @@ export const AdminCategoriesTab: React.FC<AdminCategoriesTabProps> = ({
   onDeleteCategory
 }) => {
   const [categories, setCategories] = useState<CategoryItem[]>(propCategories && propCategories.length > 0 ? propCategories : INITIAL_EXTENDED_CATEGORIES);
+  // CYBERPOOL FIX: sync khi propCategories đổi (sau fetchCatalog/CRUD API)
+  const propCategoriesKey = JSON.stringify(propCategories?.map(c => `${c.id}:${c.name}:${c.orderIndex}:${c.status}`) || []);
+  useEffect(() => {
+    if (propCategories && propCategories.length > 0) {
+      setCategories(propCategories);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [propCategoriesKey]);
   const [searchTerm, setSearchTerm] = useState('');
   const [filterType, setFilterType] = useState<'all' | 'root' | 'sub'>('all');
   const [editingCategory, setEditingCategory] = useState<CategoryItem | null>(null);
@@ -103,25 +111,29 @@ export const AdminCategoriesTab: React.FC<AdminCategoriesTabProps> = ({
     }
 
     if (isCreatingNew) {
-      const newCat: CategoryItem = {
-        id: `cat-${Date.now()}`,
-        name: formData.name.trim(),
-        slug: formData.slug.trim(),
-        parentId: formData.parentId || null,
-        iconName: formData.iconName || 'Folder',
-        orderIndex: Number(formData.orderIndex) || 1,
-        status: formData.status || 'active',
-        fulfillmentType: formData.fulfillmentType || 'manual',
-        deliveryClassification: formData.deliveryClassification || 'key_game',
-        productCount: 0,
-        description: formData.description || ''
-      };
-      setCategories([...categories, newCat]);
-      setSaveNotice(`Đã tạo chuyên mục "${newCat.name}" thành công!`);
-    } else if (editingCategory) {
-      setCategories(categories.map(c => c.id === editingCategory.id ? { ...c, ...formData } as CategoryItem : c));
-      setSaveNotice(`Đã cập nhật chuyên mục "${formData.name}" thành công!`);
-    }
+          const newCat: CategoryItem = {
+            id: `cat-${Date.now()}`,
+            name: formData.name.trim(),
+            slug: formData.slug.trim(),
+            parentId: formData.parentId || null,
+            iconName: formData.iconName || 'Folder',
+            orderIndex: Number(formData.orderIndex) || 1,
+            status: formData.status || 'active',
+            fulfillmentType: formData.fulfillmentType || 'manual',
+            deliveryClassification: formData.deliveryClassification || 'key_game',
+            productCount: 0,
+            description: formData.description || ''
+          };
+          setCategories([...categories, newCat]);
+          // CYBERPOOL FIX: gọi callback để persist xuống server (trước đây chỉ sửa state local)
+          onAddCategory?.(newCat);
+          setSaveNotice(`Đã tạo chuyên mục "${newCat.name}" thành công!`);
+        } else if (editingCategory) {
+          setCategories(categories.map(c => c.id === editingCategory.id ? { ...c, ...formData } as CategoryItem : c));
+          // CYBERPOOL FIX: persist update xuống server
+          onUpdateCategory?.(editingCategory.id, formData as Partial<CategoryItem>);
+          setSaveNotice(`Đã cập nhật chuyên mục "${formData.name}" thành công!`);
+        }
 
     setIsCreatingNew(false);
     setEditingCategory(null);
@@ -139,6 +151,8 @@ export const AdminCategoriesTab: React.FC<AdminCategoriesTabProps> = ({
     if (!categoryToDelete) return;
     const id = categoryToDelete.id;
     setCategories(categories.filter(c => c.id !== id && c.parentId !== id));
+    // CYBERPOOL FIX: persist delete xuống server (kèm nhánh con)
+    onDeleteCategory?.(id);
     setSaveNotice(`Đã xóa chuyên mục "${categoryToDelete.name}" thành công!`);
     setCategoryToDelete(null);
     setTimeout(() => setSaveNotice(null), 3000);

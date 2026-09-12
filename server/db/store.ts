@@ -195,14 +195,16 @@ class DatabaseStore {
       timestamp: new Date().toISOString()
     });
 
-    // 5. Initial Categories
+    // 5. Initial Categories — CYBERPOOL FIX: full CategoryItem shape (UI reads
+    // iconName/productCount/orderIndex/status/fulfillmentType; seed cũ chỉ có
+    // {id,name,slug,count} khiến tab Danh Mục phải fallback về mock data)
     this.categories = [
-      { id: 'all', name: 'Tất Cả Sản Phẩm', slug: 'all', count: 50 },
-      { id: 'ai_tools', name: 'AI & Machine Learning', slug: 'ai-tools', count: 12 },
-      { id: 'entertainment', name: 'Giải Trí & Phim Ảnh', slug: 'entertainment', count: 10 },
-      { id: 'software', name: 'Bản Quyền Phần Mềm', slug: 'software', count: 8 },
-      { id: 'gaming', name: 'Gaming & Steam Vault', slug: 'gaming', count: 15 },
-      { id: 'vpn_security', name: 'VPN & An Ninh Mạng', slug: 'vpn-security', count: 5 }
+      { id: 'all', name: 'Tất Cả Sản Phẩm', slug: 'all', count: 50, productCount: 50, iconName: 'Layers', parentId: null, orderIndex: 1, status: 'active', fulfillmentType: 'manual', deliveryClassification: 'key_game' },
+      { id: 'ai_tools', name: 'AI & Machine Learning', slug: 'ai-tools', count: 12, productCount: 12, iconName: 'Cpu', parentId: null, orderIndex: 2, status: 'active', fulfillmentType: 'automatic', deliveryClassification: 'key_game' },
+      { id: 'entertainment', name: 'Giải Trí & Phim Ảnh', slug: 'entertainment', count: 10, productCount: 10, iconName: 'Film', parentId: null, orderIndex: 3, status: 'active', fulfillmentType: 'manual', deliveryClassification: 'account' },
+      { id: 'software', name: 'Bản Quyền Phần Mềm', slug: 'software', count: 8, productCount: 8, iconName: 'Shield', parentId: null, orderIndex: 4, status: 'active', fulfillmentType: 'automatic', deliveryClassification: 'key_game' },
+      { id: 'gaming', name: 'Gaming & Steam Vault', slug: 'gaming', count: 15, productCount: 15, iconName: 'Gamepad2', parentId: null, orderIndex: 5, status: 'active', fulfillmentType: 'automatic', deliveryClassification: 'key_game' },
+      { id: 'vpn_security', name: 'VPN & An Ninh Mạng', slug: 'vpn-security', count: 5, productCount: 5, iconName: 'Lock', parentId: null, orderIndex: 6, status: 'active', fulfillmentType: 'automatic', deliveryClassification: 'account' }
     ];
 
     // 6. System Config

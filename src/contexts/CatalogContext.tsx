@@ -10,6 +10,7 @@ import { INITIAL_PRODUCTS } from '../data/mockProducts';
 import { INITIAL_GAMES } from '../data/mockTopupGames';
 import { INITIAL_EXTENDED_CATEGORIES } from '../data/systemExtendedData';
 import { productsApi } from '../api/products';
+import { adminApi } from '../api/admin';
 import { useTranslation, getLocalizedProduct, getLocalizedCategory, getLocalizedGame, registerDynamicProductTranslations } from '../i18n';
 
 interface CatalogContextType {
@@ -505,8 +506,9 @@ export const CatalogProvider: React.FC<{ children: ReactNode }> = ({ children })
     }
   };
 
-  // Category actions
-  const addCategory = (cat: Partial<CategoryItem>) => {
+  // Category actions — CYBERPOOL FIX: giờ persist xuống server qua admin API
+  // (trước đây chỉ setRawCategories client-side, reload là mất)
+  const addCategory = async (cat: Partial<CategoryItem>) => {
     const newCat: CategoryItem = {
       id: cat.id || `cat_${Date.now()}`,
       name: cat.name || 'Danh mục mới',
@@ -516,15 +518,40 @@ export const CatalogProvider: React.FC<{ children: ReactNode }> = ({ children })
       status: cat.status || 'active',
       slug: cat.slug || 'danh-muc-moi'
     };
+    // Optimistic update
     setRawCategories(prev => [...prev, newCat]);
+    try {
+      const res = await adminApi.createCategory(cat);
+      if (res.data?.categories && res.data.categories.length > 0) {
+        setRawCategories(res.data.categories);
+      }
+    } catch {
+      // Offline fallback: giữ state client
+    }
   };
 
-  const updateCategory = (catId: string, cat: Partial<CategoryItem>) => {
+  const updateCategory = async (catId: string, cat: Partial<CategoryItem>) => {
     setRawCategories(prev => prev.map(c => c.id === catId ? { ...c, ...cat } : c));
+    try {
+      const res = await adminApi.updateCategory(catId, cat);
+      if (res.data?.categories && res.data.categories.length > 0) {
+        setRawCategories(res.data.categories);
+      }
+    } catch {
+      // Offline fallback
+    }
   };
 
-  const deleteCategory = (catId: string) => {
+  const deleteCategory = async (catId: string) => {
     setRawCategories(prev => prev.filter(c => c.id !== catId));
+    try {
+      const res = await adminApi.deleteCategory(catId);
+      if (res.data?.categories) {
+        setRawCategories(res.data.categories);
+      }
+    } catch {
+      // Offline fallback
+    }
   };
 
   const contextValue = useMemo(() => ({

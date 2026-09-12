@@ -114,12 +114,117 @@ adminRouter.put('/system-config', (req: AuthenticatedRequest, res) => {
   });
 
   res.json({
-    success: true,
-    config: db.systemConfig
+      success: true,
+      config: db.systemConfig
+    });
   });
-});
 
-// POST /api/v1/admin/test-card24h - Live test ping to Card24h API
+  // ============================================================================
+  // CYBERPOOL FIX: CATEGORY CRUD — trước đây tab Danh Mục chỉ sửa state phía
+  // client (AdminCategoriesTab không gọi callback, CatalogContext không gọi API),
+  // reload là mất. Giờ persist xuống db.categories qua admin API có audit log.
+  // ============================================================================
+
+  // GET /api/v1/admin/categories
+  adminRouter.get('/categories', (req: AuthenticatedRequest, res) => {
+    res.json({ success: true, categories: db.categories });
+  });
+
+  // POST /api/v1/admin/categories
+  adminRouter.post('/categories', (req: AuthenticatedRequest, res) => {
+    const body = req.body || {};
+    if (!body.name || !String(body.name).trim()) {
+      return res.status(400).json({ success: false, error: 'Thiếu tên chuyên mục (name)' });
+    }
+    const slug = String(body.slug || body.name).trim().toLowerCase().replace(/[^a-z0-9\-_]/g, '-');
+    const id = body.id || `cat-${Date.now()}`;
+    if (db.categories.some((c: any) => c.id === id)) {
+      return res.status(409).json({ success: false, error: `Chuyên mục id "${id}" đã tồn tại` });
+    }
+    const category = {
+      id,
+      name: String(body.name).trim(),
+      slug,
+      parentId: body.parentId || null,
+      iconName: body.iconName || 'Folder',
+      productCount: Number(body.productCount) || 0,
+      orderIndex: Number(body.orderIndex) || db.categories.length + 1,
+      status: body.status === 'hidden' ? 'hidden' : 'active',
+      fulfillmentType: body.fulfillmentType || 'manual',
+      deliveryClassification: body.deliveryClassification || 'key_game',
+      description: body.description || '',
+      ...(body.count != null ? { count: Number(body.count) } : {})
+    };
+    db.categories.push(category);
+
+    AuditService.log({
+      actorId: req.user!.id,
+      actorName: req.user!.name,
+      actorRole: req.user!.role,
+      action: 'ADMIN_CREATE_CATEGORY',
+      resource: `CATEGORY:${id}`,
+      newValue: category,
+      ipAddress: req.ip
+    });
+
+    res.status(201).json({ success: true, category, categories: db.categories });
+  });
+
+  // PUT /api/v1/admin/categories/:id
+  adminRouter.put('/categories/:id', (req: AuthenticatedRequest, res) => {
+    const idx = db.categories.findIndex((c: any) => c.id === req.params.id);
+    if (idx === -1) {
+      return res.status(404).json({ success: false, error: 'Không tìm thấy chuyên mục' });
+    }
+    const oldValue = { ...db.categories[idx] };
+    const body = req.body || {};
+    const updated: any = { ...oldValue };
+    const allowed = ['name', 'slug', 'parentId', 'iconName', 'productCount', 'orderIndex', 'status', 'fulfillmentType', 'deliveryClassification', 'description', 'count'];
+    for (const k of allowed) {
+      if (body[k] !== undefined) updated[k] = body[k];
+    }
+    if (updated.status && updated.status !== 'hidden') updated.status = 'active';
+    db.categories[idx] = updated;
+
+    AuditService.log({
+      actorId: req.user!.id,
+      actorName: req.user!.name,
+      actorRole: req.user!.role,
+      action: 'ADMIN_UPDATE_CATEGORY',
+      resource: `CATEGORY:${updated.id}`,
+      oldValue,
+      newValue: updated,
+      ipAddress: req.ip
+    });
+
+    res.json({ success: true, category: updated, categories: db.categories });
+  });
+
+  // DELETE /api/v1/admin/categories/:id — xóa cả nhánh con (parentId = id),
+  // khớp hành vi UI hiện tại (filter c.id !== id && c.parentId !== id)
+  adminRouter.delete('/categories/:id', (req: AuthenticatedRequest, res) => {
+    const id = req.params.id;
+    const target = db.categories.find((c: any) => c.id === id);
+    if (!target) {
+      return res.status(404).json({ success: false, error: 'Không tìm thấy chuyên mục' });
+    }
+    const removed = db.categories.filter((c: any) => c.id === id || c.parentId === id);
+    db.categories = db.categories.filter((c: any) => c.id !== id && c.parentId !== id);
+
+    AuditService.log({
+      actorId: req.user!.id,
+      actorName: req.user!.name,
+      actorRole: req.user!.role,
+      action: 'ADMIN_DELETE_CATEGORY',
+      resource: `CATEGORY:${id}`,
+      oldValue: removed,
+      ipAddress: req.ip
+    });
+
+    res.json({ success: true, removedCount: removed.length, categories: db.categories });
+  });
+
+  // POST /api/v1/admin/test-card24h - Live test ping to Card24h API
 adminRouter.post('/test-card24h', async (req: AuthenticatedRequest, res) => {
   // CYBERPOOL SECURITY FIX: real partner credentials were hardcoded as
   // fallbacks. Now only env/systemConfig may supply them — never source code.
