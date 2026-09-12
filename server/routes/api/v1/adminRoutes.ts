@@ -54,7 +54,12 @@ adminRouter.get('/audit-logs', (req: AuthenticatedRequest, res) => {
 
 // GET /api/v1/admin/users
 adminRouter.get('/users', (req: AuthenticatedRequest, res) => {
-  const usersList = Array.from(db.users.values());
+  // CYBERPOOL SECURITY FIX: strip passwordHash + secret fields — trước đây trả
+  // nguyên user object (kể cả scrypt hash) cho mọi ADMIN-level token.
+  const usersList = Array.from(db.users.values()).map((u: any) => {
+    const { passwordHash, password, encryptedSecrets, ...safe } = u;
+    return safe;
+  });
   res.json({
     success: true,
     users: usersList

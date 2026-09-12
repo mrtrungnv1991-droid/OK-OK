@@ -456,7 +456,10 @@ export class GatewayVerificationService {
                   detectedUsdt = Number(transfer.amount_str || 0) / 1000000;
                   contractAddress = contract;
                   onChainVerified = true;
-                  confirmations = data.confirmations || 12;
+                  // CYBERPOOL FIX: đọc số xác nhận THẬT (trước đây default 12 rồi
+                  // không dùng — tx 0 xác nhận vẫn được credit). confirmed=true mà
+                  // thiếu trường confirmations thì coi như đạt finality SR (27).
+                  confirmations = Number(data.confirmations ?? (data.confirmed ? 27 : 0));
                   break;
                 }
               }
@@ -504,7 +507,22 @@ export class GatewayVerificationService {
                     const statusData: any = await statusRes.json();
                     if (statusData?.result?.status === '1') {
                       onChainVerified = true;
-                      confirmations = 15;
+                      // CYBERPOOL FIX: tính số xác nhận THẬT thay vì hardcode 15 —
+                      // confirmations = latestBlock - txBlock + 1 (eth proxy API).
+                      confirmations = 0;
+                      try {
+                        const txRes = await fetch(`https://api.bscscan.com/api?module=proxy&action=eth_getTransactionByHash&txhash=${cleanHash}`);
+                        const txData: any = txRes.ok ? await txRes.json() : null;
+                        const blkRes = await fetch('https://api.bscscan.com/api?module=proxy&action=eth_blockNumber');
+                        const blkData: any = blkRes.ok ? await blkRes.json() : null;
+                        const txBlock = parseInt(txData?.result?.blockNumber || '0x0', 16);
+                        const latestBlock = parseInt(blkData?.result || '0x0', 16);
+                        if (txBlock > 0 && latestBlock >= txBlock) {
+                          confirmations = latestBlock - txBlock + 1;
+                        }
+                      } catch (confErr) {
+                        console.warn('[BSC_CONFIRMATIONS_LOOKUP_WARN]', confErr);
+                      }
                     }
                   }
                 }
@@ -525,6 +543,23 @@ export class GatewayVerificationService {
         amount: 0,
         explorerUrl,
         message: 'Không tìm thấy giao dịch chuyển USDT hợp lệ trên blockchain tới ví CyberPool hoặc giao dịch chưa đủ số block xác nhận. Vui lòng kiểm tra lại TxID.'
+      };
+    }
+
+    // CYBERPOOL FIX (anti-double-spend): enforce minimum confirmations. Trước đây
+    // `confirmations` được ghi nhận nhưng KHÔNG bao giờ bị kiểm tra — một tx 0/1
+    // xác nhận (có thể bị reorg/double-spend) vẫn được credit. Mặc định 19 block
+    // (an toàn finality cho TRON SR / BSC), admin chỉnh qua systemConfig.
+    const minConfirmations = Number(db.systemConfig?.cryptoUsdtMinConfirmations) || 19;
+    if (confirmations < minConfirmations) {
+      return {
+        success: false,
+        verified: false,
+        gateway: 'CRYPTO_USDT',
+        referenceId: cleanHash,
+        amount: 0,
+        explorerUrl,
+        message: `Giao dịch mới có ${confirmations}/${minConfirmations} block xác nhận — chưa đủ an toàn để cộng tiền. Vui lòng đợi thêm vài phút rồi xác minh lại TxID.`
       };
     }
 
@@ -823,7 +858,10 @@ export class GatewayVerificationService {
       });
 
       const momoData: any = await momoRes.json();
-      if (momoData && (momoData.resultCode === 0 || momoData.resultCode === 9000)) {
+      // CYBERPOOL FIX: chỉ chấp nhận resultCode === 0 (thành công chắc chắn).
+      // 9000 = trạng thái không xác định/đang xử lý theo docs MoMo — credit khi
+      // chưa chắc chắn là rủi ro tiền (trước đây chấp nhận cả 9000).
+      if (momoData && momoData.resultCode === 0) {
         verifiedAmount = Number(momoData.amount || 0);
         momoStatus = 'COMPLETED';
       } else {
