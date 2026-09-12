@@ -104,17 +104,19 @@ export const DepositHubModal: React.FC<DepositHubModalProps> = ({
   };
 
   const usdtAccount = {
-    network: 'TRC20 & BEP20',
-    address: systemConfig?.cryptoUsdtAddress || 'TWYvQ5X4h3uC48K8kS1mN7kY6Q3kH2g9aB',
-    rate: systemConfig?.usdToVndRate || 25400
-  };
+      network: 'TRC20 & BEP20',
+      // CYBERPOOL FIX: fail-closed — chưa cấu hình ví thật thì để rỗng,
+      // UI sẽ chặn nạp thay vì cho user chuyển tiền vào địa chỉ placeholder
+      address: systemConfig?.cryptoUsdtAddress || '',
+      rate: systemConfig?.usdToVndRate || 25400
+    };
 
-  const ltcAccount = {
-    network: 'Litecoin Core (LTC Mainnet)',
-    address: systemConfig?.cryptoLtcAddress || 'LZeE2hL9qHSmV7gJ2wH7QG9Z2C81uYyX3w',
-    rate: systemConfig?.cryptoLtcRate || 2150000,
-    confirmations: 2
-  };
+    const ltcAccount = {
+      network: 'Litecoin Core (LTC Mainnet)',
+      address: systemConfig?.cryptoLtcAddress || '',
+      rate: systemConfig?.cryptoLtcRate || 2150000,
+      confirmations: 2
+    };
 
   const binanceAccount = {
       // CYBERPOOL FIX: không hardcode Pay ID/UID giả làm default — cấu hình từ
@@ -520,9 +522,71 @@ export const DepositHubModal: React.FC<DepositHubModalProps> = ({
         )}
       </div>
     );
-  };
+      };
 
-  if (!isOpen) return null;
+      // CYBERPOOL FIX: fail-closed UI — cổng nạp CHƯA được cấu hình ví/credential thật
+      // thì chặn toàn bộ (không cho user chuyển tiền vào địa chỉ placeholder).
+      const renderChannelNotConfigured = (
+        channelKey: 'vietqr' | 'momo' | 'crypto' | 'ltc' | 'binance',
+        channelTitle: string,
+        hint: string
+      ) => {
+        const activeAlternates = (['vietqr', 'momo', 'crypto', 'ltc', 'binance'] as const).filter(
+          ch => ch !== channelKey && isModuleEnabled(ch)
+        );
+
+        return (
+          <div className="py-12 px-4 flex flex-col items-center justify-center max-w-lg mx-auto text-center space-y-4 font-sans">
+            <div className="w-16 h-16 rounded-2xl bg-rose-500/10 border border-rose-500/30 flex items-center justify-center text-rose-400 shadow-lg shadow-rose-500/10">
+              <AlertTriangle className="w-8 h-8" />
+            </div>
+            <div className="space-y-2">
+              <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-rose-500/15 text-rose-300 border border-rose-500/40 text-xs font-bold uppercase tracking-wider">
+                <span className="w-2 h-2 rounded-full bg-rose-400 animate-pulse" />
+                <span>Cổng Chưa Sẵn Sàng</span>
+              </div>
+              <h3 className="text-base font-bold text-white">
+                {channelTitle} Chưa Được Cấu Hình
+              </h3>
+              <p className="text-xs text-slate-300 bg-slate-900/90 p-3.5 rounded-xl border border-slate-800 text-left leading-relaxed">
+                {hint}
+              </p>
+            </div>
+
+            {activeAlternates.length > 0 && (
+              <div className="w-full pt-4 border-t border-slate-800/80 space-y-2.5">
+                <p className="text-xs text-slate-400">
+                  Quý khách vui lòng chuyển sang cổng nạp thay thế đang hoạt động bình thường:
+                </p>
+                <div className="flex flex-wrap gap-2 justify-center">
+                  {activeAlternates.map(alt => {
+                    const names: Record<string, string> = {
+                      vietqr: 'VietQR Ngân Hàng',
+                      momo: 'Ví MoMo / ZaloPay',
+                      crypto: 'Crypto USDT',
+                      ltc: 'Litecoin (LTC)',
+                      binance: 'Binance Pay'
+                    };
+                    return (
+                      <button
+                        key={alt}
+                        type="button"
+                        onClick={() => setActiveChannel(alt)}
+                        className="px-3 py-1.5 rounded-lg bg-cyan-500/10 hover:bg-cyan-500/20 text-cyan-300 border border-cyan-500/30 text-xs font-bold transition-all cursor-pointer flex items-center gap-1.5"
+                      >
+                        <CheckCircle2 className="w-3.5 h-3.5 text-cyan-400" />
+                        <span>{names[alt]}</span>
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
+          </div>
+        );
+      };
+
+      if (!isOpen) return null;
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-black/90 backdrop-blur-md overflow-y-auto">
@@ -1000,10 +1064,19 @@ export const DepositHubModal: React.FC<DepositHubModalProps> = ({
           )}
 
           {activeChannel === 'crypto' && (
-            !isModuleEnabled('crypto') ? (
-              renderChannelMaintenance('crypto', 'Cổng Nạp Crypto USDT (TRC20 / BEP20)')
-            ) : (
-            <div className="space-y-4">
+                      !isModuleEnabled('crypto') ? (
+                        renderChannelMaintenance('crypto', 'Cổng Nạp Crypto USDT (TRC20 / BEP20)')
+                      ) : !usdtAccount.address ? (
+                        renderChannelNotConfigured(
+                          'crypto',
+                          'Cổng Nạp Crypto USDT (TRC20 / BEP20)',
+                          'Shop chưa cấu hình địa chỉ ví nhận USDT (systemConfig.cryptoUsdtAddress). ' +
+                          'Quản trị vui lòng vào Admin Panel → Tài Chính → Nạp Tiền → mục "CỔNG CRYPTO USDT" ' +
+                          'để nhập địa chỉ ví TRC20/BEP20 thật của shop trước khi mở cổng này. ' +
+                          'Hiện cổng tạm khóa để tránh khách chuyển tiền sai địa chỉ.'
+                        )
+                      ) : (
+                      <div className="space-y-4">
               {/* Crypto Network & Rate Banner */}
               <div className="p-4 rounded-xl bg-emerald-950/30 border border-emerald-500/30 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
                 <div>
@@ -1160,9 +1233,18 @@ export const DepositHubModal: React.FC<DepositHubModalProps> = ({
 
           {/* CHANNEL: LITECOIN (LTC) */}
           {activeChannel === 'ltc' && (
-            !isModuleEnabled('ltc') ? (
-              renderChannelMaintenance('ltc', 'Cổng Nạp Litecoin (LTC Core)')
-            ) : (
+                      !isModuleEnabled('ltc') ? (
+                        renderChannelMaintenance('ltc', 'Cổng Nạp Litecoin (LTC Core)')
+                      ) : !ltcAccount.address ? (
+                        renderChannelNotConfigured(
+                          'ltc',
+                          'Cổng Nạp Litecoin (LTC Core)',
+                          'Shop chưa cấu hình địa chỉ ví nhận LTC (systemConfig.cryptoLtcAddress). ' +
+                          'Quản trị vui lòng vào Admin Panel → Tài Chính → Nạp Tiền → mục "CỔNG NẠP LITECOIN" ' +
+                          'để nhập địa chỉ ví LTC mainnet thật của shop trước khi mở cổng này. ' +
+                          'Hiện cổng tạm khóa để tránh khách chuyển tiền sai địa chỉ.'
+                        )
+                      ) : (
             <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
               {/* Left: LTC QR Code */}
               <div className="lg:col-span-5 flex flex-col items-center bg-slate-900/60 p-4 rounded-2xl border border-blue-500/30 space-y-3 text-center">

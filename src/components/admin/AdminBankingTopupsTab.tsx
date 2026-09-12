@@ -110,11 +110,13 @@ export const AdminBankingTopupsTab: React.FC<AdminBankingTopupsTabProps> = ({
     telcoFeeZing: systemConfig?.telcoFeeZing || 15,
     telcoFeeGarena: systemConfig?.telcoFeeGarena || 14,
     
-    cryptoUsdtAddress: systemConfig?.cryptoUsdtAddress || 'TWYvQ5X4h3uC48K8kS1mN7kY6Q3kH2g9aB',
-    cryptoNetwork: systemConfig?.cryptoNetwork || 'TRC20',
-    cryptoLtcAddress: systemConfig?.cryptoLtcAddress || 'LZeE2hL9qHSmV7gJ2wH7QG9Z2C81uYyX3w',
-    cryptoLtcRate: systemConfig?.cryptoLtcRate || 2150000,
-    cryptoLtcConfirmations: systemConfig?.cryptoLtcConfirmations || 2,
+    // CYBERPOOL FIX: KHÔNG default ví giả — nếu chưa cấu hình thì để TRỐNG (fail-closed),
+        // tránh user nạp tiền vào địa chỉ placeholder
+        cryptoUsdtAddress: systemConfig?.cryptoUsdtAddress || '',
+        cryptoNetwork: systemConfig?.cryptoNetwork || 'TRC20',
+        cryptoLtcAddress: systemConfig?.cryptoLtcAddress || '',
+        cryptoLtcRate: systemConfig?.cryptoLtcRate || 2150000,
+        cryptoLtcConfirmations: systemConfig?.cryptoLtcConfirmations || 2,
     
     binancePayId: systemConfig?.binancePayId || '',
         binanceUid: systemConfig?.binanceUid || '',
@@ -245,44 +247,169 @@ export const AdminBankingTopupsTab: React.FC<AdminBankingTopupsTabProps> = ({
   }, [systemConfigBankingKey]);
 
   const [card24hTesting, setCard24hTesting] = useState(false);
-  const [card24hTestResult, setCard24hTestResult] = useState<{
-    success: boolean;
-    message: string;
-    latencyMs?: number;
-    raw?: any;
-  } | null>(null);
+    const [card24hTestResult, setCard24hTestResult] = useState<{
+      success: boolean;
+      message: string;
+      latencyMs?: number;
+      raw?: any;
+    } | null>(null);
+
+    // CYBERPOOL FIX: test kết nối + xác thực credential THẬT cho Binance / USDT / LTC
+    const [binanceTesting, setBinanceTesting] = useState(false);
+    const [binanceTestResult, setBinanceTestResult] = useState<{
+      success: boolean;
+      message: string;
+      latencyMs?: number;
+      raw?: any;
+    } | null>(null);
+    const [cryptoUsdtTesting, setCryptoUsdtTesting] = useState(false);
+    const [cryptoUsdtTestResult, setCryptoUsdtTestResult] = useState<{
+      success: boolean;
+      message: string;
+      latencyMs?: number;
+      raw?: any;
+    } | null>(null);
+    const [ltcTesting, setLtcTesting] = useState(false);
+    const [ltcTestResult, setLtcTestResult] = useState<{
+      success: boolean;
+      message: string;
+      latencyMs?: number;
+      raw?: any;
+    } | null>(null);
   const [copiedCallback, setCopiedCallback] = useState(false);
 
   const handleTestCard24hConnection = async () => {
-    setCard24hTesting(true);
-    setCard24hTestResult(null);
-    try {
-      const res = await adminApi.testCard24h({
-        partnerId: gatewayForm.telcoPartnerId,
-        partnerKey: gatewayForm.telcoPartnerKey
-      });
-      if (res.success && res.data) {
-        setCard24hTestResult({
-          success: true,
-          message: res.data.note || 'Kết nối Card24h API thành công! Hệ thống sẵn sàng gạch thẻ cào 24/7.',
-          latencyMs: res.data.latencyMs,
-          raw: res.data.raw
+      setCard24hTesting(true);
+      setCard24hTestResult(null);
+      try {
+        const res = await adminApi.testCard24h({
+          partnerId: gatewayForm.telcoPartnerId,
+          partnerKey: gatewayForm.telcoPartnerKey
         });
-      } else {
+        if (res.success && res.data) {
+          setCard24hTestResult({
+            success: true,
+            message: res.data.note || 'Kết nối Card24h API thành công! Hệ thống sẵn sàng gạch thẻ cào 24/7.',
+            latencyMs: res.data.latencyMs,
+            raw: res.data.raw
+          });
+        } else {
+          setCard24hTestResult({
+            success: false,
+            message: res.error || 'Không thể kết nối đến máy chủ Card24h. Vui lòng kiểm tra lại Partner ID/Key.'
+          });
+        }
+      } catch (err: any) {
         setCard24hTestResult({
           success: false,
-          message: res.error || 'Không thể kết nối đến máy chủ Card24h. Vui lòng kiểm tra lại Partner ID/Key.'
+          message: err?.message || 'Lỗi kiểm tra kết nối API'
         });
+      } finally {
+        setCard24hTesting(false);
       }
-    } catch (err: any) {
-      setCard24hTestResult({
-        success: false,
-        message: err?.message || 'Lỗi kiểm tra kết nối API'
-      });
-    } finally {
-      setCard24hTesting(false);
-    }
-  };
+    };
+
+    // CYBERPOOL FIX: Binance — test ping + xác thực chữ ký HMAC-SHA512 thật qua
+    // order/query (server gọi Binance Pay OpenAPI v2; credential đúng → trả
+    // 'Order not found', sai → 'Invalid API-key'). Không qua loa: ping công khai
+    // không chứng minh được key đúng.
+    const handleTestBinanceConnection = async () => {
+      setBinanceTesting(true);
+      setBinanceTestResult(null);
+      try {
+        const res = await adminApi.testBinance({
+                apiKey: gatewayForm.binanceApiKey,
+                secretKey: gatewayForm.binanceSecretKey
+              });
+              if (res.data && res.data.success !== false) {
+                const auth = res.data.authCheck;
+                const authNote = auth
+                  ? ` [HTTP ${auth.httpStatus} | API ${auth.apiStatus} | ${auth.message || auth.error || 'no msg'}]`
+                  : '';
+                setBinanceTestResult({
+                  success: true,
+                  message: `${res.data.merchantStatus || res.data.note || 'OK'}${authNote}`,
+                  latencyMs: res.data.latencyMs,
+                  raw: res.data
+                });
+              } else {
+                setBinanceTestResult({
+                  success: false,
+                  message: (res.data && res.data.error) || res.error || 'Không thể gọi API kiểm tra Binance.'
+                });
+              }
+      } catch (err: any) {
+        setBinanceTestResult({
+          success: false,
+          message: err?.message || 'Lỗi kiểm tra kết nối Binance'
+        });
+      } finally {
+        setBinanceTesting(false);
+      }
+    };
+
+    // CYBERPOOL FIX: USDT — test TronScan/BSC explorer live với địa chỉ ví đang nhập
+    const handleTestCryptoUsdtConnection = async () => {
+      setCryptoUsdtTesting(true);
+      setCryptoUsdtTestResult(null);
+      try {
+        const res = await adminApi.testCryptoUsdt({
+                address: gatewayForm.cryptoUsdtAddress,
+                network: gatewayForm.cryptoNetwork
+              });
+              if (res.data && res.data.success !== false) {
+                setCryptoUsdtTestResult({
+                  success: true,
+                  message: `${res.data.onChainStatus || 'ONLINE'} | Wallet ${res.data.walletAddress || ''} | ${res.data.trxBalance || ''} | ${res.data.bandwidth || ''}`,
+                  latencyMs: res.data.latencyMs,
+                  raw: res.data
+                });
+              } else {
+                setCryptoUsdtTestResult({
+                  success: false,
+                  message: (res.data && res.data.error) || res.error || 'Không thể truy vấn node blockchain USDT.'
+                });
+              }
+      } catch (err: any) {
+        setCryptoUsdtTestResult({
+          success: false,
+          message: err?.message || 'Lỗi kiểm tra kết nối USDT'
+        });
+      } finally {
+        setCryptoUsdtTesting(false);
+      }
+    };
+
+    // CYBERPOOL FIX: LTC — test Blockchair explorer live với địa chỉ ví đang nhập
+    const handleTestLtcConnection = async () => {
+      setLtcTesting(true);
+      setLtcTestResult(null);
+      try {
+        const res = await adminApi.testLtc({
+                address: gatewayForm.cryptoLtcAddress
+              });
+              if (res.data && res.data.success !== false) {
+                setLtcTestResult({
+                  success: true,
+                  message: `${res.data.onChainStatus || 'ONLINE'} | Wallet ${res.data.walletAddress || ''} | ${res.data.confirmationsNote || ''}`,
+                  latencyMs: res.data.latencyMs,
+                  raw: res.data
+                });
+              } else {
+                setLtcTestResult({
+                  success: false,
+                  message: (res.data && res.data.error) || res.error || 'Không thể truy vấn node Litecoin mainnet.'
+                });
+              }
+      } catch (err: any) {
+        setLtcTestResult({
+          success: false,
+          message: err?.message || 'Lỗi kiểm tra kết nối LTC'
+        });
+      } finally {
+        setLtcTesting(false);
+      }
+    };
 
   const handleCopyCallbackUrl = () => {
     const url = gatewayForm.telcoCallbackUrl || (typeof window !== 'undefined' ? `${window.location.origin}/api/v1/webhooks/card24h` : '/api/v1/webhooks/card24h');
@@ -1729,11 +1856,35 @@ export const AdminBankingTopupsTab: React.FC<AdminBankingTopupsTabProps> = ({
                     <option value="TRC20">TRON (TRC20) - Phí thấp, xác nhận 1-2 phút</option>
                     <option value="BEP20">BNB Smart Chain (BEP20)</option>
                     <option value="ERC20">Ethereum (ERC20)</option>
-                  </select>
-                </div>
-              </div>
-            </div>
-          </div>
+                                      </select>
+                                    </div>
+
+                                    {/* CYBERPOOL FIX: test kết nối TronScan/BSC explorer live */}
+                                    <div className="flex items-center gap-2.5 pt-0.5">
+                                      <button
+                                        type="button"
+                                        onClick={handleTestCryptoUsdtConnection}
+                                        disabled={cryptoUsdtTesting}
+                                        className="px-3 py-2 rounded-lg bg-emerald-500/15 hover:bg-emerald-500/25 border border-emerald-500/40 text-emerald-300 text-[11px] font-bold flex items-center gap-1.5 cursor-pointer disabled:opacity-50"
+                                      >
+                                        <RefreshCw className={`w-3 h-3 ${cryptoUsdtTesting ? 'animate-spin' : ''}`} />
+                                        {cryptoUsdtTesting ? 'Đang quét node...' : 'Kiểm Tra Kết Nối USDT'}
+                                      </button>
+                                      {cryptoUsdtTestResult && (
+                                        <span className={`text-[10px] font-bold flex-1 ${cryptoUsdtTestResult.success ? 'text-emerald-400' : 'text-rose-400'}`}>
+                                          {cryptoUsdtTestResult.message}
+                                          {cryptoUsdtTestResult.latencyMs != null && ` (${cryptoUsdtTestResult.latencyMs}ms)`}
+                                        </span>
+                                      )}
+                                    </div>
+                                    {!gatewayForm.cryptoUsdtAddress && (
+                                      <p className="text-[10px] text-rose-400 font-bold bg-rose-950/30 border border-rose-500/30 rounded-lg px-2.5 py-1.5">
+                                        ⚠ CHƯA CẤU HÌNH ví USDT — cổng nạp sẽ tạm khóa cho khách cho đến khi nhập địa chỉ ví thật.
+                                      </p>
+                                    )}
+                                  </div>
+                                </div>
+                              </div>
 
           {/* Row: Litecoin LTC & Binance Pay Gateways */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -1769,17 +1920,41 @@ export const AdminBankingTopupsTab: React.FC<AdminBankingTopupsTabProps> = ({
                     />
                   </div>
                   <div>
-                    <label className="text-[11px] text-slate-400">Số Blocks Xác Nhận:</label>
-                    <input
-                      type="number"
-                      value={gatewayForm.cryptoLtcConfirmations}
-                      onChange={(e) => setGatewayForm({ ...gatewayForm, cryptoLtcConfirmations: parseInt(e.target.value) || 2 })}
-                      className="w-full bg-slate-950 border border-slate-700 rounded-lg p-2 text-cyan-300 font-bold mt-1 text-xs"
-                    />
-                  </div>
-                </div>
-              </div>
-            </div>
+                                      <label className="text-[11px] text-slate-400">Số Blocks Xác Nhận:</label>
+                                      <input
+                                        type="number"
+                                        value={gatewayForm.cryptoLtcConfirmations}
+                                        onChange={(e) => setGatewayForm({ ...gatewayForm, cryptoLtcConfirmations: parseInt(e.target.value) || 2 })}
+                                        className="w-full bg-slate-950 border border-slate-700 rounded-lg p-2 text-cyan-300 font-bold mt-1 text-xs"
+                                      />
+                                    </div>
+                                  </div>
+
+                                  {/* CYBERPOOL FIX: test kết nối Blockchair explorer live */}
+                                  <div className="flex items-center gap-2.5 pt-0.5">
+                                    <button
+                                      type="button"
+                                      onClick={handleTestLtcConnection}
+                                      disabled={ltcTesting}
+                                      className="px-3 py-2 rounded-lg bg-blue-500/15 hover:bg-blue-500/25 border border-blue-500/40 text-blue-300 text-[11px] font-bold flex items-center gap-1.5 cursor-pointer disabled:opacity-50"
+                                    >
+                                      <RefreshCw className={`w-3 h-3 ${ltcTesting ? 'animate-spin' : ''}`} />
+                                      {ltcTesting ? 'Đang quét LTC...' : 'Kiểm Tra Kết Nối LTC'}
+                                    </button>
+                                    {ltcTestResult && (
+                                      <span className={`text-[10px] font-bold flex-1 ${ltcTestResult.success ? 'text-emerald-400' : 'text-rose-400'}`}>
+                                        {ltcTestResult.message}
+                                        {ltcTestResult.latencyMs != null && ` (${ltcTestResult.latencyMs}ms)`}
+                                      </span>
+                                    )}
+                                  </div>
+                                  {!gatewayForm.cryptoLtcAddress && (
+                                    <p className="text-[10px] text-rose-400 font-bold bg-rose-950/30 border border-rose-500/30 rounded-lg px-2.5 py-1.5">
+                                      ⚠ CHƯA CẤU HÌNH ví LTC — cổng nạp sẽ tạm khóa cho khách cho đến khi nhập địa chỉ ví thật.
+                                    </p>
+                                  )}
+                                </div>
+                              </div>
 
             {/* Binance Pay Gateway */}
             <div className="p-4 rounded-xl bg-slate-900/60 border border-amber-500/30 space-y-3">
@@ -1825,18 +2000,67 @@ export const AdminBankingTopupsTab: React.FC<AdminBankingTopupsTabProps> = ({
                     />
                   </div>
                   <div>
-                    <label className="text-[11px] text-slate-400">Tỷ Giá Binance (1 USDT = ₫):</label>
-                    <input
-                      type="number"
-                      value={gatewayForm.usdToVndRate}
-                      onChange={(e) => setGatewayForm({ ...gatewayForm, usdToVndRate: parseFloat(e.target.value) || 25400 })}
-                      className="w-full bg-slate-950 border border-slate-700 rounded-lg p-2 text-emerald-400 font-bold mt-1 text-xs"
-                    />
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
+                                      <label className="text-[11px] text-slate-400">Tỷ Giá Binance (1 USDT = ₫):</label>
+                                      <input
+                                        type="number"
+                                        value={gatewayForm.usdToVndRate}
+                                        onChange={(e) => setGatewayForm({ ...gatewayForm, usdToVndRate: parseFloat(e.target.value) || 25400 })}
+                                        className="w-full bg-slate-950 border border-slate-700 rounded-lg p-2 text-emerald-400 font-bold mt-1 text-xs"
+                                      />
+                                    </div>
+                                  </div>
+
+                                  {/* CYBERPOOL FIX: API credentials Binance Pay — "API" thật để tạo
+                                      lệnh + query + IPN auto-credit (không chỉ Pay ID/UID nhận dạng) */}
+                                  <div className="grid grid-cols-2 gap-2 pt-1">
+                                    <div>
+                                      <label className="text-[11px] text-slate-400">Binance Pay API Key (Certificate SN):</label>
+                                      <input
+                                        type="text"
+                                        value={gatewayForm.binanceApiKey || ''}
+                                        onChange={(e) => setGatewayForm({ ...gatewayForm, binanceApiKey: e.target.value })}
+                                        placeholder="vd: live_xxxx... / 1st6_test_xxx..."
+                                        className="w-full bg-slate-950 border border-slate-700 rounded-lg p-2 text-amber-300 font-mono mt-1 text-xs"
+                                      />
+                                    </div>
+                                    <div>
+                                      <label className="text-[11px] text-slate-400">Binance Pay API Secret Key:</label>
+                                      <input
+                                        type="password"
+                                        value={gatewayForm.binanceSecretKey || ''}
+                                        onChange={(e) => setGatewayForm({ ...gatewayForm, binanceSecretKey: e.target.value })}
+                                        placeholder="•••••••••••••••• (không hiển thị)"
+                                        className="w-full bg-slate-950 border border-slate-700 rounded-lg p-2 text-amber-300 font-mono mt-1 text-xs"
+                                      />
+                                    </div>
+                                  </div>
+
+                                  {/* CYBERPOOL FIX: test kết nối + xác thực chữ ký thật */}
+                                  <div className="flex items-center gap-2.5 pt-0.5">
+                                    <button
+                                      type="button"
+                                      onClick={handleTestBinanceConnection}
+                                      disabled={binanceTesting}
+                                      className="px-3 py-2 rounded-lg bg-amber-500/15 hover:bg-amber-500/25 border border-amber-500/40 text-amber-300 text-[11px] font-bold flex items-center gap-1.5 cursor-pointer disabled:opacity-50"
+                                    >
+                                      <RefreshCw className={`w-3 h-3 ${binanceTesting ? 'animate-spin' : ''}`} />
+                                      {binanceTesting ? 'Đang kiểm tra...' : 'Kiểm Tra Kết Nối + Chữ Ký API'}
+                                    </button>
+                                    {binanceTestResult && (
+                                      <span className={`text-[10px] font-bold flex-1 ${binanceTestResult.success ? 'text-emerald-400' : 'text-rose-400'}`}>
+                                        {binanceTestResult.message}
+                                        {binanceTestResult.latencyMs != null && ` (${binanceTestResult.latencyMs}ms)`}
+                                      </span>
+                                    )}
+                                  </div>
+                                  <p className="text-[10px] text-slate-500 leading-relaxed">
+                                    <ShieldCheck className="w-3 h-3 inline mr-1 text-amber-500" />
+                                    API Key + Secret Key dùng để tạo lệnh thanh toán (create order), query trạng thái và nhận IPN tự động cộng tiền.
+                                    Nút kiểm tra gửi một yêu cầu order/query có chữ ký HMAC-SHA512 thật tới Binance để xác nhận credential hợp lệ.
+                                  </p>
+                                </div>
+                              </div>
+                            </div>
 
           <div className="flex justify-end pt-2">
             <button

@@ -413,8 +413,21 @@ export class GatewayVerificationService {
       };
     }
 
-    const shopUsdtAddress = db.systemConfig?.cryptoUsdtAddress || 'TWYvQ5X4h3uC48K8kS1mN7kY6Q3kH2g9aB';
-    const usdRate = db.systemConfig?.usdToVndRate || 25400;
+    const shopUsdtAddress = db.systemConfig?.cryptoUsdtAddress || '';
+        const usdRate = db.systemConfig?.usdToVndRate || 25400;
+
+        // CYBERPOOL FIX: fail-closed — chưa cấu hình ví nhận USDT thì KHÔNG verify,
+        // tuyệt đối không fallback về địa chỉ giả (tránh credit nhầm hoặc mất tiền)
+        if (!shopUsdtAddress) {
+          return {
+            success: false,
+            verified: false,
+            gateway: 'CRYPTO_USDT',
+            referenceId: cleanHash,
+            amount: 0,
+            message: 'Cổng USDT chưa được cấu hình địa chỉ ví nhận. Vui lòng liên hệ quản trị để thiết lập ví trước khi nạp.'
+          };
+        }
 
     let detectedUsdt = 0;
     let onChainVerified = false;
@@ -603,9 +616,21 @@ export class GatewayVerificationService {
       };
     }
 
-    const shopLtcAddress = db.systemConfig?.cryptoLtcAddress || 'LTC1Q8K9M2J4P6X7V5T3R1Z0W8Y6N4C2B8';
-    const ltcRate = db.systemConfig?.cryptoLtcRate || 2150000;
-    const explorerUrl = `https://blockchair.com/litecoin/transaction/${cleanHash}`;
+    const shopLtcAddress = db.systemConfig?.cryptoLtcAddress || '';
+        const ltcRate = db.systemConfig?.cryptoLtcRate || 2150000;
+
+        // CYBERPOOL FIX: fail-closed — chưa cấu hình ví nhận LTC thì KHÔNG verify
+        if (!shopLtcAddress) {
+          return {
+            success: false,
+            verified: false,
+            gateway: 'CRYPTO_LTC',
+            referenceId: cleanHash,
+            amount: 0,
+            message: 'Cổng LTC chưa được cấu hình địa chỉ ví nhận. Vui lòng liên hệ quản trị để thiết lập trước khi nạp.'
+          };
+        }
+        const explorerUrl = `https://blockchair.com/litecoin/transaction/${cleanHash}`;
 
     let detectedLtc = 0;
     let confirmations = 0;
@@ -1152,49 +1177,104 @@ export class GatewayVerificationService {
   // ADMIN API GATEWAY PING TESTS
   // ============================================================================
   public static async testBinanceApiConnection(credentials?: {
-    apiKey?: string;
-    secretKey?: string;
-  }) {
-    const start = Date.now();
-    const apiKey = credentials?.apiKey || db.systemConfig?.binanceApiKey || process.env.BINANCE_PAY_API_KEY;
-    const secretKey = credentials?.secretKey || db.systemConfig?.binanceSecretKey || process.env.BINANCE_PAY_SECRET_KEY;
+      apiKey?: string;
+      secretKey?: string;
+    }) {
+      const start = Date.now();
+      const apiKey = credentials?.apiKey || db.systemConfig?.binanceApiKey || process.env.BINANCE_PAY_API_KEY;
+      const secretKey = credentials?.secretKey || db.systemConfig?.binanceSecretKey || process.env.BINANCE_PAY_SECRET_KEY;
 
-    try {
-      // Test Binance ping
-      const pingRes = await fetch('https://api.binance.com/api/v3/ping');
-      const latency = Date.now() - start;
+      try {
+        // Test Binance ping (public endpoint, không cần auth)
+        const pingRes = await fetch('https://api.binance.com/api/v3/ping');
+        const latency = Date.now() - start;
 
-      const hasCustomKeys = apiKey && !apiKey.includes('live_891823901823');
+        const hasCustomKeys = apiKey && !apiKey.includes('live_891823901823') && secretKey;
 
-      return {
-        success: true,
-        reachable: true,
-        gateway: 'Binance Pay / UID',
-        latencyMs: latency,
-        configured: Boolean(hasCustomKeys),
-        binanceServerStatus: pingRes.ok ? 'ONLINE (HTTP 200 OK)' : 'DEGRADED',
-        merchantStatus: hasCustomKeys ? 'API KEY ACTIVE & SIGNATURE READY' : 'SANDBOX / TESTNET READY',
-        apiEndpoint: 'https://bpay.binanceapi.com/binancepay/openapi/v2/order/query',
-        note: 'Kết nối API máy chủ Binance Pay hoàn toàn ổn định. Giao dịch người dùng được xác thực và cộng tiền tự động.'
-      };
-    } catch (err: any) {
-      return {
-        success: false,
-        reachable: false,
-        gateway: 'Binance Pay',
-        error: `Không thể kết nối đến máy chủ Binance: ${err?.message || 'Timeout'}`
-      };
+        // CYBERPOOL FIX: chỉ ping public endpoint KHÔNG xác thực được credential.
+        // Với cổng thanh toán phải test chữ ký THẬT: gọi order/query với prepayId
+        // không tồn tại — nếu credential đúng, Binance trả 'Order not found'
+        // (chứng minh auth + signature OK); nếu sai, trả 'Invalid API-key'.
+        let authResult: any = null;
+        if (hasCustomKeys) {
+          try {
+            const timestamp = Date.now().toString();
+            const nonce = crypto.randomBytes(16).toString('hex');
+            const queryBody = JSON.stringify({ prepayId: 'AUTH_TEST_DOES_NOT_EXIST', merchantTradeNo: 'AUTH_TEST_DOES_NOT_EXIST' });
+            const payloadToSign = `${timestamp}\n${nonce}\n${queryBody}\n`;
+            const signature = crypto.createHmac('sha512', secretKey).update(payloadToSign).digest('hex').toUpperCase();
+
+            const authRes = await fetch('https://bpay.binanceapi.com/binancepay/openapi/v2/order/query', {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json',
+                'BinancePay-Timestamp': timestamp,
+                'BinancePay-Nonce': nonce,
+                'BinancePay-Certificate-SN': apiKey,
+                'BinancePay-Signature': signature
+              },
+              body: queryBody
+            });
+            const raw: any = await authRes.json();
+            authResult = {
+              httpStatus: authRes.status,
+              apiStatus: raw?.status || 'UNKNOWN',
+              message: raw?.errorMessage || raw?.message || '',
+              orderStatus: raw?.data?.status || ''
+            };
+          } catch (authErr: any) {
+            authResult = { error: authErr?.message || 'Auth test exception' };
+          }
+        }
+
+        const authValid = authResult
+          && (authResult.apiStatus === 'FAIL' && (authResult.message || '').toLowerCase().includes('not found'));
+
+        return {
+          success: true,
+          reachable: true,
+          gateway: 'Binance Pay / UID',
+          latencyMs: latency,
+          configured: Boolean(hasCustomKeys),
+          binanceServerStatus: pingRes.ok ? 'ONLINE (HTTP 200 OK)' : 'DEGRADED',
+          // merchantStatus giờ phản ánh kết quả xác thực chữ ký THẬT
+          merchantStatus: !hasCustomKeys
+            ? 'CHƯA CẤU HÌNH API KEY — chỉ ping được server'
+            : authValid
+              ? '✅ API KEY HỢP LỆ — chữ ký HMAC-SHA512 được Binance chấp nhận'
+              : `❌ API KEY LỖI — Binance phản hồi: ${authResult?.message || authResult?.error || 'không xác định'}`,
+          authCheck: authResult,
+          apiEndpoint: 'https://bpay.binanceapi.com/binancepay/openapi/v2/order/query',
+          note: 'Kiểm tra kết nối + xác thực chữ ký HTTP HMAC-SHA512 tới Binance Pay OpenAPI v2.'
+        };
+      } catch (err: any) {
+        return {
+          success: false,
+          reachable: false,
+          gateway: 'Binance Pay',
+          error: `Không thể kết nối đến máy chủ Binance: ${err?.message || 'Timeout'}`
+        };
+      }
     }
-  }
 
   public static async testTronScanCryptoConnection(params?: {
-    address?: string;
-    network?: string;
-  }) {
-    const start = Date.now();
-    const address = params?.address || db.systemConfig?.cryptoUsdtAddress || 'TWYvQ5X4h3uC48K8kS1mN7kY6Q3kH2g9aB';
+      address?: string;
+      network?: string;
+    }) {
+      const start = Date.now();
+      const address = params?.address || db.systemConfig?.cryptoUsdtAddress || '';
 
-    try {
+      // CYBERPOOL FIX: fail-closed — test phải dùng ví THẬT đã cấu hình, không query ví giả
+      if (!address) {
+        return {
+          success: false,
+          reachable: false,
+          gateway: 'Crypto USDT (TRON TRC20)',
+          error: 'CHƯA CẤU HÌNH địa chỉ ví USDT. Vào phần cấu hình phía trên nhập địa chỉ ví nhận thật rồi thử lại.'
+        };
+      }
+
+      try {
       const res = await fetch(`https://apilist.tronscanapi.com/api/account?address=${address}`, {
         headers: { 'User-Agent': 'CyberPool-Validator/2.0' }
       });
@@ -1224,10 +1304,20 @@ export class GatewayVerificationService {
   }
 
   public static async testLitecoinConnection(params?: {
-    address?: string;
-  }) {
-    const start = Date.now();
-    const address = params?.address || db.systemConfig?.cryptoLtcAddress || 'LTC1Q8K9M2J4P6X7V5T3R1Z0W8Y6N4C2B8';
+      address?: string;
+    }) {
+      const start = Date.now();
+      const address = params?.address || db.systemConfig?.cryptoLtcAddress || '';
+
+      // CYBERPOOL FIX: fail-closed — test phải dùng ví THẬT đã cấu hình, không query ví giả
+      if (!address) {
+        return {
+          success: false,
+          reachable: false,
+          gateway: 'Crypto LTC (Litecoin Mainnet)',
+          error: 'CHƯA CẤU HÌNH địa chỉ ví LTC. Vào phần cấu hình phía trên nhập địa chỉ ví nhận thật rồi thử lại.'
+        };
+      }
 
     try {
       const res = await fetch('https://api.blockchair.com/litecoin/stats', {
