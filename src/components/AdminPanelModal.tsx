@@ -71,6 +71,12 @@ import { AdminOrderReliabilityTab } from './admin/AdminOrderReliabilityTab';
 import { AdminPaymentSystemTab } from './admin/AdminPaymentSystemTab';
 import { AdminSoldOrdersTab } from './admin/AdminSoldOrdersTab';
 import { AdminWithdrawalsTabContainer } from './admin/AdminWithdrawalsTabContainer';
+// CYBERPOOL FIX (#16 frontend audit): 3 tab mồ côi (đã build đầy đủ, 0 importer)
+// được mount vào panel: Source Connector (Cyborg pipeline), Source Automation
+// (tài khoản nguồn tự động), Audit & Security (logs/DDoS/telegram bot).
+import { AdminSourceConnectorTab } from './admin/AdminSourceConnectorTab';
+import { AdminSourceAutomationTab } from './admin/AdminSourceAutomationTab';
+import { AdminAuditSecurityTab } from './admin/AdminAuditSecurityTab';
 
 export type AdminTabType =
   | 'dashboard'
@@ -91,13 +97,16 @@ export type AdminTabType =
   | 'automation_cron'
   | 'logs'
   | 'suppliers'
-    | 'order_reliability'
-        | 'affiliate'
-        | 'giftup_admin'
-        | 'settings'
-        | 'sold_orders'
-        | 'withdrawals'
-        | 'database_schema';
+      | 'source_connector'
+      | 'source_automation'
+      | 'order_reliability'
+          | 'affiliate'
+          | 'giftup_admin'
+          | 'settings'
+          | 'sold_orders'
+          | 'withdrawals'
+          | 'audit_security'
+          | 'database_schema';
 
 interface AdminPanelModalProps {
   isOpen: boolean;
@@ -239,12 +248,15 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({
     automation_cron: 3,
     logs: 3,
     suppliers: 3,
+    source_connector: 3,
+    source_automation: 3,
     order_reliability: 3,
     affiliate: 3,
     giftup_admin: 3,
     settings: 3,
     sold_orders: 3,
     withdrawals: 3,
+    audit_security: 3,
     database_schema: 3
   };
   const currentRoleLevel = ROLE_LEVEL[userRole] || 1;
@@ -282,6 +294,8 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({
         key: 'supply', label: 'NGUỒN HÀNG & TỰ ĐỘNG', icon: Server,
         items: [
           { id: 'suppliers', label: 'Nhà Cung Cấp & Kết Nối Nguồn', icon: Server, badge: 'Hub' },
+          { id: 'source_connector', label: 'Source Connector (Cyborg)', icon: Server, badge: 'API' },
+          { id: 'source_automation', label: 'Tự Động Nguồn Hàng', icon: Clock, badge: 'Auto' },
           { id: 'automation_cron', label: 'Cron Jobs & Auto Sync', icon: Clock },
           { id: 'hero_layout', label: 'Hero Layout & Banner', icon: Layout, badge: 'UI' }
         ]
@@ -299,6 +313,7 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({
         items: [
           { id: 'roles', label: 'Roles & Sub-Admin', icon: ShieldCheck },
           { id: 'security_ip', label: 'WAF, IP & Bảo Mật', icon: ShieldAlert },
+          { id: 'audit_security', label: 'Audit Logs & Security', icon: FileText },
           { id: 'logs', label: 'System Logs', icon: FileText },
           { id: 'settings', label: t('nav.admin_panel') + ' Settings', icon: Settings },
           { id: 'database_schema', label: 'Database SQL Schema', icon: Database, badge: '64' }
@@ -533,7 +548,14 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({
               <AdminPaymentSystemTab currency={currency} />
             )}
 
-            {/* CYBERPOOL FIX: tab id 'source_automation' (trùng AdminSuppliersTab) đã xóa */}
+            {/* CYBERPOOL FIX (#16): mount 2 tab mồ côi đã build đầy đủ */}
+            {activeTab === 'source_connector' && (
+              <AdminSourceConnectorTab currency={currency} />
+            )}
+
+            {activeTab === 'source_automation' && (
+              <AdminSourceAutomationTab currency={currency} />
+            )}
 
             {activeTab === 'sold_orders' && (
               <AdminSoldOrdersTab currency={currency} />
@@ -565,7 +587,13 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({
               />
             )}
 
-            {/* CYBERPOOL FIX: tab id 'audit_security' (trùng AdminSecurityIpTab) đã xóa */}
+            {/* CYBERPOOL FIX (#16): mount tab Audit & Security mồ côi */}
+            {activeTab === 'audit_security' && (
+              <AdminAuditSecurityTab
+                systemConfig={systemConfig}
+                onUpdateSystemConfig={onUpdateSystemConfig}
+              />
+            )}
 
             {activeTab === 'database_schema' && (
               <AdminDatabaseSchemaTab />
