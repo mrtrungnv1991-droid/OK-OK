@@ -33,7 +33,16 @@ escrowRouter.post('/join', requireAuth, async (req: AuthenticatedRequest, res) =
     return res.status(400).json(result);
   }
 
-  res.json(result);
+  // CYBERPOOL FIX: trả về shape khớp client (escrowApi.joinPool đọc pool/message)
+  const completed = result.contract.status === 'COMPLETED';
+  res.json({
+    success: true,
+    pool: result.contract,
+    order: result.order,
+    message: completed
+      ? '🎉 Nhóm gom đơn đã ĐỦ thành viên — key bản quyền thật đã được chuyển vào Kho Key của bạn!'
+      : `Đã khóa tiền slot thành công. Bạn là thành viên #${result.contract.filledSlots}/${result.contract.targetSlots} — key sẽ bung ngay khi đủ nhóm!`
+  });
 });
 
 // POST /api/v1/escrow/admin/refund - Admin Force Refund Pool

@@ -91,8 +91,11 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   const refreshUserProfile = useCallback(async () => {
     try {
       let res = await authApi.getMe();
-      if (!res.success) {
-        // Automatically authenticate default demo session if token is missing or expired
+      // CYBERPOOL SECURITY FIX (CRITICAL): trước đây khi /auth/me fail, code tự
+      // đăng nhập bằng cặp credential ADMIN hardcode trong bundle công khai —
+      // MỌI visitor thành SuperAdmin ở production. Giờ auto-login demo chỉ chạy
+      // ở DEV (import.meta.env.DEV = false trong build production).
+      if (!res.success && import.meta.env.DEV) {
         const loginRes = await authApi.login('admin@cyberpool.vn', 'Admin@CyberPool2026!');
         if (loginRes.success && loginRes.data) {
           api.setToken(loginRes.data.token);
@@ -102,16 +105,18 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       if (res.success && res.data?.user) {
         setCurrentUser(prev => {
           const mapped = mapServerUserToProfile(res.data.user);
-          // Preserve client walletBalance if modified locally
+          // Số dư lấy từ SERVER — chỉ giữ giá trị client khi server không trả về
           return {
             ...mapped,
-            walletBalance: prev.walletBalance,
-            escrowLocked: prev.escrowLocked,
+            walletBalance: mapped.walletBalance ?? prev.walletBalance,
+            escrowLocked: mapped.escrowLocked ?? prev.escrowLocked,
             currency: prev.currency,
             language: prev.language
           };
         });
         setIsAuthenticated(true);
+      } else if (!api.getToken()) {
+        setIsAuthenticated(false);
       }
     } catch {
       // server sync fallback

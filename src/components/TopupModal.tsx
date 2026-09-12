@@ -18,6 +18,7 @@ import {
 import { GameItem, TopupTier, TopupOrder, UserProfile, CurrencyCode } from '../types';
 import { formatCurrency } from '../utils/formatters';
 import { useTranslation } from '../i18n';
+import { ordersApi } from '../api/orders';
 
 interface TopupModalProps {
   game?: GameItem | null;
@@ -117,31 +118,26 @@ export const TopupModal: React.FC<TopupModalProps> = ({
 
     setIsProcessing(true);
     try {
-      const token = localStorage.getItem('cyberpool_auth_token') || localStorage.getItem('cyber_auth_token') || 'token_cyber_user';
-      const response = await fetch('/api/v1/orders/topup-game', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`
-        },
-        body: JSON.stringify({
-          gameId: activeGame.id,
-          tierId: currentTier.name, // or currentTier id
-          uid: uid.trim(),
-          zoneId: zoneId.trim() || undefined,
-          server: selectedServer || undefined,
-          characterName: verifiedCharacter ? verifiedCharacter.replace(/\s*\(.*?\)/, '').trim() : undefined
-        })
+      // CYBERPOOL FIX (#9): dùng ordersApi (ApiClient tự đính kèm Bearer token
+      // thật từ localStorage 'cyberpool_auth_token') thay vì raw fetch với
+      // fallback token giả 'token_cyber_user' (luôn 401 khó hiểu) và key legacy
+      // 'cyber_auth_token' không file nào dùng.
+      const res = await ordersApi.topupGame({
+        gameId: activeGame.id,
+        tierId: currentTier.name, // or currentTier id
+        uid: uid.trim(),
+        zoneId: zoneId.trim() || undefined,
+        server: selectedServer || undefined,
+        characterName: verifiedCharacter ? verifiedCharacter.replace(/\s*\(.*?\)/, '').trim() : undefined
       });
 
-      const resData = await response.json();
-      if (!response.ok || !resData.success) {
-        alert(resData.error || 'Nạp game không thành công. Vui lòng kiểm tra lại số dư ví!');
+      if (!res.success || !res.data) {
+        alert(res.error || 'Nạp game không thành công. Vui lòng kiểm tra lại số dư ví!');
         setIsProcessing(false);
         return;
       }
 
-      const returnedOrder = resData.order;
+      const returnedOrder = res.data.order as any;
       const newOrder: TopupOrder = {
         id: returnedOrder?.id || `topup-${Date.now()}`,
         gameId: activeGame.id,

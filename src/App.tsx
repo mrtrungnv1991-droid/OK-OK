@@ -31,7 +31,7 @@ import {
   TopupOrder,
   SectionsHeaderConfig
 } from './types';
-import { formatCurrency, generateTxHash, generateRandomKey } from './utils/formatters';
+import { formatCurrency, generateTxHash } from './utils/formatters';
 import { Navbar } from './components/Navbar';
 import { HeroTelemetry } from './components/HeroTelemetry';
 import { ProductCard } from './components/ProductCard';
@@ -130,6 +130,7 @@ function AppContent() {
     setSearchTerm, 
     sortBy, 
     setSortBy, 
+    fetchCatalog,
     selectedPlatform, 
     setSelectedPlatform,
     addNewProduct,
@@ -160,7 +161,8 @@ function AppContent() {
     chatSessions, 
     luckyWheelPrizes, 
     addOrder,
-    createSupportTicket, 
+    joinPool: joinPoolServer,
+    createSupportTicket,
     adminReplyTicket, 
     adminSendChatMessage, 
     sendUserChatMessage, 
@@ -344,106 +346,31 @@ function AppContent() {
   };
 
   // Join Group Buy Pool Handler
-  const handleConfirmJoinPool = (product: Product, pool: GroupPool) => {
-    if (currentUser.walletBalance < pool.pricePerSlot) {
-      openModal('wallet');
+  // CYBERPOOL FIX (CRITICAL): trước đây handler này HOÀN TOÀN client-side —
+  // tự trừ ví local, bịa txHash, và khi "đủ slot" tự bịa key bằng
+  // generateRandomKey() + card GiftUp ngẫu nhiên + pinCode '8821' hardcode.
+  // Server /escrow/join (khóa tiền thật + giao key thật từ inventory) không
+  // bao giờ được gọi từ UI. Giờ gọi server trước; chỉ cập nhật UI khi server
+  // xác nhận, và số dư lấy từ refreshUserProfile (OrdersContext đã gọi).
+  const handleConfirmJoinPool = async (product: Product, pool: GroupPool) => {
+    const result = await joinPoolServer(pool.id, product);
+
+    if (!result.success) {
+      showToast(result.message || 'Không thể tham gia nhóm gom đơn.', 'error', {
+        title: 'GOM ĐƠN THẤT BẠI'
+      });
       return;
     }
 
-    // Deduct from wallet & lock in escrow
-    updateUserBalance(-pool.pricePerSlot);
-    updateEscrowLocked(pool.pricePerSlot);
+    // Server đã khóa tiền + cập nhật contract. Đồng bộ catalog từ server
+    // (fetchCatalog) thay vì tự bịa trạng thái pool client-side.
+    fetchCatalog();
+    closeModal();
 
-    const newParticipant = {
-      id: currentUser.id,
-      name: currentUser.name,
-      avatar: currentUser.avatar,
-      joinedAt: 'Vừa xong',
-      txHash: generateTxHash(),
-      slotNumber: pool.filledSlots + 1
-    };
-
-    const newFilledSlots = pool.filledSlots + 1;
-    const isPoolComplete = newFilledSlots >= pool.targetSlots;
-
-    // Update pool slots in catalog
-    const updatedPools = product.activePools.map(pl => {
-      if (pl.id !== pool.id) return pl;
-      return {
-        ...pl,
-        filledSlots: newFilledSlots,
-        status: (isPoolComplete ? 'completed' : 'filling') as GroupPool['status'],
-        participants: [...pl.participants, newParticipant]
-      };
+    showToast(result.message, 'success', {
+      title: '⚡ ĐÃ THAM GIA NHÓM GOM ĐƠN (ESCROW)',
+      duration: 5000
     });
-
-    updateProduct(product.id, { activePools: updatedPools });
-
-    if (isPoolComplete) {
-      triggerConfetti(80, 70);
-
-      const assignedKey = pool.keysVault.find(k => k.status === 'available') || {
-        id: 'k-gen',
-        code: generateRandomKey(product.platform)
-      };
-
-      const newOrder: UserOrder = {
-        id: `ord-${Date.now()}`,
-        poolId: pool.id,
-        productId: product.id,
-        productTitle: product.title,
-        platform: product.platform,
-        type: 'group_buy',
-        pricePaid: pool.pricePerSlot,
-        status: 'fulfilled',
-        createdAt: new Date().toLocaleString('vi-VN'),
-        deliveredKey: assignedKey.code,
-        pinCode: '8821',
-        giftUpCard: product.deliveryType === 'giftup_card' ? {
-          cardNumber: `4928 ${Math.floor(1000 + Math.random() * 9000)} ${Math.floor(1000 + Math.random() * 9000)} ${Math.floor(1000 + Math.random() * 9000)}`,
-          pinCode: '8821',
-          barcode: `GU-${Math.floor(1000 + Math.random() * 9000)}-${Math.floor(1000 + Math.random() * 9000)}`,
-          balance: 50,
-          currency: 'USD',
-          expiryDate: '12/2028',
-          redeemUrl: 'https://giftup.app/redeem/cyberpool'
-        } : undefined,
-        slotNumber: newFilledSlots,
-        txId: `TX-ESCROW-${Date.now().toString().slice(-6)}`
-      };
-
-      addTransaction({
-        type: 'buy_pool',
-        description: `Gom đơn hoàn tất: ${product.title}`,
-        amount: -pool.pricePerSlot,
-        balanceAfter: currentUser.walletBalance,
-        status: 'completed',
-        txCode: newOrder.txId
-      });
-
-      updateEscrowLocked(-pool.pricePerSlot);
-      closeModal();
-
-      showToast(
-        `Mã bản quyền ${product.title} đã được chuyển an toàn vào Kho Key & GiftUp của bạn.`,
-        'success',
-        {
-          title: '🎉 NHÓM GOM ĐÃ ĐỦ SLOTS & BUNG KEY THÀNH CÔNG!',
-          duration: 5000,
-          action: { label: 'Xem Kho Key Vault →', onClick: () => openModal('vault') }
-        }
-      );
-    } else {
-      closeModal();
-      showToast(
-        `Đã khóa tạm ${formatCurrency(pool.pricePerSlot, currentUser.currency)} trong ví Escrow. Bạn là thành viên #${newFilledSlots}/${pool.targetSlots}. Key sẽ bung ngay khi đủ nhóm!`,
-        'success',
-        {
-          title: '⚡ ĐÃ KHÓA SLOT GOM ĐƠN THÀNH CÔNG',
-          duration: 5000
-        }
-      );
-    }
   };
 
   // Simulate Another Participant Joining Pool
@@ -496,11 +423,9 @@ function AppContent() {
   };
 
   // Instant Single Purchase Finalized Execution Handler
+  // CYBERPOOL FIX: server đã trừ ví thật khi instantBuy — không trừ client-side
+  // lần nữa (double-deduct hiển thị). Số dư + tồn kho sync từ server.
   const handleInstantBuySuccess = (order: UserOrder, paymentAmount: number, paymentMethod: string) => {
-    if (paymentMethod === 'wallet') {
-      updateUserBalance(-paymentAmount);
-    }
-
     addTransaction({
       type: 'buy_instant',
       description: `Mua lẻ: ${order.productTitle}`,
@@ -512,10 +437,9 @@ function AppContent() {
 
     addOrder(order);
 
-    // Reduce visual stock
-    updateProduct(order.productId, {
-      stockAvailable: Math.max(0, (products.find(p => p.id === order.productId)?.stockAvailable || 10) - 1)
-    });
+    // Sync trạng thái thật (số dư + tồn kho) từ server
+    refreshUserProfile();
+    fetchCatalog();
 
     triggerConfetti(80, 70);
 

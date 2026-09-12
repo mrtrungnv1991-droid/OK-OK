@@ -175,6 +175,11 @@ Thank you for trading on CyberPool Escrow Network!
       if (res.success && res.data?.order) {
         const realOrder = res.data.order;
         const orderAny = realOrder as any;
+        // CYBERPOOL FIX (#10): không bịa key giả 'DELIVERED' + không tự nhận
+        // 'fulfilled' khi server chưa giao (PENDING_STOCK / chưa có key thật).
+        // Key hiển thị PHẢI đến từ deliveredData.keys hoặc deliveredKey thật.
+        const realKey = orderAny.deliveredData?.keys?.[0] || (res.data as any).deliveredKey || '';
+        const serverFulfilled = orderAny.status === 'COMPLETED' && Boolean(realKey || orderAny.deliveredData?.giftUpCard);
         const orderForState: UserOrder = {
           id: realOrder.id,
           productId: realOrder.productId,
@@ -182,10 +187,10 @@ Thank you for trading on CyberPool Escrow Network!
           platform: product.platform,
           type: 'instant_single',
           pricePaid: realOrder.pricePaid,
-          status: 'fulfilled',
+          status: serverFulfilled ? 'fulfilled' : 'processing',
           createdAt: new Date(realOrder.createdAt).toLocaleString('vi-VN'),
           deliveryBranch: orderAny.deliveryBranch || product.deliveryBranch,
-          deliveredKey: orderAny.deliveredData?.keys?.[0] || res.data.deliveredKey || 'DELIVERED',
+          deliveredKey: realKey || undefined,
           pinCode: orderAny.deliveredData?.giftCardInfo?.pinCode,
           deliveredData: orderAny.deliveredData,
           giftUpCard: orderAny.deliveredData?.giftUpCard ? {
@@ -203,9 +208,16 @@ Thank you for trading on CyberPool Escrow Network!
         setIsProcessing(false);
         setDeliveredOrder(orderForState);
         onSuccessOrder(orderForState, finalTotal, method);
-        showToast('Đơn hàng thật đã được ghi nhận vào hệ thống và Kho Key!', 'success', {
-          title: 'ĐẶT MUA THÀNH CÔNG'
-        });
+        if (serverFulfilled) {
+          showToast('Đơn hàng thật đã được ghi nhận vào hệ thống và Kho Key!', 'success', {
+            title: 'ĐẶT MUA THÀNH CÔNG'
+          });
+        } else {
+          // CYBERPOOL FIX: server nhận đơn nhưng chưa giao key (chờ kho / xử lý)
+          showToast('Đơn hàng đã ghi nhận và đang chờ hệ thống giao key. Theo dõi trong Kho Key / Đơn Hàng.', 'success', {
+            title: 'ĐÃ NHẬN ĐƠN — ĐANG XỬ LÝ'
+          });
+        }
       } else {
         setIsProcessing(false);
         showToast(res.error || 'Đặt mua thất bại. Vui lòng kiểm tra lại số dư hoặc kết nối mạng.', 'error', {

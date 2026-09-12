@@ -220,15 +220,18 @@ export const PoolDetailModal: React.FC<PoolDetailModalProps> = ({
                     </h3>
                   </div>
 
-                  {/* Simulation Helper */}
-                  <button
-                    onClick={() => onSimulateAddParticipant(pool.id)}
-                    disabled={isFull}
-                    className="flex items-center gap-1 px-2.5 py-1 rounded bg-slate-800 hover:bg-slate-700 text-xs font-mono text-cyan-300 border border-cyan-500/20 disabled:opacity-50 cursor-pointer"
-                  >
-                    <UserPlus className="w-3.5 h-3.5" />
-                    <span>+ Simulate Buyer Join</span>
-                  </button>
+                  {/* Simulation Helper — CHỈ hiện ở bản dev (CYBERPOOL FIX:
+                      nút giả lập người mua không được lộ cho user thật) */}
+                  {import.meta.env.DEV && (
+                    <button
+                      onClick={() => onSimulateAddParticipant(pool.id)}
+                      disabled={isFull}
+                      className="flex items-center gap-1 px-2.5 py-1 rounded bg-slate-800 hover:bg-slate-700 text-xs font-mono text-cyan-300 border border-cyan-500/20 disabled:opacity-50 cursor-pointer"
+                    >
+                      <UserPlus className="w-3.5 h-3.5" />
+                      <span>+ Simulate Buyer Join</span>
+                    </button>
+                  )}
                 </div>
 
                 {/* Slots Grid */}
