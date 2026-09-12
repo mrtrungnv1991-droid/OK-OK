@@ -15,9 +15,29 @@ export class KeyVaultService {
   private readonly HMAC_SECRET: string;
 
   private constructor() {
-    const rawSecret = process.env.KEY_VAULT_SECRET || 'cyberpool-enterprise-master-key-vault-secret-2026-production';
+    // CYBERPOOL SECURITY FIX (#11 — fail-closed): trước đây keyVault dùng key
+    // master hardcode trong repo công khai khi thiếu env, KHÔNG có prod check —
+    // key bản quyền đã mã hóa giải mã được bởi bất kỳ ai đọc repo.
+    // Production: bắt buộc env; dev: random per-boot.
+    const rawSecret = process.env.KEY_VAULT_SECRET
+      || (process.env.NODE_ENV === 'production'
+        ? (() => {
+            console.error('[SECURITY FATAL] KEY_VAULT_SECRET là BẮT BUỘC ở production. Từ chối khởi động.');
+            process.exit(1);
+          })()
+        : (() => {
+            const dev = crypto.randomBytes(32).toString('hex');
+            console.warn('[SECURITY ADVISORY] KEY_VAULT_SECRET chưa đặt — dùng key RANDOM mỗi lần boot (chỉ dev). Key vault đã mã hóa sẽ không giải mã được sau restart.');
+            return dev;
+          })());
     this.MASTER_KEY = crypto.createHash('sha256').update(rawSecret).digest();
-    this.HMAC_SECRET = process.env.KEY_VAULT_HMAC || 'cyberpool-hmac-integrity-secret-salt';
+    this.HMAC_SECRET = process.env.KEY_VAULT_HMAC
+      || (process.env.NODE_ENV === 'production'
+        ? (() => {
+            console.error('[SECURITY FATAL] KEY_VAULT_HMAC là BẮT BUỘC ở production. Từ chối khởi động.');
+            process.exit(1);
+          })()
+        : rawSecret + '-hmac-dev');
   }
 
   public static getInstance(): KeyVaultService {

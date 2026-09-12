@@ -73,8 +73,19 @@ adminRouter.put('/users/:id/role', requireRole('SUPER_ADMIN'), (req: Authenticat
     return res.status(404).json({ success: false, error: 'User not found' });
   }
 
+  // CYBERPOOL SECURITY FIX (#24): role từ body không validate — chuỗi tùy ý
+  // khiến user rơi khỏi RBAC (level 0, khóa mọi quyền). Whitelist cứng.
+  const VALID_ROLES = ['SUPER_ADMIN', 'ADMIN', 'MODERATOR', 'FINANCE', 'SELLER', 'USER'];
+  const newRole = String(req.body.role || '');
+  if (!VALID_ROLES.includes(newRole)) {
+    return res.status(400).json({
+      success: false,
+      error: `Role không hợp lệ. Phải là một trong: ${VALID_ROLES.join(', ')}`
+    });
+  }
+
   const oldRole = targetUser.role;
-  targetUser.role = req.body.role;
+  targetUser.role = newRole as any;
   db.users.set(targetUser.id, targetUser);
 
   AuditService.log({

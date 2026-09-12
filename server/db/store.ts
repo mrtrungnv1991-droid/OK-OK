@@ -102,7 +102,12 @@ class DatabaseStore {
       }
     ];
 
-    defaultUsers.forEach(u => this.users.set(u.id, u));
+    // CYBERPOOL SECURITY FIX (#6): demo user 'lombard2508@gmail.com' với
+    // password hardcode trong repo công khai + số dư 2.45M KHÔNG được seed ở
+    // production — ai đọc repo cũng login được. Production chỉ seed SUPER_ADMIN
+    // (password random một lần).
+    const usersToSeed = isProduction ? defaultUsers.filter(u => u.role === 'SUPER_ADMIN') : defaultUsers;
+    usersToSeed.forEach(u => this.users.set(u.id, u));
 
     // 2. Products
     this.products = JSON.parse(JSON.stringify(INITIAL_PRODUCTS)).map((p: any) => {

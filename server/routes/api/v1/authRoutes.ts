@@ -121,7 +121,10 @@ authRouter.post('/register', (req, res) => {
     phone: phone ? String(phone).trim() : undefined,
     passwordHash: hashPassword(password),
     role: 'USER',
-    walletBalance: 200000, // Welcome gift balance
+    // CYBERPOOL SECURITY FIX (#7): welcome gift 200k không kiểm chứng — mass
+    // register (không email verify/captcha/rate-limit) rồi drain qua instant-buy.
+    // Production: không tặng; dev: giữ 200k để test luồng mua hàng.
+    walletBalance: process.env.NODE_ENV === 'production' ? 0 : 200000,
     escrowLocked: 0,
     affiliateEarnings: 0,
     avatar: 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=150&auto=format&fit=crop&q=80',
@@ -202,11 +205,13 @@ authRouter.delete('/sessions/:id', requireAuth, (req: AuthenticatedRequest, res)
 });
 
 // POST /api/v1/auth/forgot-password
+// CYBERPOOL FIX (#23): trước đây luôn trả "Đã gửi liên kết khôi phục" dù KHÔNG
+// có email service/reset flow nào tồn tại — người dùng tin rằng email đã gửi.
+// Giờ trả lời trung thực: endpoint chưa triển khai (501), không claim success.
 authRouter.post('/forgot-password', (req, res) => {
-  const { email } = req.body;
-  res.json({
-    success: true,
-    message: `Đã gửi liên kết khôi phục mật khẩu tới ${email || 'email của bạn'}`
+  res.status(501).json({
+    success: false,
+    error: 'Tính năng khôi phục mật khẩu chưa được triển khai trên hệ thống này. Vui lòng liên hệ bộ phận hỗ trợ để được trợ giúp trực tiếp.'
   });
 });
 

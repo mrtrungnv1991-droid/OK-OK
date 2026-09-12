@@ -122,6 +122,25 @@ class AffiliateService {
 
     return releasedCount;
   }
+
+  /**
+   * CYBERPOOL FIX (#12): claim thật — chuyển toàn bộ hoa hồng UNLOCKED sang
+   * PAID và trả về tổng số tiền để route credit ví qua LedgerService.
+   * Trước đây route /claim chỉ đọc stats rồi trả "thành công" ảo — không
+   * đánh dấu PAID (claim lại được vô hạn) và không cộng đồng nào vào ví.
+   */
+  public claimCommissions(userId: string): { claimedAmount: number; commissionIds: string[] } {
+    const claimedIds: string[] = [];
+    let claimedAmount = 0;
+    this.commissions.forEach(c => {
+      if (c.referrerId === userId && c.status === 'UNLOCKED') {
+        c.status = 'PAID';
+        claimedAmount += c.commissionAmount;
+        claimedIds.push(c.id);
+      }
+    });
+    return { claimedAmount, commissionIds: claimedIds };
+  }
 }
 
 export const affiliateService = new AffiliateService();

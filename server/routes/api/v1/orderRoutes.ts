@@ -2,6 +2,7 @@ import { Router } from 'express';
 import { db } from '../../../db/store';
 import { requireAuth, AuthenticatedRequest } from '../../../middleware/authMiddleware';
 import { OrderService } from '../../../services/orderService';
+import { IdempotencyService } from '../../../services/idempotencyService';
 import { ServerOrder } from '../../../types';
 
 export const orderRouter = Router();
@@ -64,7 +65,11 @@ orderRouter.post('/instant-buy', requireAuth, async (req: AuthenticatedRequest, 
   // CYBERPOOL FIX: honor the client idempotency key. If the same buyer already
   // placed this order (network retry / double-click), return the existing order
   // instead of charging the wallet again.
+  // CYBERPOOL FIX (#17): trước đây check-then-create có nhiều await ở giữa →
+  // 2 request song song cùng key đều pass check và trừ tiền 2 lần. Giờ dùng
+  // in-flight lock của IdempotencyService (cùng pattern VietQR webhook).
   if (typeof idempotencyKey === 'string' && idempotencyKey.length > 0) {
+    const idemKey = `INSTANT_${req.user!.id}_${idempotencyKey}`;
     for (const existing of db.orders.values()) {
       if (existing.buyerId === req.user!.id && existing.idempotencyKey === idempotencyKey) {
         return res.json({
@@ -75,6 +80,45 @@ orderRouter.post('/instant-buy', requireAuth, async (req: AuthenticatedRequest, 
           idempotent_replay: true
         });
       }
+    }
+    const lockOk = await IdempotencyService.acquireLock(idemKey);
+    if (!lockOk) {
+      return res.status(429).json({
+        success: false,
+        error: 'Yêu cầu mua đang được xử lý (trùng lặp). Vui lòng đợi trong giây lát.'
+      });
+    }
+    try {
+      // Double-check sau khi giành lock (request trước có thể vừa tạo order)
+      for (const existing of db.orders.values()) {
+        if (existing.buyerId === req.user!.id && existing.idempotencyKey === idempotencyKey) {
+          return res.json({
+            success: true,
+            order: existing,
+            deliveredKey: existing.deliveredData?.keys?.[0] || '',
+            message: 'Đơn hàng đã được xử lý trước đó (idempotent replay).',
+            idempotent_replay: true
+          });
+        }
+      }
+      const result = await OrderService.createInstantPurchase({
+        buyer: req.user!,
+        productId,
+        quantity: Number(quantity) || 1,
+        paymentMethod: paymentMethod || 'wallet',
+        voucherCode,
+        finalTotal: typeof finalTotal === 'number' ? finalTotal : undefined,
+        idempotencyKey: typeof idempotencyKey === 'string' ? idempotencyKey : undefined,
+        ipAddress: req.ip
+      });
+
+      if (!result.success) {
+        return res.status(400).json(result);
+      }
+
+      return res.json(result);
+    } finally {
+      IdempotencyService.releaseLock(idemKey);
     }
   }
 

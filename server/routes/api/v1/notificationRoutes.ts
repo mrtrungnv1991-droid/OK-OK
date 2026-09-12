@@ -1,11 +1,17 @@
-import { Router, Request, Response } from 'express';
+import { Router } from 'express';
 import { notificationService } from '../../../services/notificationService';
+import { requireAuth, AuthenticatedRequest } from '../../../middleware/authMiddleware';
 
 export const notificationRouter = Router();
 
+// CYBERPOOL SECURITY FIX (#12): trước đây KHÔNG auth, userId lấy từ query/body
+// với default 'usr-buyer-01' → IDOR đọc/đánh dấu thông báo của bất kỳ user nào.
+// Giờ bắt buộc đăng nhập và chỉ thao tác trên thông báo của chính mình.
+notificationRouter.use(requireAuth);
+
 // GET /api/v1/notifications
-notificationRouter.get('/', (req: Request, res: Response) => {
-  const userId = (req.query.userId as string) || 'usr-buyer-01';
+notificationRouter.get('/', (req: AuthenticatedRequest, res) => {
+  const userId = req.user!.id;
   const limit = parseInt(req.query.limit as string) || 20;
 
   const notifications = notificationService.getForUser(userId, limit);
@@ -21,9 +27,9 @@ notificationRouter.get('/', (req: Request, res: Response) => {
 });
 
 // POST /api/v1/notifications/:id/read
-notificationRouter.post('/:id/read', (req: Request, res: Response) => {
+notificationRouter.post('/:id/read', (req: AuthenticatedRequest, res) => {
   const { id } = req.params;
-  const userId = req.body.userId || 'usr-buyer-01';
+  const userId = req.user!.id;
 
   const success = notificationService.markAsRead(id, userId);
   res.json({
@@ -33,8 +39,8 @@ notificationRouter.post('/:id/read', (req: Request, res: Response) => {
 });
 
 // POST /api/v1/notifications/read-all
-notificationRouter.post('/read-all', (req: Request, res: Response) => {
-  const userId = req.body.userId || 'usr-buyer-01';
+notificationRouter.post('/read-all', (req: AuthenticatedRequest, res) => {
+  const userId = req.user!.id;
   notificationService.markAllAsRead(userId);
 
   res.json({

@@ -65,13 +65,28 @@ export class OrderService {
         }
 
         if (voucherCode) {
-      const voucher = db.vouchers?.find(v => v.code?.toUpperCase() === voucherCode.toUpperCase() && v.active);
-      if (voucher) {
-        if (voucher.type === 'percent') {
-          const discount = Math.round((calculatedPrice * Number(voucher.discount)) / 100);
-          calculatedPrice = Math.max(0, calculatedPrice - discount);
-        } else if (voucher.type === 'fixed') {
-          calculatedPrice = Math.max(0, calculatedPrice - Number(voucher.discount));
+      // CYBERPOOL FIX (#18 — frontend audit #8): server đọc v.active/v.type/
+      // v.discount nhưng seed vouchers dùng status/discountType/discountValue
+      // → KHÔNG voucher nào từng được áp dụng server-side trong khi UI hiển
+      // thị giá đã giảm (khách thấy 1 giá, bị thu giá khác). Chấp nhận cả 2
+      // shape + validate khoảng discount + minOrderValue + hết hạn.
+      const vRaw: any = db.vouchers?.find((v: any) => String(v.code || '').toUpperCase() === voucherCode.toUpperCase());
+      if (vRaw) {
+        const isActive = vRaw.active ?? (vRaw.status === 'active');
+        const expiresOk = !vRaw.expiresAt || new Date(vRaw.expiresAt) >= new Date();
+        const vType = vRaw.type || vRaw.discountType;
+        const vDiscount = Number(vRaw.discount ?? vRaw.discountValue ?? 0);
+        const minOrder = Number(vRaw.minOrderValue ?? 0);
+        if (isActive && expiresOk && vDiscount > 0 && calculatedPrice >= minOrder) {
+          if (vType === 'percent') {
+            const clampedPercent = Math.min(100, Math.max(0, vDiscount)); // chặn >100% ⇒ giá 0
+            let discount = Math.round((calculatedPrice * clampedPercent) / 100);
+            const maxDiscount = Number(vRaw.maxDiscount ?? 0);
+            if (maxDiscount > 0) discount = Math.min(discount, maxDiscount);
+            calculatedPrice = Math.max(0, calculatedPrice - discount);
+          } else if (vType === 'fixed') {
+            calculatedPrice = Math.max(0, calculatedPrice - vDiscount);
+          }
         }
       }
     }

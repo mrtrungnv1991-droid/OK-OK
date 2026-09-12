@@ -4,6 +4,7 @@
 
 import { Router } from 'express';
 import crypto from 'crypto';
+import { db } from '../../../db/store';
 import { orderProcessingService } from '../../../services/orderProcessing/orderProcessingService';
 import { orderLock } from '../../../services/orderProcessing/distributedLock';
 import { sourceCircuitBreaker } from '../../../services/orderProcessing/circuitBreaker';
@@ -69,14 +70,25 @@ reliableOrderRouter.post('/notifications/:id/retry', requireAuth, requireRole('A
   res.json({ success, message: success ? 'Đã kích hoạt thử lại thông báo từ DLQ' : 'Không tìm thấy thông báo trong DLQ' });
 });
 
-// 6. Create and process a reliable order (Authenticated)
-reliableOrderRouter.post('/create', requireAuth, async (req: AuthenticatedRequest, res) => {
+// 6. Create and process a reliable order
+// CYBERPOOL SECURITY FIX (#14): route này là pipeline vận hành nội bộ (không
+// UI user nào gọi). Trước đây chỉ requireAuth → user thường tạo được đơn với
+// retail_price/source_estimated_cost TỰ ĐIỀN và escrow_locked=true mà ví KHÔNG
+// bị trừ qua ledger. Giờ: ADMIN-only + giá tra cứu server-side từ catalog khi
+// product_id tồn tại (client price chỉ là fallback cho sản phẩm ngoài catalog).
+reliableOrderRouter.post('/create', requireAuth, requireRole('ADMIN'), async (req: AuthenticatedRequest, res) => {
   try {
     const payload = {
       ...req.body,
       buyer_id: req.user!.id,
       buyer_email: req.user!.email
     };
+    // Server-side price lookup (chống client-supplied pricing)
+    const catalogProduct = db.products.find(p => p.id === payload.product_id);
+    if (catalogProduct) {
+      payload.product_title = catalogProduct.title;
+      payload.retail_price = Number(catalogProduct.retailPrice) * Math.max(1, Number(payload.quantity) || 1);
+    }
     const result = await orderProcessingService.createAndProcessOrder(payload);
     res.json({ success: true, data: result.order, message: result.message });
   } catch (err: any) {
@@ -183,8 +195,10 @@ reliableOrderRouter.get('/:id/events', requireAuth, (req: AuthenticatedRequest, 
   const order = orderProcessingService.getOrders().find(o => o.id === orderId);
   const isAdmin = req.user!.role === 'ADMIN' || req.user!.role === 'SUPER_ADMIN';
 
-  if (!isAdmin && order && order.customer_id !== req.user!.id) {
-    return res.status(403).json({ success: false, error: 'Forbidden' });
+  // CYBERPOOL FIX (#26): order không tồn tại phải 404 — điều kiện cũ
+  // `!isAdmin && order && ...` cho user thường đi qua khi order undefined.
+  if (!isAdmin && (!order || order.customer_id !== req.user!.id)) {
+    return res.status(order ? 403 : 404).json({ success: false, error: order ? 'Forbidden' : 'Order not found' });
   }
 
   const events = orderProcessingService.getOrderEvents(orderId);
@@ -296,8 +310,10 @@ reliableOrderRouter.get('/:id/chat', requireAuth, (req: AuthenticatedRequest, re
   const order = orderProcessingService.getOrders().find(o => o.id === orderId);
   const isAdmin = req.user!.role === 'ADMIN' || req.user!.role === 'SUPER_ADMIN';
 
-  if (!isAdmin && order && order.customer_id !== req.user!.id) {
-    return res.status(403).json({ success: false, error: 'Forbidden' });
+  // CYBERPOOL FIX (#26): order không tồn tại phải 404 — điều kiện cũ
+  // `!isAdmin && order && ...` cho user thường đi qua khi order undefined.
+  if (!isAdmin && (!order || order.customer_id !== req.user!.id)) {
+    return res.status(order ? 403 : 404).json({ success: false, error: order ? 'Forbidden' : 'Order not found' });
   }
 
   const msgs = orderProcessingService.getDualChatMessages(orderId);
@@ -309,8 +325,10 @@ reliableOrderRouter.post('/:id/chat', requireAuth, (req: AuthenticatedRequest, r
   const order = orderProcessingService.getOrders().find(o => o.id === orderId);
   const isAdmin = req.user!.role === 'ADMIN' || req.user!.role === 'SUPER_ADMIN';
 
-  if (!isAdmin && order && order.customer_id !== req.user!.id) {
-    return res.status(403).json({ success: false, error: 'Forbidden' });
+  // CYBERPOOL FIX (#26): order không tồn tại phải 404 — điều kiện cũ
+  // `!isAdmin && order && ...` cho user thường đi qua khi order undefined.
+  if (!isAdmin && (!order || order.customer_id !== req.user!.id)) {
+    return res.status(order ? 403 : 404).json({ success: false, error: order ? 'Forbidden' : 'Order not found' });
   }
 
   const msg = orderProcessingService.sendDualChatMessage({

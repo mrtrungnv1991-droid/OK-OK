@@ -451,10 +451,21 @@ walletRouter.get('/withdrawals', requireAuth, (req: AuthenticatedRequest, res) =
 walletRouter.post('/admin/adjust', requireAuth, requireRole('SUPER_ADMIN'), async (req: AuthenticatedRequest, res) => {
   const { targetUserId, amount, reason } = req.body;
 
+  // CYBERPOOL SECURITY FIX (#13): trước đây amount không được validate —
+  // Number(undefined)=NaN → SYSTEM_ADJUSTMENT set balance thành NaN (guard
+  // NaN<0 không fire), làm hỏng ví user; targetUserId cũng không check tồn tại.
+  const numAmount = Number(amount);
+  if (!Number.isFinite(numAmount) || numAmount === 0) {
+    return res.status(400).json({ success: false, error: 'amount phải là số hợp lệ khác 0' });
+  }
+  if (!targetUserId || !db.users.has(String(targetUserId))) {
+    return res.status(404).json({ success: false, error: 'targetUserId không tồn tại trong hệ thống' });
+  }
+
   const result = await LedgerService.executeTransaction({
     userId: targetUserId,
     type: 'SYSTEM_ADJUSTMENT',
-    amount: Number(amount),
+    amount: numAmount,
     description: `Admin điều chỉnh số dư: ${reason || 'Nâng cấp tài khoản'}`,
     actorId: req.user!.id,
     actorName: req.user!.name,
