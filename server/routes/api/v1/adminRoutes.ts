@@ -108,16 +108,92 @@ adminRouter.put('/users/:id/role', requireRole('SUPER_ADMIN'), (req: Authenticat
 
 // GET /api/v1/admin/system-config
 adminRouter.get('/system-config', (req, res) => {
+  // CYBERPOOL SECURITY FIX (#25): trước đây trả plaintext toàn bộ gateway
+  // secrets (telcoPartnerKey, momoAccessKey/SecretKey, binanceApiKey/Secret,
+  // vietQrApiToken...) cho mọi ADMIN-level token, và chúng lọt vào browser
+  // state/localStorage. Giờ mask: admin UI chỉ cần biết "đã cấu hình" hay chưa.
+  const SECRET_FIELDS = [
+    'telcoPartnerKey', 'momoSecretKey', 'momoAccessKey', 'momoApiToken',
+    'binanceApiKey', 'binanceSecretKey', 'vietQrApiToken'
+  ];
+  const masked: any = { ...db.systemConfig };
+  for (const f of SECRET_FIELDS) {
+    if (masked[f]) masked[f] = '••••••••CONFIGURED';
+  }
   res.json({
     success: true,
-    config: db.systemConfig
+    config: masked
   });
 });
 
 // PUT /api/v1/admin/system-config
 adminRouter.put('/system-config', (req: AuthenticatedRequest, res) => {
   const oldConfig = { ...db.systemConfig };
-  db.systemConfig = { ...db.systemConfig, ...req.body };
+
+  // CYBERPOOL SECURITY FIX (#25 + #24 whitelist): trước đây {...req.body} merge
+  // KHÔNG giới hạn — admin token có thể ghi đè field bất kỳ (kể cả field nội bộ
+  // chưa từng có trong UI) và secret bị mask khi GET sẽ bị ghi đè ngược lại
+  // bằng chuỗi '••••••••CONFIGURED' khi save, phá credential thật.
+  // Giờ: (1) whitelist field cấu hình hợp lệ, (2) bỏ qua giá trị sentinel.
+  const SECRET_FIELDS = [
+    'telcoPartnerKey', 'momoSecretKey', 'momoAccessKey', 'momoApiToken',
+    'binanceApiKey', 'binanceSecretKey', 'vietQrApiToken'
+  ];
+  const ALLOWED_CONFIG_FIELDS = new Set<string>([
+    // Site / branding
+    'siteTitle', 'siteName', 'slogan', 'logoUrl', 'hotline', 'supportEmail',
+    // Platform economy
+    'platformFeePercent', 'minDepositAmount', 'minWithdrawalAmount', 'escrowTimeoutHours',
+    'usdToVndRate', 'maintenanceMode', 'antiDDoSMode',
+    // Bank / VietQR
+    'bankName', 'bankCode', 'bankAccountNo', 'bankAccountName', 'vietQrApiToken',
+    // Telco / Card24h
+    'telcoProvider', 'telcoPartnerId', 'telcoPartnerKey', 'telcoWalletId', 'telcoCallbackUrl',
+    'telcoFeeViettel', 'telcoFeeVinaphone', 'telcoFeeMobifone', 'telcoFeeZing', 'telcoFeeGarena',
+    // MoMo
+    'momoPhone', 'momoName', 'momoPartnerCode', 'momoAccessKey', 'momoSecretKey', 'momoApiToken',
+    // Crypto USDT / LTC
+    'cryptoUsdtAddress', 'cryptoNetwork', 'cryptoUsdtMinConfirmations',
+    'cryptoLtcAddress', 'cryptoLtcRate', 'cryptoLtcConfirmations',
+    // Binance Pay
+    'binancePayId', 'binanceUid', 'binanceNickname', 'binanceApiKey', 'binanceSecretKey',
+    // Deposit module toggles + sections header config
+    'depositModulesConfig', 'sectionsHeaderConfig', 'noticeMarquee', 'showMarquee',
+    'decorationEffect', 'footerCopyright',
+    // Banking UI extras + support links + automation toggles (từ AdminContext/
+    // DEFAULT_SYSTEM_CONFIG — thiếu sẽ bị reject làm mất cấu hình khi save)
+    'bankBin', 'bankQrCustomImage', 'qrDisplayMode',
+    'zaloSupport', 'telegramSupport', 'facebookFanpage',
+    'homeAnnouncement', 'showAnnouncementPopup',
+    'autoEscrowRelease', 'cronCheckLiveActive'
+  ]);
+
+  const incoming = (req.body || {}) as Record<string, any>;
+  const filtered: Record<string, any> = {};
+  const rejectedFields: string[] = [];
+  for (const [k, v] of Object.entries(incoming)) {
+    if (!ALLOWED_CONFIG_FIELDS.has(k)) {
+      rejectedFields.push(k);
+      continue;
+    }
+    // Sentinel = "đã cấu hình, không đổi" → giữ nguyên giá trị cũ
+    if (SECRET_FIELDS.includes(k) && typeof v === 'string' && v.includes('CONFIGURED')) {
+      continue;
+    }
+    filtered[k] = v;
+  }
+
+  db.systemConfig = { ...db.systemConfig, ...filtered };
+
+  // CYBERPOOL FIX (#25): audit log + response cũng phải mask secrets (audit
+  // logs được trả qua GET /admin/audit-logs — plaintext secret sẽ lọt ra đó).
+  const maskSecrets = (cfg: any) => {
+    const m: any = { ...cfg };
+    for (const f of SECRET_FIELDS) {
+      if (m[f]) m[f] = '••••••••CONFIGURED';
+    }
+    return m;
+  };
 
   AuditService.log({
     actorId: req.user!.id,
@@ -125,14 +201,15 @@ adminRouter.put('/system-config', (req: AuthenticatedRequest, res) => {
     actorRole: req.user!.role,
     action: 'ADMIN_UPDATE_SYSTEM_CONFIG',
     resource: 'SYSTEM_SETTINGS',
-    oldValue: oldConfig,
-    newValue: db.systemConfig,
+    oldValue: maskSecrets(oldConfig),
+    newValue: maskSecrets(db.systemConfig),
     ipAddress: req.ip
   });
 
   res.json({
       success: true,
-      config: db.systemConfig
+      config: maskSecrets(db.systemConfig),
+      rejectedFields
     });
   });
 

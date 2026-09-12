@@ -236,28 +236,54 @@ class DatabaseStore {
   }
 
   // Mutex helpers for Atomic Operations
-  public async acquireInventoryLock(productId: string): Promise<boolean> {
-    if (this.inventoryLocks.has(productId)) {
-      for (let i = 0; i < 5; i++) {
-        await new Promise(r => setTimeout(r, 20));
-        if (!this.inventoryLocks.has(productId)) break;
-      }
+  // CYBERPOOL FIX (#15): acquireUserLock/acquireInventoryLock trước đây là
+  // NO-OP (add vào Set rồi luôn return true; inventory lock chờ 100ms rồi
+  // acquire anyway) — LedgerService "atomic" chỉ đúng nhờ mutation block tình
+  // cờ sync trong Node single-thread. Thay bằng FIFO mutex thật: acquire xếp
+  // hàng đợi chủ khóa hiện tại, release trao quyền (handoff) cho waiter kế.
+  private lockState: Map<string, { locked: boolean; waiters: Array<() => void> }> = new Map();
+
+  private acquireQueuedLock(key: string): Promise<void> {
+    let st = this.lockState.get(key);
+    if (!st) {
+      st = { locked: false, waiters: [] };
+      this.lockState.set(key, st);
     }
-    this.inventoryLocks.add(productId);
+    if (!st.locked) {
+      st.locked = true;
+      return Promise.resolve();
+    }
+    return new Promise<void>(resolve => st!.waiters.push(resolve));
+  }
+
+  private releaseQueuedLock(key: string): void {
+    const st = this.lockState.get(key);
+    if (!st || !st.locked) return; // guard double-release
+    const next = st.waiters.shift();
+    if (next) {
+      next(); // handoff: khóa vẫn held bởi waiter kế tiếp
+    } else {
+      st.locked = false;
+      this.lockState.delete(key);
+    }
+  }
+
+  public async acquireInventoryLock(productId: string): Promise<boolean> {
+    await this.acquireQueuedLock(`inv:${productId}`);
     return true;
   }
 
   public releaseInventoryLock(productId: string) {
-    this.inventoryLocks.delete(productId);
+    this.releaseQueuedLock(`inv:${productId}`);
   }
 
   public async acquireUserLock(userId: string): Promise<boolean> {
-    this.userLocks.add(userId);
+    await this.acquireQueuedLock(`user:${userId}`);
     return true;
   }
 
   public releaseUserLock(userId: string) {
-    this.userLocks.delete(userId);
+    this.releaseQueuedLock(`user:${userId}`);
   }
 }
 
