@@ -91,8 +91,35 @@ export class EscrowService {
         let contract = db.escrowContracts.get(poolId);
         const product = db.products.find(p => p.id === productId);
 
-    // Step 2: Add participant
-    const nextSlot = contract.filledSlots + 1;
+        // CYBERPOOL FIX: re-validate SAU khi giành mutex, TRƯỚC khi khóa tiền —
+        // trạng thái pool có thể đã đổi (COMPLETED/CANCELLED/full) giữa lúc
+        // check ở joinPool() và lúc vào đây.
+        if (!contract || !product) {
+          return { success: false, error: 'Pool hoặc sản phẩm không còn tồn tại' };
+        }
+        if (contract.status !== 'FILLING' || contract.filledSlots >= contract.targetSlots) {
+          return { success: false, error: 'Escrow pool không còn nhận thêm thành viên' };
+        }
+
+        // CYBERPOOL FIX (CRITICAL — tiền): trước đây join pool KHÔNG trừ/khóa tiền
+        // user (ESCROW_LOCK chỉ là case chết trong ledger, không ai gọi) → user nhận
+        // key thật MIỄN PHÍ, và forceRefundPool "hoàn" số tiền chưa từng thu = tạo
+        // tiền từ không khí. Giờ: KHÓA TIỀN TRƯỚC (ESCROW_LOCK: trừ walletBalance,
+        // tăng escrowLocked), thất bại (không đủ số dư) thì từ chối join.
+        const lockResult = await LedgerService.executeTransaction({
+          userId: user.id,
+          type: 'ESCROW_LOCK',
+          amount: -contract.pricePerSlot,
+          description: `Khóa tiền tham gia nhóm mua chung #${poolId}`,
+          referenceId: contract.id,
+          ipAddress
+        });
+        if (!lockResult.success) {
+          return { success: false, error: lockResult.error || 'Không thể khóa tiền tham gia pool (số dư không đủ?)' };
+        }
+
+        // Step 2: Add participant
+        const nextSlot = contract.filledSlots + 1;
     const isCompleted = nextSlot >= contract.targetSlots;
 
     const participantEntry = {

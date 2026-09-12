@@ -57,10 +57,18 @@ export class LedgerService {
       switch (type) {
         case 'DEPOSIT':
         case 'AFFILIATE_COMMISSION':
-        case 'ESCROW_REFUND':
         case 'REFUND':
         case 'SELLER_PAYOUT':
           balanceAfter = balanceBefore + Math.abs(amount);
+          break;
+
+        case 'ESCROW_REFUND':
+          // CYBERPOOL FIX (kế toán kép): tiền escrow đã bị KHÓA lúc join
+          // (ESCROW_LOCK: balance-, escrow+). Refund phải trả về balance ĐỒNG
+          // THỜI giải phóng escrowLocked — trước đây chỉ cộng balance khiến
+          // escrowLocked treo vĩnh viễn (tổng tài sản user phình ảo).
+          balanceAfter = balanceBefore + Math.abs(amount);
+          escrowAfter = Math.max(0, escrowBefore - Math.abs(amount));
           break;
 
         case 'WITHDRAWAL':
