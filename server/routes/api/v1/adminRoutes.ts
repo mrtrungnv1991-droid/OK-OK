@@ -3,6 +3,7 @@ import crypto from 'crypto';
 import { db } from '../../../db/store';
 import { requireAuth, requireRole, AuthenticatedRequest } from '../../../middleware/authMiddleware';
 import { AuditService } from '../../../services/auditService';
+import { LedgerService } from '../../../services/ledgerService';
 import { GatewayVerificationService } from '../../../services/gatewayVerificationService';
 
 export const adminRouter = Router();
@@ -222,9 +223,99 @@ adminRouter.put('/system-config', (req: AuthenticatedRequest, res) => {
     });
 
     res.json({ success: true, removedCount: removed.length, categories: db.categories });
-  });
+    });
 
-  // POST /api/v1/admin/test-card24h - Live test ping to Card24h API
+    // ============================================================================
+    // CYBERPOOL FIX: WITHDRAWAL LIFECYCLE — trước đây /wallet/withdraw trừ ví rồi
+    // báo "chờ duyệt" nhưng server không lưu request, không có approve/reject →
+    // tiền treo vĩnh viễn. Giờ admin có đủ vòng đời, reject HOÀN TIỀN qua ledger.
+    // ============================================================================
+
+    // GET /api/v1/admin/withdrawals
+    adminRouter.get('/withdrawals', (req: AuthenticatedRequest, res) => {
+    const status = String(req.query.status || '');
+    let list = db.withdrawals;
+    if (status && status !== 'all') {
+      list = list.filter((w: any) => w.status === status);
+    }
+    res.json({ success: true, withdrawals: list });
+    });
+
+    // POST /api/v1/admin/withdrawals/:id/approve — xác nhận đã giải ngân thật
+    adminRouter.post('/withdrawals/:id/approve', (req: AuthenticatedRequest, res) => {
+    const wd = db.withdrawals.find((w: any) => w.id === req.params.id);
+    if (!wd) {
+      return res.status(404).json({ success: false, error: 'Không tìm thấy yêu cầu rút tiền' });
+    }
+    if (wd.status !== 'pending') {
+      return res.status(400).json({ success: false, error: `Yêu cầu đã ở trạng thái "${wd.status}", không thể duyệt lại` });
+    }
+    wd.status = 'approved';
+    wd.processedAt = new Date().toISOString();
+    wd.processedBy = req.user!.id;
+    wd.note = req.body?.note || wd.note || '';
+
+    AuditService.log({
+      actorId: req.user!.id,
+      actorName: req.user!.name,
+      actorRole: req.user!.role,
+      action: 'ADMIN_APPROVE_WITHDRAWAL',
+      resource: `WITHDRAWAL:${wd.id}`,
+      newValue: wd,
+      ipAddress: req.ip
+    });
+
+    res.json({ success: true, withdrawal: wd });
+    });
+
+    // POST /api/v1/admin/withdrawals/:id/reject — từ chối + HOÀN TIỀN về ví user
+    adminRouter.post('/withdrawals/:id/reject', async (req: AuthenticatedRequest, res) => {
+    const wd = db.withdrawals.find((w: any) => w.id === req.params.id);
+    if (!wd) {
+      return res.status(404).json({ success: false, error: 'Không tìm thấy yêu cầu rút tiền' });
+    }
+    if (wd.status !== 'pending') {
+      return res.status(400).json({ success: false, error: `Yêu cầu đã ở trạng thái "${wd.status}", không thể từ chối` });
+    }
+    const reason = String(req.body?.reason || '').trim() || 'Quản trị viên từ chối yêu cầu rút tiền';
+
+    // Hoàn tiền về ví (REFUND credit) — bước trước đây hoàn toàn bị thiếu
+    const refund = await LedgerService.executeTransaction({
+      userId: wd.userId,
+      type: 'REFUND',
+      amount: wd.amount,
+      description: `Hoàn tiền yêu cầu rút bị từ chối ${wd.id}: ${reason}`,
+      referenceId: wd.id,
+      actorId: req.user!.id,
+      actorName: req.user!.name,
+      actorRole: req.user!.role,
+      ipAddress: req.ip
+    });
+
+    if (!refund.success) {
+      return res.status(500).json({ success: false, error: `Không thể hoàn tiền: ${refund.error}` });
+    }
+
+    wd.status = 'rejected';
+    wd.processedAt = new Date().toISOString();
+    wd.processedBy = req.user!.id;
+    wd.note = reason;
+    wd.refundTransactionId = refund.transaction?.id || '';
+
+    AuditService.log({
+      actorId: req.user!.id,
+      actorName: req.user!.name,
+      actorRole: req.user!.role,
+      action: 'ADMIN_REJECT_WITHDRAWAL',
+      resource: `WITHDRAWAL:${wd.id}`,
+      newValue: wd,
+      ipAddress: req.ip
+    });
+
+    res.json({ success: true, withdrawal: wd, refunded: true });
+    });
+
+    // POST /api/v1/admin/test-card24h - Live test ping to Card24h API
 adminRouter.post('/test-card24h', async (req: AuthenticatedRequest, res) => {
   // CYBERPOOL SECURITY FIX: real partner credentials were hardcoded as
   // fallbacks. Now only env/systemConfig may supply them — never source code.

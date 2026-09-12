@@ -65,6 +65,20 @@ export const adminApi = {
     return api.delete<{ removedCount: number; categories: any[] }>(`/admin/categories/${id}`);
   },
 
+  // CYBERPOOL FIX: withdrawal lifecycle — approve/reject có hoàn tiền qua ledger
+  getWithdrawals: async (status?: string): Promise<ApiResponse<{ withdrawals: any[] }>> => {
+    const query = status && status !== 'all' ? `?status=${status}` : '';
+    return api.get<{ withdrawals: any[] }>(`/admin/withdrawals${query}`);
+  },
+
+  approveWithdrawal: async (id: string, note?: string): Promise<ApiResponse<{ withdrawal: any }>> => {
+    return api.post<{ withdrawal: any }>(`/admin/withdrawals/${id}/approve`, { note: note || '' });
+  },
+
+  rejectWithdrawal: async (id: string, reason: string): Promise<ApiResponse<{ withdrawal: any; refunded: boolean }>> => {
+    return api.post<{ withdrawal: any; refunded: boolean }>(`/admin/withdrawals/${id}/reject`, { reason });
+  },
+
   updateSystemConfig: async (config: any): Promise<ApiResponse<{ config: any }>> => {
     return api.put<{ config: any }>('/admin/system-config', config);
   },

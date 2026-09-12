@@ -20,6 +20,10 @@ import { GameStorageService } from '../services/gameStorageService';
 class DatabaseStore {
   public users: Map<string, ServerUser> = new Map();
   public transactions: ServerWalletTransaction[] = [];
+  // CYBERPOOL FIX: withdrawal lifecycle store — trước đây /wallet/withdraw trừ ví
+  // rồi "chờ duyệt" nhưng không lưu request nào trên server → admin không thể
+  // duyệt/từ chối, reject không hoàn tiền (user mất tiền vĩnh viễn).
+  public withdrawals: any[] = [];
   public inventory: Map<string, ServerInventoryItem> = new Map();
   public escrowContracts: Map<string, ServerEscrowContract> = new Map();
   public orders: Map<string, ServerOrder> = new Map();

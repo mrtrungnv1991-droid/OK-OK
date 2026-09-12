@@ -7272,5 +7272,2596 @@
     "totalCategories": 0,
     "startedAt": "2026-09-11T23:09:09.795Z",
     "scanDiagnostics": []
+  },
+  {
+    "id": "job_1789238279004",
+    "supplierId": "sup_g2up_net_api",
+    "mode": "FULL",
+    "status": "SUCCESS",
+    "totalDiscovered": 131,
+    "totalItemsScanned": 131,
+    "totalItemsUpserted": 131,
+    "totalItemsMapped": 6,
+    "totalCreated": 6,
+    "totalUpdated": 125,
+    "totalSkipped": 0,
+    "totalFailed": 0,
+    "progressPercent": 100,
+    "categoriesScanned": 9,
+    "totalCategories": 9,
+    "startedAt": "2026-09-12T18:37:59.004Z",
+    "scanDiagnostics": [
+      {
+        "step": "Connection & Health",
+        "status": "PASS",
+        "message": "Kết nối máy chủ https://g2up.net sẵn sàng"
+      },
+      {
+        "step": "Category Discovery",
+        "status": "PASS",
+        "message": "Phát hiện 9 danh mục từ website nguồn"
+      },
+      {
+        "step": "Product Discovery & Pagination",
+        "status": "PASS",
+        "message": "Bắt đầu quét danh mục sản phẩm theo pagination"
+      },
+      {
+        "step": "Product Normalization",
+        "status": "PASS",
+        "message": "Đã chuẩn hóa 131 sản phẩm từ nguồn sang model tiêu chuẩn"
+      },
+      {
+        "step": "Price Engine & Markup",
+        "status": "PASS",
+        "message": "Áp dụng công thức giá (Markup: 20%)"
+      },
+      {
+        "step": "Database & Local Publishing",
+        "status": "PASS",
+        "message": "Đã ghi nhận 6 tạo mới, 125 cập nhật vào kho hàng thực tế"
+      }
+    ],
+    "completedAt": "2026-09-12T18:38:01.673Z"
+  },
+  {
+    "id": "job_1789238335003",
+    "supplierId": "sup_g2up_net_api",
+    "mode": "FULL",
+    "status": "SUCCESS",
+    "totalDiscovered": 131,
+    "totalItemsScanned": 131,
+    "totalItemsUpserted": 131,
+    "totalItemsMapped": 0,
+    "totalCreated": 0,
+    "totalUpdated": 131,
+    "totalSkipped": 0,
+    "totalFailed": 0,
+    "progressPercent": 100,
+    "categoriesScanned": 9,
+    "totalCategories": 9,
+    "startedAt": "2026-09-12T18:38:55.003Z",
+    "scanDiagnostics": [
+      {
+        "step": "Connection & Health",
+        "status": "PASS",
+        "message": "Kết nối máy chủ https://g2up.net sẵn sàng"
+      },
+      {
+        "step": "Category Discovery",
+        "status": "PASS",
+        "message": "Phát hiện 9 danh mục từ website nguồn"
+      },
+      {
+        "step": "Product Discovery & Pagination",
+        "status": "PASS",
+        "message": "Bắt đầu quét danh mục sản phẩm theo pagination"
+      },
+      {
+        "step": "Product Normalization",
+        "status": "PASS",
+        "message": "Đã chuẩn hóa 131 sản phẩm từ nguồn sang model tiêu chuẩn"
+      },
+      {
+        "step": "Price Engine & Markup",
+        "status": "PASS",
+        "message": "Áp dụng công thức giá (Markup: 20%)"
+      },
+      {
+        "step": "Database & Local Publishing",
+        "status": "PASS",
+        "message": "Đã ghi nhận 0 tạo mới, 131 cập nhật vào kho hàng thực tế"
+      }
+    ],
+    "completedAt": "2026-09-12T18:38:57.471Z"
+  },
+  {
+    "id": "job_1789238395017",
+    "supplierId": "sup_g2up_net_api",
+    "mode": "FULL",
+    "status": "SUCCESS",
+    "totalDiscovered": 131,
+    "totalItemsScanned": 131,
+    "totalItemsUpserted": 131,
+    "totalItemsMapped": 0,
+    "totalCreated": 0,
+    "totalUpdated": 131,
+    "totalSkipped": 0,
+    "totalFailed": 0,
+    "progressPercent": 100,
+    "categoriesScanned": 9,
+    "totalCategories": 9,
+    "startedAt": "2026-09-12T18:39:55.017Z",
+    "scanDiagnostics": [
+      {
+        "step": "Connection & Health",
+        "status": "PASS",
+        "message": "Kết nối máy chủ https://g2up.net sẵn sàng"
+      },
+      {
+        "step": "Category Discovery",
+        "status": "PASS",
+        "message": "Phát hiện 9 danh mục từ website nguồn"
+      },
+      {
+        "step": "Product Discovery & Pagination",
+        "status": "PASS",
+        "message": "Bắt đầu quét danh mục sản phẩm theo pagination"
+      },
+      {
+        "step": "Product Normalization",
+        "status": "PASS",
+        "message": "Đã chuẩn hóa 131 sản phẩm từ nguồn sang model tiêu chuẩn"
+      },
+      {
+        "step": "Price Engine & Markup",
+        "status": "PASS",
+        "message": "Áp dụng công thức giá (Markup: 20%)"
+      },
+      {
+        "step": "Database & Local Publishing",
+        "status": "PASS",
+        "message": "Đã ghi nhận 0 tạo mới, 131 cập nhật vào kho hàng thực tế"
+      }
+    ],
+    "completedAt": "2026-09-12T18:39:57.327Z"
+  },
+  {
+    "id": "job_1789238455030",
+    "supplierId": "sup_g2up_net_api",
+    "mode": "FULL",
+    "status": "SUCCESS",
+    "totalDiscovered": 131,
+    "totalItemsScanned": 131,
+    "totalItemsUpserted": 131,
+    "totalItemsMapped": 0,
+    "totalCreated": 0,
+    "totalUpdated": 131,
+    "totalSkipped": 0,
+    "totalFailed": 0,
+    "progressPercent": 100,
+    "categoriesScanned": 9,
+    "totalCategories": 9,
+    "startedAt": "2026-09-12T18:40:55.030Z",
+    "scanDiagnostics": [
+      {
+        "step": "Connection & Health",
+        "status": "PASS",
+        "message": "Kết nối máy chủ https://g2up.net sẵn sàng"
+      },
+      {
+        "step": "Category Discovery",
+        "status": "PASS",
+        "message": "Phát hiện 9 danh mục từ website nguồn"
+      },
+      {
+        "step": "Product Discovery & Pagination",
+        "status": "PASS",
+        "message": "Bắt đầu quét danh mục sản phẩm theo pagination"
+      },
+      {
+        "step": "Product Normalization",
+        "status": "PASS",
+        "message": "Đã chuẩn hóa 131 sản phẩm từ nguồn sang model tiêu chuẩn"
+      },
+      {
+        "step": "Price Engine & Markup",
+        "status": "PASS",
+        "message": "Áp dụng công thức giá (Markup: 20%)"
+      },
+      {
+        "step": "Database & Local Publishing",
+        "status": "PASS",
+        "message": "Đã ghi nhận 0 tạo mới, 131 cập nhật vào kho hàng thực tế"
+      }
+    ],
+    "completedAt": "2026-09-12T18:40:57.634Z"
+  },
+  {
+    "id": "job_1789238515037",
+    "supplierId": "sup_g2up_net_api",
+    "mode": "FULL",
+    "status": "SUCCESS",
+    "totalDiscovered": 131,
+    "totalItemsScanned": 131,
+    "totalItemsUpserted": 131,
+    "totalItemsMapped": 0,
+    "totalCreated": 0,
+    "totalUpdated": 131,
+    "totalSkipped": 0,
+    "totalFailed": 0,
+    "progressPercent": 100,
+    "categoriesScanned": 9,
+    "totalCategories": 9,
+    "startedAt": "2026-09-12T18:41:55.037Z",
+    "scanDiagnostics": [
+      {
+        "step": "Connection & Health",
+        "status": "PASS",
+        "message": "Kết nối máy chủ https://g2up.net sẵn sàng"
+      },
+      {
+        "step": "Category Discovery",
+        "status": "PASS",
+        "message": "Phát hiện 9 danh mục từ website nguồn"
+      },
+      {
+        "step": "Product Discovery & Pagination",
+        "status": "PASS",
+        "message": "Bắt đầu quét danh mục sản phẩm theo pagination"
+      },
+      {
+        "step": "Product Normalization",
+        "status": "PASS",
+        "message": "Đã chuẩn hóa 131 sản phẩm từ nguồn sang model tiêu chuẩn"
+      },
+      {
+        "step": "Price Engine & Markup",
+        "status": "PASS",
+        "message": "Áp dụng công thức giá (Markup: 20%)"
+      },
+      {
+        "step": "Database & Local Publishing",
+        "status": "PASS",
+        "message": "Đã ghi nhận 0 tạo mới, 131 cập nhật vào kho hàng thực tế"
+      }
+    ],
+    "completedAt": "2026-09-12T18:41:57.334Z"
+  },
+  {
+    "id": "job_1789238575039",
+    "supplierId": "sup_g2up_net_api",
+    "mode": "FULL",
+    "status": "SUCCESS",
+    "totalDiscovered": 131,
+    "totalItemsScanned": 131,
+    "totalItemsUpserted": 131,
+    "totalItemsMapped": 0,
+    "totalCreated": 0,
+    "totalUpdated": 131,
+    "totalSkipped": 0,
+    "totalFailed": 0,
+    "progressPercent": 100,
+    "categoriesScanned": 9,
+    "totalCategories": 9,
+    "startedAt": "2026-09-12T18:42:55.039Z",
+    "scanDiagnostics": [
+      {
+        "step": "Connection & Health",
+        "status": "PASS",
+        "message": "Kết nối máy chủ https://g2up.net sẵn sàng"
+      },
+      {
+        "step": "Category Discovery",
+        "status": "PASS",
+        "message": "Phát hiện 9 danh mục từ website nguồn"
+      },
+      {
+        "step": "Product Discovery & Pagination",
+        "status": "PASS",
+        "message": "Bắt đầu quét danh mục sản phẩm theo pagination"
+      },
+      {
+        "step": "Product Normalization",
+        "status": "PASS",
+        "message": "Đã chuẩn hóa 131 sản phẩm từ nguồn sang model tiêu chuẩn"
+      },
+      {
+        "step": "Price Engine & Markup",
+        "status": "PASS",
+        "message": "Áp dụng công thức giá (Markup: 20%)"
+      },
+      {
+        "step": "Database & Local Publishing",
+        "status": "PASS",
+        "message": "Đã ghi nhận 0 tạo mới, 131 cập nhật vào kho hàng thực tế"
+      }
+    ],
+    "completedAt": "2026-09-12T18:42:57.343Z"
+  },
+  {
+    "id": "job_1789238635051",
+    "supplierId": "sup_g2up_net_api",
+    "mode": "FULL",
+    "status": "SUCCESS",
+    "totalDiscovered": 131,
+    "totalItemsScanned": 131,
+    "totalItemsUpserted": 131,
+    "totalItemsMapped": 0,
+    "totalCreated": 0,
+    "totalUpdated": 131,
+    "totalSkipped": 0,
+    "totalFailed": 0,
+    "progressPercent": 100,
+    "categoriesScanned": 9,
+    "totalCategories": 9,
+    "startedAt": "2026-09-12T18:43:55.051Z",
+    "scanDiagnostics": [
+      {
+        "step": "Connection & Health",
+        "status": "PASS",
+        "message": "Kết nối máy chủ https://g2up.net sẵn sàng"
+      },
+      {
+        "step": "Category Discovery",
+        "status": "PASS",
+        "message": "Phát hiện 9 danh mục từ website nguồn"
+      },
+      {
+        "step": "Product Discovery & Pagination",
+        "status": "PASS",
+        "message": "Bắt đầu quét danh mục sản phẩm theo pagination"
+      },
+      {
+        "step": "Product Normalization",
+        "status": "PASS",
+        "message": "Đã chuẩn hóa 131 sản phẩm từ nguồn sang model tiêu chuẩn"
+      },
+      {
+        "step": "Price Engine & Markup",
+        "status": "PASS",
+        "message": "Áp dụng công thức giá (Markup: 20%)"
+      },
+      {
+        "step": "Database & Local Publishing",
+        "status": "PASS",
+        "message": "Đã ghi nhận 0 tạo mới, 131 cập nhật vào kho hàng thực tế"
+      }
+    ],
+    "completedAt": "2026-09-12T18:43:57.305Z"
+  },
+  {
+    "id": "job_1789238695055",
+    "supplierId": "sup_g2up_net_api",
+    "mode": "FULL",
+    "status": "SUCCESS",
+    "totalDiscovered": 131,
+    "totalItemsScanned": 131,
+    "totalItemsUpserted": 131,
+    "totalItemsMapped": 0,
+    "totalCreated": 0,
+    "totalUpdated": 131,
+    "totalSkipped": 0,
+    "totalFailed": 0,
+    "progressPercent": 100,
+    "categoriesScanned": 9,
+    "totalCategories": 9,
+    "startedAt": "2026-09-12T18:44:55.055Z",
+    "scanDiagnostics": [
+      {
+        "step": "Connection & Health",
+        "status": "PASS",
+        "message": "Kết nối máy chủ https://g2up.net sẵn sàng"
+      },
+      {
+        "step": "Category Discovery",
+        "status": "PASS",
+        "message": "Phát hiện 9 danh mục từ website nguồn"
+      },
+      {
+        "step": "Product Discovery & Pagination",
+        "status": "PASS",
+        "message": "Bắt đầu quét danh mục sản phẩm theo pagination"
+      },
+      {
+        "step": "Product Normalization",
+        "status": "PASS",
+        "message": "Đã chuẩn hóa 131 sản phẩm từ nguồn sang model tiêu chuẩn"
+      },
+      {
+        "step": "Price Engine & Markup",
+        "status": "PASS",
+        "message": "Áp dụng công thức giá (Markup: 20%)"
+      },
+      {
+        "step": "Database & Local Publishing",
+        "status": "PASS",
+        "message": "Đã ghi nhận 0 tạo mới, 131 cập nhật vào kho hàng thực tế"
+      }
+    ],
+    "completedAt": "2026-09-12T18:44:57.282Z"
+  },
+  {
+    "id": "job_1789238755057",
+    "supplierId": "sup_g2up_net_api",
+    "mode": "FULL",
+    "status": "SUCCESS",
+    "totalDiscovered": 131,
+    "totalItemsScanned": 131,
+    "totalItemsUpserted": 131,
+    "totalItemsMapped": 0,
+    "totalCreated": 0,
+    "totalUpdated": 131,
+    "totalSkipped": 0,
+    "totalFailed": 0,
+    "progressPercent": 100,
+    "categoriesScanned": 9,
+    "totalCategories": 9,
+    "startedAt": "2026-09-12T18:45:55.057Z",
+    "scanDiagnostics": [
+      {
+        "step": "Connection & Health",
+        "status": "PASS",
+        "message": "Kết nối máy chủ https://g2up.net sẵn sàng"
+      },
+      {
+        "step": "Category Discovery",
+        "status": "PASS",
+        "message": "Phát hiện 9 danh mục từ website nguồn"
+      },
+      {
+        "step": "Product Discovery & Pagination",
+        "status": "PASS",
+        "message": "Bắt đầu quét danh mục sản phẩm theo pagination"
+      },
+      {
+        "step": "Product Normalization",
+        "status": "PASS",
+        "message": "Đã chuẩn hóa 131 sản phẩm từ nguồn sang model tiêu chuẩn"
+      },
+      {
+        "step": "Price Engine & Markup",
+        "status": "PASS",
+        "message": "Áp dụng công thức giá (Markup: 20%)"
+      },
+      {
+        "step": "Database & Local Publishing",
+        "status": "PASS",
+        "message": "Đã ghi nhận 0 tạo mới, 131 cập nhật vào kho hàng thực tế"
+      }
+    ],
+    "completedAt": "2026-09-12T18:45:57.564Z"
+  },
+  {
+    "id": "job_1789238815064",
+    "supplierId": "sup_g2up_net_api",
+    "mode": "FULL",
+    "status": "SUCCESS",
+    "totalDiscovered": 131,
+    "totalItemsScanned": 131,
+    "totalItemsUpserted": 131,
+    "totalItemsMapped": 0,
+    "totalCreated": 0,
+    "totalUpdated": 131,
+    "totalSkipped": 0,
+    "totalFailed": 0,
+    "progressPercent": 100,
+    "categoriesScanned": 9,
+    "totalCategories": 9,
+    "startedAt": "2026-09-12T18:46:55.064Z",
+    "scanDiagnostics": [
+      {
+        "step": "Connection & Health",
+        "status": "PASS",
+        "message": "Kết nối máy chủ https://g2up.net sẵn sàng"
+      },
+      {
+        "step": "Category Discovery",
+        "status": "PASS",
+        "message": "Phát hiện 9 danh mục từ website nguồn"
+      },
+      {
+        "step": "Product Discovery & Pagination",
+        "status": "PASS",
+        "message": "Bắt đầu quét danh mục sản phẩm theo pagination"
+      },
+      {
+        "step": "Product Normalization",
+        "status": "PASS",
+        "message": "Đã chuẩn hóa 131 sản phẩm từ nguồn sang model tiêu chuẩn"
+      },
+      {
+        "step": "Price Engine & Markup",
+        "status": "PASS",
+        "message": "Áp dụng công thức giá (Markup: 20%)"
+      },
+      {
+        "step": "Database & Local Publishing",
+        "status": "PASS",
+        "message": "Đã ghi nhận 0 tạo mới, 131 cập nhật vào kho hàng thực tế"
+      }
+    ],
+    "completedAt": "2026-09-12T18:46:57.329Z"
+  },
+  {
+    "id": "job_1789238875078",
+    "supplierId": "sup_g2up_net_api",
+    "mode": "FULL",
+    "status": "SUCCESS",
+    "totalDiscovered": 131,
+    "totalItemsScanned": 131,
+    "totalItemsUpserted": 131,
+    "totalItemsMapped": 0,
+    "totalCreated": 0,
+    "totalUpdated": 131,
+    "totalSkipped": 0,
+    "totalFailed": 0,
+    "progressPercent": 100,
+    "categoriesScanned": 9,
+    "totalCategories": 9,
+    "startedAt": "2026-09-12T18:47:55.078Z",
+    "scanDiagnostics": [
+      {
+        "step": "Connection & Health",
+        "status": "PASS",
+        "message": "Kết nối máy chủ https://g2up.net sẵn sàng"
+      },
+      {
+        "step": "Category Discovery",
+        "status": "PASS",
+        "message": "Phát hiện 9 danh mục từ website nguồn"
+      },
+      {
+        "step": "Product Discovery & Pagination",
+        "status": "PASS",
+        "message": "Bắt đầu quét danh mục sản phẩm theo pagination"
+      },
+      {
+        "step": "Product Normalization",
+        "status": "PASS",
+        "message": "Đã chuẩn hóa 131 sản phẩm từ nguồn sang model tiêu chuẩn"
+      },
+      {
+        "step": "Price Engine & Markup",
+        "status": "PASS",
+        "message": "Áp dụng công thức giá (Markup: 20%)"
+      },
+      {
+        "step": "Database & Local Publishing",
+        "status": "PASS",
+        "message": "Đã ghi nhận 0 tạo mới, 131 cập nhật vào kho hàng thực tế"
+      }
+    ],
+    "completedAt": "2026-09-12T18:47:57.372Z"
+  },
+  {
+    "id": "job_1789238935079",
+    "supplierId": "sup_g2up_net_api",
+    "mode": "FULL",
+    "status": "SUCCESS",
+    "totalDiscovered": 131,
+    "totalItemsScanned": 131,
+    "totalItemsUpserted": 131,
+    "totalItemsMapped": 0,
+    "totalCreated": 0,
+    "totalUpdated": 131,
+    "totalSkipped": 0,
+    "totalFailed": 0,
+    "progressPercent": 100,
+    "categoriesScanned": 9,
+    "totalCategories": 9,
+    "startedAt": "2026-09-12T18:48:55.079Z",
+    "scanDiagnostics": [
+      {
+        "step": "Connection & Health",
+        "status": "PASS",
+        "message": "Kết nối máy chủ https://g2up.net sẵn sàng"
+      },
+      {
+        "step": "Category Discovery",
+        "status": "PASS",
+        "message": "Phát hiện 9 danh mục từ website nguồn"
+      },
+      {
+        "step": "Product Discovery & Pagination",
+        "status": "PASS",
+        "message": "Bắt đầu quét danh mục sản phẩm theo pagination"
+      },
+      {
+        "step": "Product Normalization",
+        "status": "PASS",
+        "message": "Đã chuẩn hóa 131 sản phẩm từ nguồn sang model tiêu chuẩn"
+      },
+      {
+        "step": "Price Engine & Markup",
+        "status": "PASS",
+        "message": "Áp dụng công thức giá (Markup: 20%)"
+      },
+      {
+        "step": "Database & Local Publishing",
+        "status": "PASS",
+        "message": "Đã ghi nhận 0 tạo mới, 131 cập nhật vào kho hàng thực tế"
+      }
+    ],
+    "completedAt": "2026-09-12T18:48:57.545Z"
+  },
+  {
+    "id": "job_1789238977223",
+    "supplierId": "sup_g2up_net_api",
+    "mode": "FULL",
+    "status": "SUCCESS",
+    "totalDiscovered": 131,
+    "totalItemsScanned": 131,
+    "totalItemsUpserted": 131,
+    "totalItemsMapped": 0,
+    "totalCreated": 0,
+    "totalUpdated": 131,
+    "totalSkipped": 0,
+    "totalFailed": 0,
+    "progressPercent": 100,
+    "categoriesScanned": 9,
+    "totalCategories": 9,
+    "startedAt": "2026-09-12T18:49:37.223Z",
+    "scanDiagnostics": [
+      {
+        "step": "Connection & Health",
+        "status": "PASS",
+        "message": "Kết nối máy chủ https://g2up.net sẵn sàng"
+      },
+      {
+        "step": "Category Discovery",
+        "status": "PASS",
+        "message": "Phát hiện 9 danh mục từ website nguồn"
+      },
+      {
+        "step": "Product Discovery & Pagination",
+        "status": "PASS",
+        "message": "Bắt đầu quét danh mục sản phẩm theo pagination"
+      },
+      {
+        "step": "Product Normalization",
+        "status": "PASS",
+        "message": "Đã chuẩn hóa 131 sản phẩm từ nguồn sang model tiêu chuẩn"
+      },
+      {
+        "step": "Price Engine & Markup",
+        "status": "PASS",
+        "message": "Áp dụng công thức giá (Markup: 20%)"
+      },
+      {
+        "step": "Database & Local Publishing",
+        "status": "PASS",
+        "message": "Đã ghi nhận 0 tạo mới, 131 cập nhật vào kho hàng thực tế"
+      }
+    ],
+    "completedAt": "2026-09-12T18:49:39.785Z"
+  },
+  {
+    "id": "job_1789239033222",
+    "supplierId": "sup_g2up_net_api",
+    "mode": "FULL",
+    "status": "SUCCESS",
+    "totalDiscovered": 131,
+    "totalItemsScanned": 131,
+    "totalItemsUpserted": 131,
+    "totalItemsMapped": 0,
+    "totalCreated": 0,
+    "totalUpdated": 131,
+    "totalSkipped": 0,
+    "totalFailed": 0,
+    "progressPercent": 100,
+    "categoriesScanned": 9,
+    "totalCategories": 9,
+    "startedAt": "2026-09-12T18:50:33.222Z",
+    "scanDiagnostics": [
+      {
+        "step": "Connection & Health",
+        "status": "PASS",
+        "message": "Kết nối máy chủ https://g2up.net sẵn sàng"
+      },
+      {
+        "step": "Category Discovery",
+        "status": "PASS",
+        "message": "Phát hiện 9 danh mục từ website nguồn"
+      },
+      {
+        "step": "Product Discovery & Pagination",
+        "status": "PASS",
+        "message": "Bắt đầu quét danh mục sản phẩm theo pagination"
+      },
+      {
+        "step": "Product Normalization",
+        "status": "PASS",
+        "message": "Đã chuẩn hóa 131 sản phẩm từ nguồn sang model tiêu chuẩn"
+      },
+      {
+        "step": "Price Engine & Markup",
+        "status": "PASS",
+        "message": "Áp dụng công thức giá (Markup: 20%)"
+      },
+      {
+        "step": "Database & Local Publishing",
+        "status": "PASS",
+        "message": "Đã ghi nhận 0 tạo mới, 131 cập nhật vào kho hàng thực tế"
+      }
+    ],
+    "completedAt": "2026-09-12T18:50:35.706Z"
+  },
+  {
+    "id": "job_1789239093227",
+    "supplierId": "sup_g2up_net_api",
+    "mode": "FULL",
+    "status": "SUCCESS",
+    "totalDiscovered": 131,
+    "totalItemsScanned": 131,
+    "totalItemsUpserted": 131,
+    "totalItemsMapped": 0,
+    "totalCreated": 0,
+    "totalUpdated": 131,
+    "totalSkipped": 0,
+    "totalFailed": 0,
+    "progressPercent": 100,
+    "categoriesScanned": 9,
+    "totalCategories": 9,
+    "startedAt": "2026-09-12T18:51:33.227Z",
+    "scanDiagnostics": [
+      {
+        "step": "Connection & Health",
+        "status": "PASS",
+        "message": "Kết nối máy chủ https://g2up.net sẵn sàng"
+      },
+      {
+        "step": "Category Discovery",
+        "status": "PASS",
+        "message": "Phát hiện 9 danh mục từ website nguồn"
+      },
+      {
+        "step": "Product Discovery & Pagination",
+        "status": "PASS",
+        "message": "Bắt đầu quét danh mục sản phẩm theo pagination"
+      },
+      {
+        "step": "Product Normalization",
+        "status": "PASS",
+        "message": "Đã chuẩn hóa 131 sản phẩm từ nguồn sang model tiêu chuẩn"
+      },
+      {
+        "step": "Price Engine & Markup",
+        "status": "PASS",
+        "message": "Áp dụng công thức giá (Markup: 20%)"
+      },
+      {
+        "step": "Database & Local Publishing",
+        "status": "PASS",
+        "message": "Đã ghi nhận 0 tạo mới, 131 cập nhật vào kho hàng thực tế"
+      }
+    ],
+    "completedAt": "2026-09-12T18:51:35.467Z"
+  },
+  {
+    "id": "job_1789239153227",
+    "supplierId": "sup_g2up_net_api",
+    "mode": "FULL",
+    "status": "SUCCESS",
+    "totalDiscovered": 0,
+    "totalItemsScanned": 0,
+    "totalItemsUpserted": 0,
+    "totalItemsMapped": 0,
+    "totalCreated": 0,
+    "totalUpdated": 0,
+    "totalSkipped": 0,
+    "totalFailed": 0,
+    "progressPercent": 100,
+    "categoriesScanned": 1,
+    "totalCategories": 1,
+    "startedAt": "2026-09-12T18:52:33.227Z",
+    "scanDiagnostics": [
+      {
+        "step": "Connection & Health",
+        "status": "PASS",
+        "message": "Kết nối máy chủ https://g2up.net sẵn sàng"
+      },
+      {
+        "step": "Category Discovery",
+        "status": "PASS",
+        "message": "Phát hiện 1 danh mục từ website nguồn"
+      },
+      {
+        "step": "Product Discovery & Pagination",
+        "status": "PASS",
+        "message": "Bắt đầu quét danh mục sản phẩm theo pagination"
+      },
+      {
+        "step": "Product Normalization",
+        "status": "FAIL",
+        "message": "Đã chuẩn hóa 0 sản phẩm từ nguồn sang model tiêu chuẩn"
+      },
+      {
+        "step": "Database Persist",
+        "status": "PASS",
+        "message": "Không có sản phẩm mới cần import"
+      }
+    ],
+    "completedAt": "2026-09-12T18:52:35.549Z"
+  },
+  {
+    "id": "job_1789239213233",
+    "supplierId": "sup_g2up_net_api",
+    "mode": "FULL",
+    "status": "SUCCESS",
+    "totalDiscovered": 131,
+    "totalItemsScanned": 131,
+    "totalItemsUpserted": 131,
+    "totalItemsMapped": 0,
+    "totalCreated": 0,
+    "totalUpdated": 131,
+    "totalSkipped": 0,
+    "totalFailed": 0,
+    "progressPercent": 100,
+    "categoriesScanned": 9,
+    "totalCategories": 9,
+    "startedAt": "2026-09-12T18:53:33.233Z",
+    "scanDiagnostics": [
+      {
+        "step": "Connection & Health",
+        "status": "PASS",
+        "message": "Kết nối máy chủ https://g2up.net sẵn sàng"
+      },
+      {
+        "step": "Category Discovery",
+        "status": "PASS",
+        "message": "Phát hiện 9 danh mục từ website nguồn"
+      },
+      {
+        "step": "Product Discovery & Pagination",
+        "status": "PASS",
+        "message": "Bắt đầu quét danh mục sản phẩm theo pagination"
+      },
+      {
+        "step": "Product Normalization",
+        "status": "PASS",
+        "message": "Đã chuẩn hóa 131 sản phẩm từ nguồn sang model tiêu chuẩn"
+      },
+      {
+        "step": "Price Engine & Markup",
+        "status": "PASS",
+        "message": "Áp dụng công thức giá (Markup: 20%)"
+      },
+      {
+        "step": "Database & Local Publishing",
+        "status": "PASS",
+        "message": "Đã ghi nhận 0 tạo mới, 131 cập nhật vào kho hàng thực tế"
+      }
+    ],
+    "completedAt": "2026-09-12T18:53:35.564Z"
+  },
+  {
+    "id": "job_1789239273242",
+    "supplierId": "sup_g2up_net_api",
+    "mode": "FULL",
+    "status": "SUCCESS",
+    "totalDiscovered": 131,
+    "totalItemsScanned": 131,
+    "totalItemsUpserted": 131,
+    "totalItemsMapped": 0,
+    "totalCreated": 0,
+    "totalUpdated": 131,
+    "totalSkipped": 0,
+    "totalFailed": 0,
+    "progressPercent": 100,
+    "categoriesScanned": 9,
+    "totalCategories": 9,
+    "startedAt": "2026-09-12T18:54:33.242Z",
+    "scanDiagnostics": [
+      {
+        "step": "Connection & Health",
+        "status": "PASS",
+        "message": "Kết nối máy chủ https://g2up.net sẵn sàng"
+      },
+      {
+        "step": "Category Discovery",
+        "status": "PASS",
+        "message": "Phát hiện 9 danh mục từ website nguồn"
+      },
+      {
+        "step": "Product Discovery & Pagination",
+        "status": "PASS",
+        "message": "Bắt đầu quét danh mục sản phẩm theo pagination"
+      },
+      {
+        "step": "Product Normalization",
+        "status": "PASS",
+        "message": "Đã chuẩn hóa 131 sản phẩm từ nguồn sang model tiêu chuẩn"
+      },
+      {
+        "step": "Price Engine & Markup",
+        "status": "PASS",
+        "message": "Áp dụng công thức giá (Markup: 20%)"
+      },
+      {
+        "step": "Database & Local Publishing",
+        "status": "PASS",
+        "message": "Đã ghi nhận 0 tạo mới, 131 cập nhật vào kho hàng thực tế"
+      }
+    ],
+    "completedAt": "2026-09-12T18:54:35.759Z"
+  },
+  {
+    "id": "job_1789239333246",
+    "supplierId": "sup_g2up_net_api",
+    "mode": "FULL",
+    "status": "SUCCESS",
+    "totalDiscovered": 131,
+    "totalItemsScanned": 131,
+    "totalItemsUpserted": 131,
+    "totalItemsMapped": 0,
+    "totalCreated": 0,
+    "totalUpdated": 131,
+    "totalSkipped": 0,
+    "totalFailed": 0,
+    "progressPercent": 100,
+    "categoriesScanned": 9,
+    "totalCategories": 9,
+    "startedAt": "2026-09-12T18:55:33.246Z",
+    "scanDiagnostics": [
+      {
+        "step": "Connection & Health",
+        "status": "PASS",
+        "message": "Kết nối máy chủ https://g2up.net sẵn sàng"
+      },
+      {
+        "step": "Category Discovery",
+        "status": "PASS",
+        "message": "Phát hiện 9 danh mục từ website nguồn"
+      },
+      {
+        "step": "Product Discovery & Pagination",
+        "status": "PASS",
+        "message": "Bắt đầu quét danh mục sản phẩm theo pagination"
+      },
+      {
+        "step": "Product Normalization",
+        "status": "PASS",
+        "message": "Đã chuẩn hóa 131 sản phẩm từ nguồn sang model tiêu chuẩn"
+      },
+      {
+        "step": "Price Engine & Markup",
+        "status": "PASS",
+        "message": "Áp dụng công thức giá (Markup: 20%)"
+      },
+      {
+        "step": "Database & Local Publishing",
+        "status": "PASS",
+        "message": "Đã ghi nhận 0 tạo mới, 131 cập nhật vào kho hàng thực tế"
+      }
+    ],
+    "completedAt": "2026-09-12T18:55:35.514Z"
+  },
+  {
+    "id": "job_1789239393246",
+    "supplierId": "sup_g2up_net_api",
+    "mode": "FULL",
+    "status": "SUCCESS",
+    "totalDiscovered": 131,
+    "totalItemsScanned": 131,
+    "totalItemsUpserted": 131,
+    "totalItemsMapped": 0,
+    "totalCreated": 0,
+    "totalUpdated": 131,
+    "totalSkipped": 0,
+    "totalFailed": 0,
+    "progressPercent": 100,
+    "categoriesScanned": 9,
+    "totalCategories": 9,
+    "startedAt": "2026-09-12T18:56:33.246Z",
+    "scanDiagnostics": [
+      {
+        "step": "Connection & Health",
+        "status": "PASS",
+        "message": "Kết nối máy chủ https://g2up.net sẵn sàng"
+      },
+      {
+        "step": "Category Discovery",
+        "status": "PASS",
+        "message": "Phát hiện 9 danh mục từ website nguồn"
+      },
+      {
+        "step": "Product Discovery & Pagination",
+        "status": "PASS",
+        "message": "Bắt đầu quét danh mục sản phẩm theo pagination"
+      },
+      {
+        "step": "Product Normalization",
+        "status": "PASS",
+        "message": "Đã chuẩn hóa 131 sản phẩm từ nguồn sang model tiêu chuẩn"
+      },
+      {
+        "step": "Price Engine & Markup",
+        "status": "PASS",
+        "message": "Áp dụng công thức giá (Markup: 20%)"
+      },
+      {
+        "step": "Database & Local Publishing",
+        "status": "PASS",
+        "message": "Đã ghi nhận 0 tạo mới, 131 cập nhật vào kho hàng thực tế"
+      }
+    ],
+    "completedAt": "2026-09-12T18:56:35.527Z"
+  },
+  {
+    "id": "job_1789239453252",
+    "supplierId": "sup_g2up_net_api",
+    "mode": "FULL",
+    "status": "SUCCESS",
+    "totalDiscovered": 131,
+    "totalItemsScanned": 131,
+    "totalItemsUpserted": 131,
+    "totalItemsMapped": 0,
+    "totalCreated": 0,
+    "totalUpdated": 131,
+    "totalSkipped": 0,
+    "totalFailed": 0,
+    "progressPercent": 100,
+    "categoriesScanned": 9,
+    "totalCategories": 9,
+    "startedAt": "2026-09-12T18:57:33.252Z",
+    "scanDiagnostics": [
+      {
+        "step": "Connection & Health",
+        "status": "PASS",
+        "message": "Kết nối máy chủ https://g2up.net sẵn sàng"
+      },
+      {
+        "step": "Category Discovery",
+        "status": "PASS",
+        "message": "Phát hiện 9 danh mục từ website nguồn"
+      },
+      {
+        "step": "Product Discovery & Pagination",
+        "status": "PASS",
+        "message": "Bắt đầu quét danh mục sản phẩm theo pagination"
+      },
+      {
+        "step": "Product Normalization",
+        "status": "PASS",
+        "message": "Đã chuẩn hóa 131 sản phẩm từ nguồn sang model tiêu chuẩn"
+      },
+      {
+        "step": "Price Engine & Markup",
+        "status": "PASS",
+        "message": "Áp dụng công thức giá (Markup: 20%)"
+      },
+      {
+        "step": "Database & Local Publishing",
+        "status": "PASS",
+        "message": "Đã ghi nhận 0 tạo mới, 131 cập nhật vào kho hàng thực tế"
+      }
+    ],
+    "completedAt": "2026-09-12T18:57:35.496Z"
+  },
+  {
+    "id": "job_1789239513263",
+    "supplierId": "sup_g2up_net_api",
+    "mode": "FULL",
+    "status": "SUCCESS",
+    "totalDiscovered": 131,
+    "totalItemsScanned": 131,
+    "totalItemsUpserted": 131,
+    "totalItemsMapped": 0,
+    "totalCreated": 0,
+    "totalUpdated": 131,
+    "totalSkipped": 0,
+    "totalFailed": 0,
+    "progressPercent": 100,
+    "categoriesScanned": 9,
+    "totalCategories": 9,
+    "startedAt": "2026-09-12T18:58:33.263Z",
+    "scanDiagnostics": [
+      {
+        "step": "Connection & Health",
+        "status": "PASS",
+        "message": "Kết nối máy chủ https://g2up.net sẵn sàng"
+      },
+      {
+        "step": "Category Discovery",
+        "status": "PASS",
+        "message": "Phát hiện 9 danh mục từ website nguồn"
+      },
+      {
+        "step": "Product Discovery & Pagination",
+        "status": "PASS",
+        "message": "Bắt đầu quét danh mục sản phẩm theo pagination"
+      },
+      {
+        "step": "Product Normalization",
+        "status": "PASS",
+        "message": "Đã chuẩn hóa 131 sản phẩm từ nguồn sang model tiêu chuẩn"
+      },
+      {
+        "step": "Price Engine & Markup",
+        "status": "PASS",
+        "message": "Áp dụng công thức giá (Markup: 20%)"
+      },
+      {
+        "step": "Database & Local Publishing",
+        "status": "PASS",
+        "message": "Đã ghi nhận 0 tạo mới, 131 cập nhật vào kho hàng thực tế"
+      }
+    ],
+    "completedAt": "2026-09-12T18:58:35.849Z"
+  },
+  {
+    "id": "job_1789239566990",
+    "supplierId": "sup_g2up_net_api",
+    "mode": "FULL",
+    "status": "SUCCESS",
+    "totalDiscovered": 131,
+    "totalItemsScanned": 131,
+    "totalItemsUpserted": 131,
+    "totalItemsMapped": 0,
+    "totalCreated": 0,
+    "totalUpdated": 131,
+    "totalSkipped": 0,
+    "totalFailed": 0,
+    "progressPercent": 100,
+    "categoriesScanned": 9,
+    "totalCategories": 9,
+    "startedAt": "2026-09-12T18:59:26.990Z",
+    "scanDiagnostics": [
+      {
+        "step": "Connection & Health",
+        "status": "PASS",
+        "message": "Kết nối máy chủ https://g2up.net sẵn sàng"
+      },
+      {
+        "step": "Category Discovery",
+        "status": "PASS",
+        "message": "Phát hiện 9 danh mục từ website nguồn"
+      },
+      {
+        "step": "Product Discovery & Pagination",
+        "status": "PASS",
+        "message": "Bắt đầu quét danh mục sản phẩm theo pagination"
+      },
+      {
+        "step": "Product Normalization",
+        "status": "PASS",
+        "message": "Đã chuẩn hóa 131 sản phẩm từ nguồn sang model tiêu chuẩn"
+      },
+      {
+        "step": "Price Engine & Markup",
+        "status": "PASS",
+        "message": "Áp dụng công thức giá (Markup: 20%)"
+      },
+      {
+        "step": "Database & Local Publishing",
+        "status": "PASS",
+        "message": "Đã ghi nhận 0 tạo mới, 131 cập nhật vào kho hàng thực tế"
+      }
+    ],
+    "completedAt": "2026-09-12T18:59:29.495Z"
+  },
+  {
+    "id": "job_1789239622989",
+    "supplierId": "sup_g2up_net_api",
+    "mode": "FULL",
+    "status": "SUCCESS",
+    "totalDiscovered": 131,
+    "totalItemsScanned": 131,
+    "totalItemsUpserted": 131,
+    "totalItemsMapped": 0,
+    "totalCreated": 0,
+    "totalUpdated": 131,
+    "totalSkipped": 0,
+    "totalFailed": 0,
+    "progressPercent": 100,
+    "categoriesScanned": 9,
+    "totalCategories": 9,
+    "startedAt": "2026-09-12T19:00:22.989Z",
+    "scanDiagnostics": [
+      {
+        "step": "Connection & Health",
+        "status": "PASS",
+        "message": "Kết nối máy chủ https://g2up.net sẵn sàng"
+      },
+      {
+        "step": "Category Discovery",
+        "status": "PASS",
+        "message": "Phát hiện 9 danh mục từ website nguồn"
+      },
+      {
+        "step": "Product Discovery & Pagination",
+        "status": "PASS",
+        "message": "Bắt đầu quét danh mục sản phẩm theo pagination"
+      },
+      {
+        "step": "Product Normalization",
+        "status": "PASS",
+        "message": "Đã chuẩn hóa 131 sản phẩm từ nguồn sang model tiêu chuẩn"
+      },
+      {
+        "step": "Price Engine & Markup",
+        "status": "PASS",
+        "message": "Áp dụng công thức giá (Markup: 20%)"
+      },
+      {
+        "step": "Database & Local Publishing",
+        "status": "PASS",
+        "message": "Đã ghi nhận 0 tạo mới, 131 cập nhật vào kho hàng thực tế"
+      }
+    ],
+    "completedAt": "2026-09-12T19:00:25.526Z"
+  },
+  {
+    "id": "job_1789239682991",
+    "supplierId": "sup_g2up_net_api",
+    "mode": "FULL",
+    "status": "SUCCESS",
+    "totalDiscovered": 131,
+    "totalItemsScanned": 131,
+    "totalItemsUpserted": 131,
+    "totalItemsMapped": 0,
+    "totalCreated": 0,
+    "totalUpdated": 131,
+    "totalSkipped": 0,
+    "totalFailed": 0,
+    "progressPercent": 100,
+    "categoriesScanned": 9,
+    "totalCategories": 9,
+    "startedAt": "2026-09-12T19:01:22.991Z",
+    "scanDiagnostics": [
+      {
+        "step": "Connection & Health",
+        "status": "PASS",
+        "message": "Kết nối máy chủ https://g2up.net sẵn sàng"
+      },
+      {
+        "step": "Category Discovery",
+        "status": "PASS",
+        "message": "Phát hiện 9 danh mục từ website nguồn"
+      },
+      {
+        "step": "Product Discovery & Pagination",
+        "status": "PASS",
+        "message": "Bắt đầu quét danh mục sản phẩm theo pagination"
+      },
+      {
+        "step": "Product Normalization",
+        "status": "PASS",
+        "message": "Đã chuẩn hóa 131 sản phẩm từ nguồn sang model tiêu chuẩn"
+      },
+      {
+        "step": "Price Engine & Markup",
+        "status": "PASS",
+        "message": "Áp dụng công thức giá (Markup: 20%)"
+      },
+      {
+        "step": "Database & Local Publishing",
+        "status": "PASS",
+        "message": "Đã ghi nhận 0 tạo mới, 131 cập nhật vào kho hàng thực tế"
+      }
+    ],
+    "completedAt": "2026-09-12T19:01:25.172Z"
+  },
+  {
+    "id": "job_1789239742993",
+    "supplierId": "sup_g2up_net_api",
+    "mode": "FULL",
+    "status": "SUCCESS",
+    "totalDiscovered": 0,
+    "totalItemsScanned": 0,
+    "totalItemsUpserted": 0,
+    "totalItemsMapped": 0,
+    "totalCreated": 0,
+    "totalUpdated": 0,
+    "totalSkipped": 0,
+    "totalFailed": 0,
+    "progressPercent": 100,
+    "categoriesScanned": 9,
+    "totalCategories": 9,
+    "startedAt": "2026-09-12T19:02:22.993Z",
+    "scanDiagnostics": [
+      {
+        "step": "Connection & Health",
+        "status": "PASS",
+        "message": "Kết nối máy chủ https://g2up.net sẵn sàng"
+      },
+      {
+        "step": "Category Discovery",
+        "status": "PASS",
+        "message": "Phát hiện 9 danh mục từ website nguồn"
+      },
+      {
+        "step": "Product Discovery & Pagination",
+        "status": "PASS",
+        "message": "Bắt đầu quét danh mục sản phẩm theo pagination"
+      },
+      {
+        "step": "Product Normalization",
+        "status": "FAIL",
+        "message": "Đã chuẩn hóa 0 sản phẩm từ nguồn sang model tiêu chuẩn"
+      },
+      {
+        "step": "Database Persist",
+        "status": "PASS",
+        "message": "Không có sản phẩm mới cần import"
+      }
+    ],
+    "completedAt": "2026-09-12T19:02:25.205Z"
+  },
+  {
+    "id": "job_1789239803005",
+    "supplierId": "sup_g2up_net_api",
+    "mode": "FULL",
+    "status": "SUCCESS",
+    "totalDiscovered": 131,
+    "totalItemsScanned": 131,
+    "totalItemsUpserted": 131,
+    "totalItemsMapped": 0,
+    "totalCreated": 0,
+    "totalUpdated": 131,
+    "totalSkipped": 0,
+    "totalFailed": 0,
+    "progressPercent": 100,
+    "categoriesScanned": 9,
+    "totalCategories": 9,
+    "startedAt": "2026-09-12T19:03:23.005Z",
+    "scanDiagnostics": [
+      {
+        "step": "Connection & Health",
+        "status": "PASS",
+        "message": "Kết nối máy chủ https://g2up.net sẵn sàng"
+      },
+      {
+        "step": "Category Discovery",
+        "status": "PASS",
+        "message": "Phát hiện 9 danh mục từ website nguồn"
+      },
+      {
+        "step": "Product Discovery & Pagination",
+        "status": "PASS",
+        "message": "Bắt đầu quét danh mục sản phẩm theo pagination"
+      },
+      {
+        "step": "Product Normalization",
+        "status": "PASS",
+        "message": "Đã chuẩn hóa 131 sản phẩm từ nguồn sang model tiêu chuẩn"
+      },
+      {
+        "step": "Price Engine & Markup",
+        "status": "PASS",
+        "message": "Áp dụng công thức giá (Markup: 20%)"
+      },
+      {
+        "step": "Database & Local Publishing",
+        "status": "PASS",
+        "message": "Đã ghi nhận 0 tạo mới, 131 cập nhật vào kho hàng thực tế"
+      }
+    ],
+    "completedAt": "2026-09-12T19:03:25.521Z"
+  },
+  {
+    "id": "job_1789239863018",
+    "supplierId": "sup_g2up_net_api",
+    "mode": "FULL",
+    "status": "SUCCESS",
+    "totalDiscovered": 131,
+    "totalItemsScanned": 131,
+    "totalItemsUpserted": 131,
+    "totalItemsMapped": 0,
+    "totalCreated": 0,
+    "totalUpdated": 131,
+    "totalSkipped": 0,
+    "totalFailed": 0,
+    "progressPercent": 100,
+    "categoriesScanned": 9,
+    "totalCategories": 9,
+    "startedAt": "2026-09-12T19:04:23.018Z",
+    "scanDiagnostics": [
+      {
+        "step": "Connection & Health",
+        "status": "PASS",
+        "message": "Kết nối máy chủ https://g2up.net sẵn sàng"
+      },
+      {
+        "step": "Category Discovery",
+        "status": "PASS",
+        "message": "Phát hiện 9 danh mục từ website nguồn"
+      },
+      {
+        "step": "Product Discovery & Pagination",
+        "status": "PASS",
+        "message": "Bắt đầu quét danh mục sản phẩm theo pagination"
+      },
+      {
+        "step": "Product Normalization",
+        "status": "PASS",
+        "message": "Đã chuẩn hóa 131 sản phẩm từ nguồn sang model tiêu chuẩn"
+      },
+      {
+        "step": "Price Engine & Markup",
+        "status": "PASS",
+        "message": "Áp dụng công thức giá (Markup: 20%)"
+      },
+      {
+        "step": "Database & Local Publishing",
+        "status": "PASS",
+        "message": "Đã ghi nhận 0 tạo mới, 131 cập nhật vào kho hàng thực tế"
+      }
+    ],
+    "completedAt": "2026-09-12T19:04:25.313Z"
+  },
+  {
+    "id": "job_1789239923023",
+    "supplierId": "sup_g2up_net_api",
+    "mode": "FULL",
+    "status": "SUCCESS",
+    "totalDiscovered": 131,
+    "totalItemsScanned": 131,
+    "totalItemsUpserted": 131,
+    "totalItemsMapped": 0,
+    "totalCreated": 0,
+    "totalUpdated": 131,
+    "totalSkipped": 0,
+    "totalFailed": 0,
+    "progressPercent": 100,
+    "categoriesScanned": 9,
+    "totalCategories": 9,
+    "startedAt": "2026-09-12T19:05:23.023Z",
+    "scanDiagnostics": [
+      {
+        "step": "Connection & Health",
+        "status": "PASS",
+        "message": "Kết nối máy chủ https://g2up.net sẵn sàng"
+      },
+      {
+        "step": "Category Discovery",
+        "status": "PASS",
+        "message": "Phát hiện 9 danh mục từ website nguồn"
+      },
+      {
+        "step": "Product Discovery & Pagination",
+        "status": "PASS",
+        "message": "Bắt đầu quét danh mục sản phẩm theo pagination"
+      },
+      {
+        "step": "Product Normalization",
+        "status": "PASS",
+        "message": "Đã chuẩn hóa 131 sản phẩm từ nguồn sang model tiêu chuẩn"
+      },
+      {
+        "step": "Price Engine & Markup",
+        "status": "PASS",
+        "message": "Áp dụng công thức giá (Markup: 20%)"
+      },
+      {
+        "step": "Database & Local Publishing",
+        "status": "PASS",
+        "message": "Đã ghi nhận 0 tạo mới, 131 cập nhật vào kho hàng thực tế"
+      }
+    ],
+    "completedAt": "2026-09-12T19:05:25.222Z"
+  },
+  {
+    "id": "job_1789239983033",
+    "supplierId": "sup_g2up_net_api",
+    "mode": "FULL",
+    "status": "SUCCESS",
+    "totalDiscovered": 131,
+    "totalItemsScanned": 131,
+    "totalItemsUpserted": 131,
+    "totalItemsMapped": 0,
+    "totalCreated": 0,
+    "totalUpdated": 131,
+    "totalSkipped": 0,
+    "totalFailed": 0,
+    "progressPercent": 100,
+    "categoriesScanned": 9,
+    "totalCategories": 9,
+    "startedAt": "2026-09-12T19:06:23.033Z",
+    "scanDiagnostics": [
+      {
+        "step": "Connection & Health",
+        "status": "PASS",
+        "message": "Kết nối máy chủ https://g2up.net sẵn sàng"
+      },
+      {
+        "step": "Category Discovery",
+        "status": "PASS",
+        "message": "Phát hiện 9 danh mục từ website nguồn"
+      },
+      {
+        "step": "Product Discovery & Pagination",
+        "status": "PASS",
+        "message": "Bắt đầu quét danh mục sản phẩm theo pagination"
+      },
+      {
+        "step": "Product Normalization",
+        "status": "PASS",
+        "message": "Đã chuẩn hóa 131 sản phẩm từ nguồn sang model tiêu chuẩn"
+      },
+      {
+        "step": "Price Engine & Markup",
+        "status": "PASS",
+        "message": "Áp dụng công thức giá (Markup: 20%)"
+      },
+      {
+        "step": "Database & Local Publishing",
+        "status": "PASS",
+        "message": "Đã ghi nhận 0 tạo mới, 131 cập nhật vào kho hàng thực tế"
+      }
+    ],
+    "completedAt": "2026-09-12T19:06:25.534Z"
+  },
+  {
+    "id": "job_1789240043039",
+    "supplierId": "sup_g2up_net_api",
+    "mode": "FULL",
+    "status": "SUCCESS",
+    "totalDiscovered": 131,
+    "totalItemsScanned": 131,
+    "totalItemsUpserted": 131,
+    "totalItemsMapped": 0,
+    "totalCreated": 0,
+    "totalUpdated": 131,
+    "totalSkipped": 0,
+    "totalFailed": 0,
+    "progressPercent": 100,
+    "categoriesScanned": 9,
+    "totalCategories": 9,
+    "startedAt": "2026-09-12T19:07:23.039Z",
+    "scanDiagnostics": [
+      {
+        "step": "Connection & Health",
+        "status": "PASS",
+        "message": "Kết nối máy chủ https://g2up.net sẵn sàng"
+      },
+      {
+        "step": "Category Discovery",
+        "status": "PASS",
+        "message": "Phát hiện 9 danh mục từ website nguồn"
+      },
+      {
+        "step": "Product Discovery & Pagination",
+        "status": "PASS",
+        "message": "Bắt đầu quét danh mục sản phẩm theo pagination"
+      },
+      {
+        "step": "Product Normalization",
+        "status": "PASS",
+        "message": "Đã chuẩn hóa 131 sản phẩm từ nguồn sang model tiêu chuẩn"
+      },
+      {
+        "step": "Price Engine & Markup",
+        "status": "PASS",
+        "message": "Áp dụng công thức giá (Markup: 20%)"
+      },
+      {
+        "step": "Database & Local Publishing",
+        "status": "PASS",
+        "message": "Đã ghi nhận 0 tạo mới, 131 cập nhật vào kho hàng thực tế"
+      }
+    ],
+    "completedAt": "2026-09-12T19:07:25.366Z"
+  },
+  {
+    "id": "job_1789240103039",
+    "supplierId": "sup_g2up_net_api",
+    "mode": "FULL",
+    "status": "SUCCESS",
+    "totalDiscovered": 131,
+    "totalItemsScanned": 131,
+    "totalItemsUpserted": 131,
+    "totalItemsMapped": 0,
+    "totalCreated": 0,
+    "totalUpdated": 131,
+    "totalSkipped": 0,
+    "totalFailed": 0,
+    "progressPercent": 100,
+    "categoriesScanned": 9,
+    "totalCategories": 9,
+    "startedAt": "2026-09-12T19:08:23.039Z",
+    "scanDiagnostics": [
+      {
+        "step": "Connection & Health",
+        "status": "PASS",
+        "message": "Kết nối máy chủ https://g2up.net sẵn sàng"
+      },
+      {
+        "step": "Category Discovery",
+        "status": "PASS",
+        "message": "Phát hiện 9 danh mục từ website nguồn"
+      },
+      {
+        "step": "Product Discovery & Pagination",
+        "status": "PASS",
+        "message": "Bắt đầu quét danh mục sản phẩm theo pagination"
+      },
+      {
+        "step": "Product Normalization",
+        "status": "PASS",
+        "message": "Đã chuẩn hóa 131 sản phẩm từ nguồn sang model tiêu chuẩn"
+      },
+      {
+        "step": "Price Engine & Markup",
+        "status": "PASS",
+        "message": "Áp dụng công thức giá (Markup: 20%)"
+      },
+      {
+        "step": "Database & Local Publishing",
+        "status": "PASS",
+        "message": "Đã ghi nhận 0 tạo mới, 131 cập nhật vào kho hàng thực tế"
+      }
+    ],
+    "completedAt": "2026-09-12T19:08:25.274Z"
+  },
+  {
+    "id": "job_1789240163040",
+    "supplierId": "sup_g2up_net_api",
+    "mode": "FULL",
+    "status": "SUCCESS",
+    "totalDiscovered": 131,
+    "totalItemsScanned": 131,
+    "totalItemsUpserted": 131,
+    "totalItemsMapped": 0,
+    "totalCreated": 0,
+    "totalUpdated": 131,
+    "totalSkipped": 0,
+    "totalFailed": 0,
+    "progressPercent": 100,
+    "categoriesScanned": 9,
+    "totalCategories": 9,
+    "startedAt": "2026-09-12T19:09:23.040Z",
+    "scanDiagnostics": [
+      {
+        "step": "Connection & Health",
+        "status": "PASS",
+        "message": "Kết nối máy chủ https://g2up.net sẵn sàng"
+      },
+      {
+        "step": "Category Discovery",
+        "status": "PASS",
+        "message": "Phát hiện 9 danh mục từ website nguồn"
+      },
+      {
+        "step": "Product Discovery & Pagination",
+        "status": "PASS",
+        "message": "Bắt đầu quét danh mục sản phẩm theo pagination"
+      },
+      {
+        "step": "Product Normalization",
+        "status": "PASS",
+        "message": "Đã chuẩn hóa 131 sản phẩm từ nguồn sang model tiêu chuẩn"
+      },
+      {
+        "step": "Price Engine & Markup",
+        "status": "PASS",
+        "message": "Áp dụng công thức giá (Markup: 20%)"
+      },
+      {
+        "step": "Database & Local Publishing",
+        "status": "PASS",
+        "message": "Đã ghi nhận 0 tạo mới, 131 cập nhật vào kho hàng thực tế"
+      }
+    ],
+    "completedAt": "2026-09-12T19:09:25.641Z"
+  },
+  {
+    "id": "job_1789240223051",
+    "supplierId": "sup_g2up_net_api",
+    "mode": "FULL",
+    "status": "SUCCESS",
+    "totalDiscovered": 131,
+    "totalItemsScanned": 131,
+    "totalItemsUpserted": 131,
+    "totalItemsMapped": 0,
+    "totalCreated": 0,
+    "totalUpdated": 131,
+    "totalSkipped": 0,
+    "totalFailed": 0,
+    "progressPercent": 100,
+    "categoriesScanned": 9,
+    "totalCategories": 9,
+    "startedAt": "2026-09-12T19:10:23.051Z",
+    "scanDiagnostics": [
+      {
+        "step": "Connection & Health",
+        "status": "PASS",
+        "message": "Kết nối máy chủ https://g2up.net sẵn sàng"
+      },
+      {
+        "step": "Category Discovery",
+        "status": "PASS",
+        "message": "Phát hiện 9 danh mục từ website nguồn"
+      },
+      {
+        "step": "Product Discovery & Pagination",
+        "status": "PASS",
+        "message": "Bắt đầu quét danh mục sản phẩm theo pagination"
+      },
+      {
+        "step": "Product Normalization",
+        "status": "PASS",
+        "message": "Đã chuẩn hóa 131 sản phẩm từ nguồn sang model tiêu chuẩn"
+      },
+      {
+        "step": "Price Engine & Markup",
+        "status": "PASS",
+        "message": "Áp dụng công thức giá (Markup: 20%)"
+      },
+      {
+        "step": "Database & Local Publishing",
+        "status": "PASS",
+        "message": "Đã ghi nhận 0 tạo mới, 131 cập nhật vào kho hàng thực tế"
+      }
+    ],
+    "completedAt": "2026-09-12T19:10:25.313Z"
+  },
+  {
+    "id": "job_1789240283053",
+    "supplierId": "sup_g2up_net_api",
+    "mode": "FULL",
+    "status": "SUCCESS",
+    "totalDiscovered": 131,
+    "totalItemsScanned": 131,
+    "totalItemsUpserted": 131,
+    "totalItemsMapped": 0,
+    "totalCreated": 0,
+    "totalUpdated": 131,
+    "totalSkipped": 0,
+    "totalFailed": 0,
+    "progressPercent": 100,
+    "categoriesScanned": 9,
+    "totalCategories": 9,
+    "startedAt": "2026-09-12T19:11:23.053Z",
+    "scanDiagnostics": [
+      {
+        "step": "Connection & Health",
+        "status": "PASS",
+        "message": "Kết nối máy chủ https://g2up.net sẵn sàng"
+      },
+      {
+        "step": "Category Discovery",
+        "status": "PASS",
+        "message": "Phát hiện 9 danh mục từ website nguồn"
+      },
+      {
+        "step": "Product Discovery & Pagination",
+        "status": "PASS",
+        "message": "Bắt đầu quét danh mục sản phẩm theo pagination"
+      },
+      {
+        "step": "Product Normalization",
+        "status": "PASS",
+        "message": "Đã chuẩn hóa 131 sản phẩm từ nguồn sang model tiêu chuẩn"
+      },
+      {
+        "step": "Price Engine & Markup",
+        "status": "PASS",
+        "message": "Áp dụng công thức giá (Markup: 20%)"
+      },
+      {
+        "step": "Database & Local Publishing",
+        "status": "PASS",
+        "message": "Đã ghi nhận 0 tạo mới, 131 cập nhật vào kho hàng thực tế"
+      }
+    ],
+    "completedAt": "2026-09-12T19:11:25.338Z"
+  },
+  {
+    "id": "job_1789240343057",
+    "supplierId": "sup_g2up_net_api",
+    "mode": "FULL",
+    "status": "SUCCESS",
+    "totalDiscovered": 131,
+    "totalItemsScanned": 131,
+    "totalItemsUpserted": 131,
+    "totalItemsMapped": 0,
+    "totalCreated": 0,
+    "totalUpdated": 131,
+    "totalSkipped": 0,
+    "totalFailed": 0,
+    "progressPercent": 100,
+    "categoriesScanned": 9,
+    "totalCategories": 9,
+    "startedAt": "2026-09-12T19:12:23.057Z",
+    "scanDiagnostics": [
+      {
+        "step": "Connection & Health",
+        "status": "PASS",
+        "message": "Kết nối máy chủ https://g2up.net sẵn sàng"
+      },
+      {
+        "step": "Category Discovery",
+        "status": "PASS",
+        "message": "Phát hiện 9 danh mục từ website nguồn"
+      },
+      {
+        "step": "Product Discovery & Pagination",
+        "status": "PASS",
+        "message": "Bắt đầu quét danh mục sản phẩm theo pagination"
+      },
+      {
+        "step": "Product Normalization",
+        "status": "PASS",
+        "message": "Đã chuẩn hóa 131 sản phẩm từ nguồn sang model tiêu chuẩn"
+      },
+      {
+        "step": "Price Engine & Markup",
+        "status": "PASS",
+        "message": "Áp dụng công thức giá (Markup: 20%)"
+      },
+      {
+        "step": "Database & Local Publishing",
+        "status": "PASS",
+        "message": "Đã ghi nhận 0 tạo mới, 131 cập nhật vào kho hàng thực tế"
+      }
+    ],
+    "completedAt": "2026-09-12T19:12:25.284Z"
+  },
+  {
+    "id": "job_1789240403066",
+    "supplierId": "sup_g2up_net_api",
+    "mode": "FULL",
+    "status": "SUCCESS",
+    "totalDiscovered": 131,
+    "totalItemsScanned": 131,
+    "totalItemsUpserted": 131,
+    "totalItemsMapped": 0,
+    "totalCreated": 0,
+    "totalUpdated": 131,
+    "totalSkipped": 0,
+    "totalFailed": 0,
+    "progressPercent": 100,
+    "categoriesScanned": 9,
+    "totalCategories": 9,
+    "startedAt": "2026-09-12T19:13:23.066Z",
+    "scanDiagnostics": [
+      {
+        "step": "Connection & Health",
+        "status": "PASS",
+        "message": "Kết nối máy chủ https://g2up.net sẵn sàng"
+      },
+      {
+        "step": "Category Discovery",
+        "status": "PASS",
+        "message": "Phát hiện 9 danh mục từ website nguồn"
+      },
+      {
+        "step": "Product Discovery & Pagination",
+        "status": "PASS",
+        "message": "Bắt đầu quét danh mục sản phẩm theo pagination"
+      },
+      {
+        "step": "Product Normalization",
+        "status": "PASS",
+        "message": "Đã chuẩn hóa 131 sản phẩm từ nguồn sang model tiêu chuẩn"
+      },
+      {
+        "step": "Price Engine & Markup",
+        "status": "PASS",
+        "message": "Áp dụng công thức giá (Markup: 20%)"
+      },
+      {
+        "step": "Database & Local Publishing",
+        "status": "PASS",
+        "message": "Đã ghi nhận 0 tạo mới, 131 cập nhật vào kho hàng thực tế"
+      }
+    ],
+    "completedAt": "2026-09-12T19:13:25.580Z"
+  },
+  {
+    "id": "job_1789240463075",
+    "supplierId": "sup_g2up_net_api",
+    "mode": "FULL",
+    "status": "SUCCESS",
+    "totalDiscovered": 131,
+    "totalItemsScanned": 131,
+    "totalItemsUpserted": 131,
+    "totalItemsMapped": 0,
+    "totalCreated": 0,
+    "totalUpdated": 131,
+    "totalSkipped": 0,
+    "totalFailed": 0,
+    "progressPercent": 100,
+    "categoriesScanned": 9,
+    "totalCategories": 9,
+    "startedAt": "2026-09-12T19:14:23.075Z",
+    "scanDiagnostics": [
+      {
+        "step": "Connection & Health",
+        "status": "PASS",
+        "message": "Kết nối máy chủ https://g2up.net sẵn sàng"
+      },
+      {
+        "step": "Category Discovery",
+        "status": "PASS",
+        "message": "Phát hiện 9 danh mục từ website nguồn"
+      },
+      {
+        "step": "Product Discovery & Pagination",
+        "status": "PASS",
+        "message": "Bắt đầu quét danh mục sản phẩm theo pagination"
+      },
+      {
+        "step": "Product Normalization",
+        "status": "PASS",
+        "message": "Đã chuẩn hóa 131 sản phẩm từ nguồn sang model tiêu chuẩn"
+      },
+      {
+        "step": "Price Engine & Markup",
+        "status": "PASS",
+        "message": "Áp dụng công thức giá (Markup: 20%)"
+      },
+      {
+        "step": "Database & Local Publishing",
+        "status": "PASS",
+        "message": "Đã ghi nhận 0 tạo mới, 131 cập nhật vào kho hàng thực tế"
+      }
+    ],
+    "completedAt": "2026-09-12T19:14:25.399Z"
+  },
+  {
+    "id": "job_1789240523085",
+    "supplierId": "sup_g2up_net_api",
+    "mode": "FULL",
+    "status": "SUCCESS",
+    "totalDiscovered": 131,
+    "totalItemsScanned": 131,
+    "totalItemsUpserted": 131,
+    "totalItemsMapped": 0,
+    "totalCreated": 0,
+    "totalUpdated": 131,
+    "totalSkipped": 0,
+    "totalFailed": 0,
+    "progressPercent": 100,
+    "categoriesScanned": 9,
+    "totalCategories": 9,
+    "startedAt": "2026-09-12T19:15:23.085Z",
+    "scanDiagnostics": [
+      {
+        "step": "Connection & Health",
+        "status": "PASS",
+        "message": "Kết nối máy chủ https://g2up.net sẵn sàng"
+      },
+      {
+        "step": "Category Discovery",
+        "status": "PASS",
+        "message": "Phát hiện 9 danh mục từ website nguồn"
+      },
+      {
+        "step": "Product Discovery & Pagination",
+        "status": "PASS",
+        "message": "Bắt đầu quét danh mục sản phẩm theo pagination"
+      },
+      {
+        "step": "Product Normalization",
+        "status": "PASS",
+        "message": "Đã chuẩn hóa 131 sản phẩm từ nguồn sang model tiêu chuẩn"
+      },
+      {
+        "step": "Price Engine & Markup",
+        "status": "PASS",
+        "message": "Áp dụng công thức giá (Markup: 20%)"
+      },
+      {
+        "step": "Database & Local Publishing",
+        "status": "PASS",
+        "message": "Đã ghi nhận 0 tạo mới, 131 cập nhật vào kho hàng thực tế"
+      }
+    ],
+    "completedAt": "2026-09-12T19:15:25.404Z"
+  },
+  {
+    "id": "job_1789240583092",
+    "supplierId": "sup_g2up_net_api",
+    "mode": "FULL",
+    "status": "SUCCESS",
+    "totalDiscovered": 131,
+    "totalItemsScanned": 131,
+    "totalItemsUpserted": 131,
+    "totalItemsMapped": 0,
+    "totalCreated": 0,
+    "totalUpdated": 131,
+    "totalSkipped": 0,
+    "totalFailed": 0,
+    "progressPercent": 100,
+    "categoriesScanned": 9,
+    "totalCategories": 9,
+    "startedAt": "2026-09-12T19:16:23.092Z",
+    "scanDiagnostics": [
+      {
+        "step": "Connection & Health",
+        "status": "PASS",
+        "message": "Kết nối máy chủ https://g2up.net sẵn sàng"
+      },
+      {
+        "step": "Category Discovery",
+        "status": "PASS",
+        "message": "Phát hiện 9 danh mục từ website nguồn"
+      },
+      {
+        "step": "Product Discovery & Pagination",
+        "status": "PASS",
+        "message": "Bắt đầu quét danh mục sản phẩm theo pagination"
+      },
+      {
+        "step": "Product Normalization",
+        "status": "PASS",
+        "message": "Đã chuẩn hóa 131 sản phẩm từ nguồn sang model tiêu chuẩn"
+      },
+      {
+        "step": "Price Engine & Markup",
+        "status": "PASS",
+        "message": "Áp dụng công thức giá (Markup: 20%)"
+      },
+      {
+        "step": "Database & Local Publishing",
+        "status": "PASS",
+        "message": "Đã ghi nhận 0 tạo mới, 131 cập nhật vào kho hàng thực tế"
+      }
+    ],
+    "completedAt": "2026-09-12T19:16:25.352Z"
+  },
+  {
+    "id": "job_1789240643107",
+    "supplierId": "sup_g2up_net_api",
+    "mode": "FULL",
+    "status": "SUCCESS",
+    "totalDiscovered": 131,
+    "totalItemsScanned": 131,
+    "totalItemsUpserted": 131,
+    "totalItemsMapped": 0,
+    "totalCreated": 0,
+    "totalUpdated": 131,
+    "totalSkipped": 0,
+    "totalFailed": 0,
+    "progressPercent": 100,
+    "categoriesScanned": 9,
+    "totalCategories": 9,
+    "startedAt": "2026-09-12T19:17:23.107Z",
+    "scanDiagnostics": [
+      {
+        "step": "Connection & Health",
+        "status": "PASS",
+        "message": "Kết nối máy chủ https://g2up.net sẵn sàng"
+      },
+      {
+        "step": "Category Discovery",
+        "status": "PASS",
+        "message": "Phát hiện 9 danh mục từ website nguồn"
+      },
+      {
+        "step": "Product Discovery & Pagination",
+        "status": "PASS",
+        "message": "Bắt đầu quét danh mục sản phẩm theo pagination"
+      },
+      {
+        "step": "Product Normalization",
+        "status": "PASS",
+        "message": "Đã chuẩn hóa 131 sản phẩm từ nguồn sang model tiêu chuẩn"
+      },
+      {
+        "step": "Price Engine & Markup",
+        "status": "PASS",
+        "message": "Áp dụng công thức giá (Markup: 20%)"
+      },
+      {
+        "step": "Database & Local Publishing",
+        "status": "PASS",
+        "message": "Đã ghi nhận 0 tạo mới, 131 cập nhật vào kho hàng thực tế"
+      }
+    ],
+    "completedAt": "2026-09-12T19:17:25.679Z"
+  },
+  {
+    "id": "job_1789240703108",
+    "supplierId": "sup_g2up_net_api",
+    "mode": "FULL",
+    "status": "SUCCESS",
+    "totalDiscovered": 131,
+    "totalItemsScanned": 131,
+    "totalItemsUpserted": 131,
+    "totalItemsMapped": 0,
+    "totalCreated": 0,
+    "totalUpdated": 131,
+    "totalSkipped": 0,
+    "totalFailed": 0,
+    "progressPercent": 100,
+    "categoriesScanned": 9,
+    "totalCategories": 9,
+    "startedAt": "2026-09-12T19:18:23.108Z",
+    "scanDiagnostics": [
+      {
+        "step": "Connection & Health",
+        "status": "PASS",
+        "message": "Kết nối máy chủ https://g2up.net sẵn sàng"
+      },
+      {
+        "step": "Category Discovery",
+        "status": "PASS",
+        "message": "Phát hiện 9 danh mục từ website nguồn"
+      },
+      {
+        "step": "Product Discovery & Pagination",
+        "status": "PASS",
+        "message": "Bắt đầu quét danh mục sản phẩm theo pagination"
+      },
+      {
+        "step": "Product Normalization",
+        "status": "PASS",
+        "message": "Đã chuẩn hóa 131 sản phẩm từ nguồn sang model tiêu chuẩn"
+      },
+      {
+        "step": "Price Engine & Markup",
+        "status": "PASS",
+        "message": "Áp dụng công thức giá (Markup: 20%)"
+      },
+      {
+        "step": "Database & Local Publishing",
+        "status": "PASS",
+        "message": "Đã ghi nhận 0 tạo mới, 131 cập nhật vào kho hàng thực tế"
+      }
+    ],
+    "completedAt": "2026-09-12T19:18:25.359Z"
+  },
+  {
+    "id": "job_1789240763119",
+    "supplierId": "sup_g2up_net_api",
+    "mode": "FULL",
+    "status": "SUCCESS",
+    "totalDiscovered": 131,
+    "totalItemsScanned": 131,
+    "totalItemsUpserted": 131,
+    "totalItemsMapped": 0,
+    "totalCreated": 0,
+    "totalUpdated": 131,
+    "totalSkipped": 0,
+    "totalFailed": 0,
+    "progressPercent": 100,
+    "categoriesScanned": 9,
+    "totalCategories": 9,
+    "startedAt": "2026-09-12T19:19:23.119Z",
+    "scanDiagnostics": [
+      {
+        "step": "Connection & Health",
+        "status": "PASS",
+        "message": "Kết nối máy chủ https://g2up.net sẵn sàng"
+      },
+      {
+        "step": "Category Discovery",
+        "status": "PASS",
+        "message": "Phát hiện 9 danh mục từ website nguồn"
+      },
+      {
+        "step": "Product Discovery & Pagination",
+        "status": "PASS",
+        "message": "Bắt đầu quét danh mục sản phẩm theo pagination"
+      },
+      {
+        "step": "Product Normalization",
+        "status": "PASS",
+        "message": "Đã chuẩn hóa 131 sản phẩm từ nguồn sang model tiêu chuẩn"
+      },
+      {
+        "step": "Price Engine & Markup",
+        "status": "PASS",
+        "message": "Áp dụng công thức giá (Markup: 20%)"
+      },
+      {
+        "step": "Database & Local Publishing",
+        "status": "PASS",
+        "message": "Đã ghi nhận 0 tạo mới, 131 cập nhật vào kho hàng thực tế"
+      }
+    ],
+    "completedAt": "2026-09-12T19:19:25.351Z"
+  },
+  {
+    "id": "job_1789240823119",
+    "supplierId": "sup_g2up_net_api",
+    "mode": "FULL",
+    "status": "SUCCESS",
+    "totalDiscovered": 131,
+    "totalItemsScanned": 131,
+    "totalItemsUpserted": 131,
+    "totalItemsMapped": 0,
+    "totalCreated": 0,
+    "totalUpdated": 131,
+    "totalSkipped": 0,
+    "totalFailed": 0,
+    "progressPercent": 100,
+    "categoriesScanned": 9,
+    "totalCategories": 9,
+    "startedAt": "2026-09-12T19:20:23.119Z",
+    "scanDiagnostics": [
+      {
+        "step": "Connection & Health",
+        "status": "PASS",
+        "message": "Kết nối máy chủ https://g2up.net sẵn sàng"
+      },
+      {
+        "step": "Category Discovery",
+        "status": "PASS",
+        "message": "Phát hiện 9 danh mục từ website nguồn"
+      },
+      {
+        "step": "Product Discovery & Pagination",
+        "status": "PASS",
+        "message": "Bắt đầu quét danh mục sản phẩm theo pagination"
+      },
+      {
+        "step": "Product Normalization",
+        "status": "PASS",
+        "message": "Đã chuẩn hóa 131 sản phẩm từ nguồn sang model tiêu chuẩn"
+      },
+      {
+        "step": "Price Engine & Markup",
+        "status": "PASS",
+        "message": "Áp dụng công thức giá (Markup: 20%)"
+      },
+      {
+        "step": "Database & Local Publishing",
+        "status": "PASS",
+        "message": "Đã ghi nhận 0 tạo mới, 131 cập nhật vào kho hàng thực tế"
+      }
+    ],
+    "completedAt": "2026-09-12T19:20:25.365Z"
+  },
+  {
+    "id": "job_1789240883120",
+    "supplierId": "sup_g2up_net_api",
+    "mode": "FULL",
+    "status": "SUCCESS",
+    "totalDiscovered": 131,
+    "totalItemsScanned": 131,
+    "totalItemsUpserted": 131,
+    "totalItemsMapped": 0,
+    "totalCreated": 0,
+    "totalUpdated": 131,
+    "totalSkipped": 0,
+    "totalFailed": 0,
+    "progressPercent": 100,
+    "categoriesScanned": 9,
+    "totalCategories": 9,
+    "startedAt": "2026-09-12T19:21:23.120Z",
+    "scanDiagnostics": [
+      {
+        "step": "Connection & Health",
+        "status": "PASS",
+        "message": "Kết nối máy chủ https://g2up.net sẵn sàng"
+      },
+      {
+        "step": "Category Discovery",
+        "status": "PASS",
+        "message": "Phát hiện 9 danh mục từ website nguồn"
+      },
+      {
+        "step": "Product Discovery & Pagination",
+        "status": "PASS",
+        "message": "Bắt đầu quét danh mục sản phẩm theo pagination"
+      },
+      {
+        "step": "Product Normalization",
+        "status": "PASS",
+        "message": "Đã chuẩn hóa 131 sản phẩm từ nguồn sang model tiêu chuẩn"
+      },
+      {
+        "step": "Price Engine & Markup",
+        "status": "PASS",
+        "message": "Áp dụng công thức giá (Markup: 20%)"
+      },
+      {
+        "step": "Database & Local Publishing",
+        "status": "PASS",
+        "message": "Đã ghi nhận 0 tạo mới, 131 cập nhật vào kho hàng thực tế"
+      }
+    ],
+    "completedAt": "2026-09-12T19:21:25.643Z"
+  },
+  {
+    "id": "job_1789240943134",
+    "supplierId": "sup_g2up_net_api",
+    "mode": "FULL",
+    "status": "SUCCESS",
+    "totalDiscovered": 131,
+    "totalItemsScanned": 131,
+    "totalItemsUpserted": 131,
+    "totalItemsMapped": 0,
+    "totalCreated": 0,
+    "totalUpdated": 131,
+    "totalSkipped": 0,
+    "totalFailed": 0,
+    "progressPercent": 100,
+    "categoriesScanned": 9,
+    "totalCategories": 9,
+    "startedAt": "2026-09-12T19:22:23.134Z",
+    "scanDiagnostics": [
+      {
+        "step": "Connection & Health",
+        "status": "PASS",
+        "message": "Kết nối máy chủ https://g2up.net sẵn sàng"
+      },
+      {
+        "step": "Category Discovery",
+        "status": "PASS",
+        "message": "Phát hiện 9 danh mục từ website nguồn"
+      },
+      {
+        "step": "Product Discovery & Pagination",
+        "status": "PASS",
+        "message": "Bắt đầu quét danh mục sản phẩm theo pagination"
+      },
+      {
+        "step": "Product Normalization",
+        "status": "PASS",
+        "message": "Đã chuẩn hóa 131 sản phẩm từ nguồn sang model tiêu chuẩn"
+      },
+      {
+        "step": "Price Engine & Markup",
+        "status": "PASS",
+        "message": "Áp dụng công thức giá (Markup: 20%)"
+      },
+      {
+        "step": "Database & Local Publishing",
+        "status": "PASS",
+        "message": "Đã ghi nhận 0 tạo mới, 131 cập nhật vào kho hàng thực tế"
+      }
+    ],
+    "completedAt": "2026-09-12T19:22:25.457Z"
+  },
+  {
+    "id": "job_1789241003135",
+    "supplierId": "sup_g2up_net_api",
+    "mode": "FULL",
+    "status": "SUCCESS",
+    "totalDiscovered": 131,
+    "totalItemsScanned": 131,
+    "totalItemsUpserted": 131,
+    "totalItemsMapped": 0,
+    "totalCreated": 0,
+    "totalUpdated": 131,
+    "totalSkipped": 0,
+    "totalFailed": 0,
+    "progressPercent": 100,
+    "categoriesScanned": 9,
+    "totalCategories": 9,
+    "startedAt": "2026-09-12T19:23:23.135Z",
+    "scanDiagnostics": [
+      {
+        "step": "Connection & Health",
+        "status": "PASS",
+        "message": "Kết nối máy chủ https://g2up.net sẵn sàng"
+      },
+      {
+        "step": "Category Discovery",
+        "status": "PASS",
+        "message": "Phát hiện 9 danh mục từ website nguồn"
+      },
+      {
+        "step": "Product Discovery & Pagination",
+        "status": "PASS",
+        "message": "Bắt đầu quét danh mục sản phẩm theo pagination"
+      },
+      {
+        "step": "Product Normalization",
+        "status": "PASS",
+        "message": "Đã chuẩn hóa 131 sản phẩm từ nguồn sang model tiêu chuẩn"
+      },
+      {
+        "step": "Price Engine & Markup",
+        "status": "PASS",
+        "message": "Áp dụng công thức giá (Markup: 20%)"
+      },
+      {
+        "step": "Database & Local Publishing",
+        "status": "PASS",
+        "message": "Đã ghi nhận 0 tạo mới, 131 cập nhật vào kho hàng thực tế"
+      }
+    ],
+    "completedAt": "2026-09-12T19:23:25.394Z"
+  },
+  {
+    "id": "job_1789241063142",
+    "supplierId": "sup_g2up_net_api",
+    "mode": "FULL",
+    "status": "SUCCESS",
+    "totalDiscovered": 131,
+    "totalItemsScanned": 131,
+    "totalItemsUpserted": 131,
+    "totalItemsMapped": 0,
+    "totalCreated": 0,
+    "totalUpdated": 131,
+    "totalSkipped": 0,
+    "totalFailed": 0,
+    "progressPercent": 100,
+    "categoriesScanned": 9,
+    "totalCategories": 9,
+    "startedAt": "2026-09-12T19:24:23.142Z",
+    "scanDiagnostics": [
+      {
+        "step": "Connection & Health",
+        "status": "PASS",
+        "message": "Kết nối máy chủ https://g2up.net sẵn sàng"
+      },
+      {
+        "step": "Category Discovery",
+        "status": "PASS",
+        "message": "Phát hiện 9 danh mục từ website nguồn"
+      },
+      {
+        "step": "Product Discovery & Pagination",
+        "status": "PASS",
+        "message": "Bắt đầu quét danh mục sản phẩm theo pagination"
+      },
+      {
+        "step": "Product Normalization",
+        "status": "PASS",
+        "message": "Đã chuẩn hóa 131 sản phẩm từ nguồn sang model tiêu chuẩn"
+      },
+      {
+        "step": "Price Engine & Markup",
+        "status": "PASS",
+        "message": "Áp dụng công thức giá (Markup: 20%)"
+      },
+      {
+        "step": "Database & Local Publishing",
+        "status": "PASS",
+        "message": "Đã ghi nhận 0 tạo mới, 131 cập nhật vào kho hàng thực tế"
+      }
+    ],
+    "completedAt": "2026-09-12T19:24:25.678Z"
+  },
+  {
+    "id": "job_1789241112451",
+    "supplierId": "sup_g2up_net_api",
+    "mode": "FULL",
+    "status": "SUCCESS",
+    "totalDiscovered": 131,
+    "totalItemsScanned": 131,
+    "totalItemsUpserted": 131,
+    "totalItemsMapped": 0,
+    "totalCreated": 0,
+    "totalUpdated": 131,
+    "totalSkipped": 0,
+    "totalFailed": 0,
+    "progressPercent": 100,
+    "categoriesScanned": 9,
+    "totalCategories": 9,
+    "startedAt": "2026-09-12T19:25:12.451Z",
+    "scanDiagnostics": [
+      {
+        "step": "Connection & Health",
+        "status": "PASS",
+        "message": "Kết nối máy chủ https://g2up.net sẵn sàng"
+      },
+      {
+        "step": "Category Discovery",
+        "status": "PASS",
+        "message": "Phát hiện 9 danh mục từ website nguồn"
+      },
+      {
+        "step": "Product Discovery & Pagination",
+        "status": "PASS",
+        "message": "Bắt đầu quét danh mục sản phẩm theo pagination"
+      },
+      {
+        "step": "Product Normalization",
+        "status": "PASS",
+        "message": "Đã chuẩn hóa 131 sản phẩm từ nguồn sang model tiêu chuẩn"
+      },
+      {
+        "step": "Price Engine & Markup",
+        "status": "PASS",
+        "message": "Áp dụng công thức giá (Markup: 20%)"
+      },
+      {
+        "step": "Database & Local Publishing",
+        "status": "PASS",
+        "message": "Đã ghi nhận 0 tạo mới, 131 cập nhật vào kho hàng thực tế"
+      }
+    ],
+    "completedAt": "2026-09-12T19:25:14.972Z"
+  },
+  {
+    "id": "job_1789241168453",
+    "supplierId": "sup_g2up_net_api",
+    "mode": "FULL",
+    "status": "SUCCESS",
+    "totalDiscovered": 131,
+    "totalItemsScanned": 131,
+    "totalItemsUpserted": 131,
+    "totalItemsMapped": 0,
+    "totalCreated": 0,
+    "totalUpdated": 131,
+    "totalSkipped": 0,
+    "totalFailed": 0,
+    "progressPercent": 100,
+    "categoriesScanned": 9,
+    "totalCategories": 9,
+    "startedAt": "2026-09-12T19:26:08.453Z",
+    "scanDiagnostics": [
+      {
+        "step": "Connection & Health",
+        "status": "PASS",
+        "message": "Kết nối máy chủ https://g2up.net sẵn sàng"
+      },
+      {
+        "step": "Category Discovery",
+        "status": "PASS",
+        "message": "Phát hiện 9 danh mục từ website nguồn"
+      },
+      {
+        "step": "Product Discovery & Pagination",
+        "status": "PASS",
+        "message": "Bắt đầu quét danh mục sản phẩm theo pagination"
+      },
+      {
+        "step": "Product Normalization",
+        "status": "PASS",
+        "message": "Đã chuẩn hóa 131 sản phẩm từ nguồn sang model tiêu chuẩn"
+      },
+      {
+        "step": "Price Engine & Markup",
+        "status": "PASS",
+        "message": "Áp dụng công thức giá (Markup: 20%)"
+      },
+      {
+        "step": "Database & Local Publishing",
+        "status": "PASS",
+        "message": "Đã ghi nhận 0 tạo mới, 131 cập nhật vào kho hàng thực tế"
+      }
+    ],
+    "completedAt": "2026-09-12T19:26:10.983Z"
+  },
+  {
+    "id": "job_1789241228455",
+    "supplierId": "sup_g2up_net_api",
+    "mode": "FULL",
+    "status": "SUCCESS",
+    "totalDiscovered": 131,
+    "totalItemsScanned": 131,
+    "totalItemsUpserted": 131,
+    "totalItemsMapped": 0,
+    "totalCreated": 0,
+    "totalUpdated": 131,
+    "totalSkipped": 0,
+    "totalFailed": 0,
+    "progressPercent": 100,
+    "categoriesScanned": 9,
+    "totalCategories": 9,
+    "startedAt": "2026-09-12T19:27:08.455Z",
+    "scanDiagnostics": [
+      {
+        "step": "Connection & Health",
+        "status": "PASS",
+        "message": "Kết nối máy chủ https://g2up.net sẵn sàng"
+      },
+      {
+        "step": "Category Discovery",
+        "status": "PASS",
+        "message": "Phát hiện 9 danh mục từ website nguồn"
+      },
+      {
+        "step": "Product Discovery & Pagination",
+        "status": "PASS",
+        "message": "Bắt đầu quét danh mục sản phẩm theo pagination"
+      },
+      {
+        "step": "Product Normalization",
+        "status": "PASS",
+        "message": "Đã chuẩn hóa 131 sản phẩm từ nguồn sang model tiêu chuẩn"
+      },
+      {
+        "step": "Price Engine & Markup",
+        "status": "PASS",
+        "message": "Áp dụng công thức giá (Markup: 20%)"
+      },
+      {
+        "step": "Database & Local Publishing",
+        "status": "PASS",
+        "message": "Đã ghi nhận 0 tạo mới, 131 cập nhật vào kho hàng thực tế"
+      }
+    ],
+    "completedAt": "2026-09-12T19:27:10.776Z"
   }
 ]

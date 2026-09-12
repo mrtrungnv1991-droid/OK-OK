@@ -708,5 +708,15 @@
     "mode": "AUTO",
     "createdAt": "2026-09-08T23:59:33.971Z",
     "updatedAt": "2026-09-08T23:59:33.971Z"
+  },
+  {
+    "id": "catmap_sup_g2up_net_api_138",
+    "supplierId": "sup_g2up_net_api",
+    "supplierCategoryId": "138",
+    "supplierCategoryName": "random steal an egg",
+    "localCategoryId": "138",
+    "mode": "AUTO",
+    "createdAt": "2026-09-12T18:38:01.370Z",
+    "updatedAt": "2026-09-12T18:38:01.370Z"
   }
 ]

@@ -94,8 +94,15 @@ export const walletApi = {
     bankName: string;
     accountNumber: string;
     accountName: string;
-  }): Promise<ApiResponse<{ message: string; transaction: TransactionRecord }>> => {
-    return api.post<{ message: string; transaction: TransactionRecord }>('/wallet/withdraw', payload);
+    paymentMethod?: string;
+    withdrawalType?: string;
+  }): Promise<ApiResponse<{ message: string; transaction: TransactionRecord; withdrawal?: any }>> => {
+    return api.post<{ message: string; transaction: TransactionRecord; withdrawal?: any }>('/wallet/withdraw', payload);
+  },
+
+  // CYBERPOOL FIX: lịch sử rút tiền thật từ server
+  getMyWithdrawals: async (): Promise<ApiResponse<{ withdrawals: any[] }>> => {
+    return api.get<{ withdrawals: any[] }>('/wallet/withdrawals');
   },
 
   verifyBinancePay: async (payload: {

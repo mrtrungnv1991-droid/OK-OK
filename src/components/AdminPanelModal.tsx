@@ -70,6 +70,7 @@ import { AdminHeroLayoutTab } from './admin/AdminHeroLayoutTab';
 import { AdminOrderReliabilityTab } from './admin/AdminOrderReliabilityTab';
 import { AdminPaymentSystemTab } from './admin/AdminPaymentSystemTab';
 import { AdminSoldOrdersTab } from './admin/AdminSoldOrdersTab';
+import { AdminWithdrawalsTabContainer } from './admin/AdminWithdrawalsTabContainer';
 
 export type AdminTabType =
   | 'dashboard'
@@ -91,11 +92,12 @@ export type AdminTabType =
   | 'logs'
   | 'suppliers'
     | 'order_reliability'
-    | 'affiliate'
-    | 'giftup_admin'
-    | 'settings'
-    | 'sold_orders'
-    | 'database_schema';
+        | 'affiliate'
+        | 'giftup_admin'
+        | 'settings'
+        | 'sold_orders'
+        | 'withdrawals'
+        | 'database_schema';
 
 interface AdminPanelModalProps {
   isOpen: boolean;
@@ -244,6 +246,7 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({
     giftup_admin: 3,
     settings: 3,
     sold_orders: 3,
+    withdrawals: 3,
     database_schema: 3
   };
   const currentRoleLevel = ROLE_LEVEL[userRole] || 1;
@@ -273,6 +276,7 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({
           { id: 'banking', label: t('nav.banking_topup'), icon: CreditCard, badge: topupInvoices?.filter(i => i.status === 'pending').length },
           { id: 'payment_system', label: 'Cổng Thanh Toán API', icon: DollarSign, badge: 'v1.0' },
           { id: 'escrow_orders', label: t('nav.escrow_pools'), icon: Lock, badge: orders.length },
+          { id: 'withdrawals', label: 'Duyệt Rút Tiền', icon: DollarSign },
           { id: 'order_reliability', label: 'Đơn Hàng Đáng Tin & Key Vault', icon: CheckCircle2, badge: 'Anti-Dup' }
         ]
       },
@@ -536,6 +540,10 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({
 
             {activeTab === 'sold_orders' && (
               <AdminSoldOrdersTab currency={currency} />
+            )}
+
+            {activeTab === 'withdrawals' && (
+              <AdminWithdrawalsTabContainer currency={currency} />
             )}
 
             {activeTab === 'order_reliability' && (

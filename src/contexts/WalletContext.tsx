@@ -112,6 +112,16 @@ export const WalletProvider: React.FC<{ children: ReactNode }> = ({ children }) 
           });
         }
       }
+      // CYBERPOOL FIX: fetch lịch sử rút tiền THẬT từ server (trước đây chỉ
+      // hiển thị mock INITIAL_CTV_WITHDRAWALS, user không thấy request của mình)
+      try {
+        const wdRes = await walletApi.getMyWithdrawals();
+        if (wdRes.data && Array.isArray(wdRes.data.withdrawals) && wdRes.data.withdrawals.length > 0) {
+          setWithdrawals(wdRes.data.withdrawals);
+        }
+      } catch {
+        // giữ mock fallback khi server chưa có record
+      }
     } catch {
       // server sync fallback
     } finally {
@@ -239,7 +249,22 @@ export const WalletProvider: React.FC<{ children: ReactNode }> = ({ children }) 
       });
 
       if (res.success && res.data) {
-        const newW: CTVWithdrawal = {
+        // CYBERPOOL FIX: dùng record thật từ server (trước đây client tự bịa id
+        // + hardcode ctvId 'usr-buyer-01' → admin không thể đối chiếu/không khớp)
+        const serverWd = res.data.withdrawal;
+        const newW: CTVWithdrawal = serverWd ? {
+          id: serverWd.id,
+          ctvId: serverWd.ctvId,
+          ctvName: serverWd.ctvName,
+          amount: serverWd.amount,
+          bankName: serverWd.bankName,
+          accountNumber: serverWd.accountNumber,
+          accountName: serverWd.accountName,
+          status: serverWd.status,
+          createdAt: serverWd.createdAt,
+          paymentMethod: serverWd.paymentMethod,
+          withdrawalType: serverWd.withdrawalType
+        } : {
           id: `wd-${Date.now()}`,
           ctvId: 'usr-buyer-01',
           ctvName: accountName,

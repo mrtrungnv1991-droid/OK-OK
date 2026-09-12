@@ -342,11 +342,15 @@ walletRouter.post('/telco-card', requireAuth, async (req: AuthenticatedRequest, 
 
 // POST /api/v1/wallet/withdraw - Request CTV/Affiliate Withdrawal
 walletRouter.post('/withdraw', requireAuth, async (req: AuthenticatedRequest, res) => {
-  const { amount, bankName, accountNumber, accountName } = req.body;
+  const { amount, bankName, accountNumber, accountName, paymentMethod = 'bank', withdrawalType = 'wallet_balance' } = req.body;
   const numAmount = Number(amount);
 
   if (isNaN(numAmount) || numAmount < 50000) {
     return res.status(400).json({ success: false, error: 'Hạn mức rút tối thiểu là 50.000đ' });
+  }
+
+  if (!bankName || !accountNumber || !accountName) {
+    return res.status(400).json({ success: false, error: 'Thiếu thông tin tài khoản thụ hưởng (bankName/accountNumber/accountName)' });
   }
 
   if (req.user!.walletBalance < numAmount) {
@@ -361,11 +365,44 @@ walletRouter.post('/withdraw', requireAuth, async (req: AuthenticatedRequest, re
     ipAddress: req.ip
   });
 
+  if (!result.success) {
+    return res.status(400).json({ success: false, error: result.error || 'Không thể tạo yêu cầu rút tiền' });
+  }
+
+  // CYBERPOOL FIX: lưu withdrawal request trên server — trước đây tiền bị trừ
+  // ngay nhưng không có record nào để admin duyệt/từ chối → reject không hoàn tiền.
+  const withdrawal = {
+    id: `WD-${Date.now().toString(36).toUpperCase()}`,
+    userId: req.user!.id,
+    ctvId: req.user!.id,
+    ctvName: req.user!.name || req.user!.email,
+    amount: numAmount,
+    bankName,
+    accountNumber,
+    accountName,
+    paymentMethod,
+    withdrawalType,
+    status: 'pending',
+    ledgerTransactionId: result.transaction?.id || '',
+    createdAt: new Date().toISOString(),
+    processedAt: null as string | null,
+    processedBy: null as string | null,
+    note: ''
+  };
+  db.withdrawals.unshift(withdrawal);
+
   res.json({
     success: true,
     message: 'Yêu cầu rút tiền đã được ghi nhận và đang chờ duyệt giải ngân',
-    transaction: result.transaction
+    transaction: result.transaction,
+    withdrawal
   });
+});
+
+// GET /api/v1/wallet/withdrawals - lịch sử rút tiền của chính user
+walletRouter.get('/withdrawals', requireAuth, (req: AuthenticatedRequest, res) => {
+  const mine = db.withdrawals.filter(w => w.userId === req.user!.id);
+  res.json({ success: true, withdrawals: mine });
 });
 
 // POST /api/v1/wallet/admin/adjust - SuperAdmin Balance Adjustment
