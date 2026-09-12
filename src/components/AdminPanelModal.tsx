@@ -208,35 +208,66 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({
     .reduce((sum, o) => sum + o.pricePaid, 0) + 38450000;
   const totalUserBalance = members.reduce((sum, m) => sum + m.walletBalance, 0);
 
-  const navTabs: { id: AdminTabType; label: string; icon: React.ComponentType<{ className?: string }>; badge?: string | number }[] = [
-    { id: 'dashboard', label: 'Dashboard', icon: TrendingUp },
-    { id: 'suppliers', label: '🌐 Nhà Cung Cấp & Kết Nối Nguồn (Suppliers Hub)', icon: Server, badge: 'Unified' },
-    { id: 'products', label: 'Sản Phẩm & Sửa Giá (Products)', icon: ShoppingBag, badge: products.length },
-    { id: 'categories', label: t('nav.categories'), icon: Layers, badge: categories?.length },
-    { id: 'manual_fulfillment', label: t('nav.orders') + ' (Queue)', icon: Tag, badge: manualOrders?.filter(o => o.status === 'pending_process' || o.status === 'processing').length },
-    { id: 'vouchers', label: 'Vouchers & Coupons', icon: Tag, badge: vouchers?.length },
-    { id: 'banking', label: t('nav.banking_topup'), icon: CreditCard, badge: topupInvoices?.filter(i => i.status === 'pending').length },
-    { id: 'payment_system', label: 'Cổng Thanh Toán API (Payment Gateway)', icon: DollarSign, badge: 'v1.0' },
-    { id: 'members', label: t('nav.account_profile'), icon: Users, badge: members.length },
-    {
-      id: 'tickets',
-      label: t('nav.support_hub'),
-      icon: LifeBuoy,
-      badge: (tickets.filter(t => t.status === 'open').length + chatSessions.length) || undefined
-    },
-    { id: 'escrow_orders', label: t('nav.escrow_pools'), icon: Lock, badge: orders.length },
-    { id: 'games', label: t('nav.game_topup') + ' & Sửa Giá Bulk', icon: Gamepad2, badge: `${games.length} Games` },
-    { id: 'hero_layout', label: 'Hero Layout & Banner', icon: Layout, badge: 'UI' },
-    { id: 'roles', label: 'Roles & Sub-Admin', icon: ShieldCheck },
-    { id: 'security_ip', label: 'Tường Lửa WAF, IP & Bảo Mật (Security Suite)', icon: ShieldAlert },
-    { id: 'automation_cron', label: 'Cron Jobs & Auto Sync', icon: Clock },
-    { id: 'logs', label: 'System Logs', icon: FileText },
-    { id: 'order_reliability', label: 'Đơn Hàng Đáng Tin Cậy & Key Vault', icon: CheckCircle2, badge: 'Anti-Duplicate' },
-    { id: 'affiliate', label: 'Tài Liệu API Cho Đại Lý (Reseller API)', icon: Share2 },
-    { id: 'giftup_admin', label: 'GiftUp Cards', icon: Gift },
-    { id: 'settings', label: t('nav.admin_panel') + ' Settings', icon: Settings },
-    { id: 'database_schema', label: 'Database SQL Schema (64 Tables)', icon: Database, badge: '64' }
-  ];
+  // CYBERPOOL RESTRUCTURE: nav sidebar grouped by function (thư mục to + nhánh con).
+    // 22 tabs giữ nguyên — không bỏ chức năng nào, chỉ gom theo logic:
+    // Tổng quan / Kinh doanh / Tài chính / Nguồn hàng & Tự động / Khách hàng & Hỗ trợ / Hệ thống & Bảo mật.
+    interface AdminNavItem { id: AdminTabType; label: string; icon: React.ComponentType<{ className?: string }>; badge?: string | number }
+    interface AdminNavGroup { key: string; label: string; icon: React.ComponentType<{ className?: string }>; items: AdminNavItem[] }
+
+    const navGroups: AdminNavGroup[] = [
+      {
+        key: 'overview', label: 'TỔNG QUAN', icon: TrendingUp,
+        items: [
+          { id: 'dashboard', label: 'Dashboard', icon: TrendingUp }
+        ]
+      },
+      {
+        key: 'business', label: 'KINH DOANH', icon: ShoppingBag,
+        items: [
+          { id: 'products', label: 'Sản Phẩm & Sửa Giá', icon: ShoppingBag, badge: products.length },
+          { id: 'categories', label: t('nav.categories'), icon: Layers, badge: categories?.length },
+          { id: 'games', label: t('nav.game_topup') + ' & Bulk Giá', icon: Gamepad2, badge: `${games.length} Games` },
+          { id: 'vouchers', label: 'Vouchers & Coupons', icon: Tag, badge: vouchers?.length },
+          { id: 'manual_fulfillment', label: t('nav.orders') + ' (Queue)', icon: Tag, badge: manualOrders?.filter(o => o.status === 'pending_process' || o.status === 'processing').length },
+          { id: 'giftup_admin', label: 'GiftUp Cards', icon: Gift }
+        ]
+      },
+      {
+        key: 'finance', label: 'TÀI CHÍNH', icon: DollarSign,
+        items: [
+          { id: 'banking', label: t('nav.banking_topup'), icon: CreditCard, badge: topupInvoices?.filter(i => i.status === 'pending').length },
+          { id: 'payment_system', label: 'Cổng Thanh Toán API', icon: DollarSign, badge: 'v1.0' },
+          { id: 'escrow_orders', label: t('nav.escrow_pools'), icon: Lock, badge: orders.length },
+          { id: 'order_reliability', label: 'Đơn Hàng Đáng Tin & Key Vault', icon: CheckCircle2, badge: 'Anti-Dup' }
+        ]
+      },
+      {
+        key: 'supply', label: 'NGUỒN HÀNG & TỰ ĐỘNG', icon: Server,
+        items: [
+          { id: 'suppliers', label: 'Nhà Cung Cấp & Kết Nối Nguồn', icon: Server, badge: 'Hub' },
+          { id: 'automation_cron', label: 'Cron Jobs & Auto Sync', icon: Clock },
+          { id: 'hero_layout', label: 'Hero Layout & Banner', icon: Layout, badge: 'UI' }
+        ]
+      },
+      {
+        key: 'customers', label: 'KHÁCH HÀNG & HỖ TRỢ', icon: Users,
+        items: [
+          { id: 'members', label: t('nav.account_profile'), icon: Users, badge: members.length },
+          { id: 'tickets', label: t('nav.support_hub'), icon: LifeBuoy, badge: (tickets.filter(t => t.status === 'open').length + chatSessions.length) || undefined },
+          { id: 'affiliate', label: 'Đại Lý / Reseller API', icon: Share2 }
+        ]
+      },
+      {
+        key: 'system', label: 'HỆ THỐNG & BẢO MẬT', icon: ShieldCheck,
+        items: [
+          { id: 'roles', label: 'Roles & Sub-Admin', icon: ShieldCheck },
+          { id: 'security_ip', label: 'WAF, IP & Bảo Mật', icon: ShieldAlert },
+          { id: 'logs', label: 'System Logs', icon: FileText },
+          { id: 'settings', label: t('nav.admin_panel') + ' Settings', icon: Settings },
+          { id: 'database_schema', label: 'Database SQL Schema', icon: Database, badge: '64' }
+        ]
+      }
+    ];
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-1 sm:p-3 md:p-4 bg-black/85 backdrop-blur-md">
@@ -272,40 +303,51 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({
 
         {/* Admin Workspace Layout */}
         <div className="flex-1 flex flex-col md:flex-row overflow-hidden">
-          {/* Navigation Sidebar / Mobile Tab Bar */}
-          <div className="w-full md:w-56 lg:w-60 bg-slate-950/90 border-b md:border-b-0 md:border-r border-slate-800/80 p-2 md:p-2.5 flex md:flex-col overflow-x-auto md:overflow-y-auto shrink-0 gap-1 md:space-y-1 scrollbar-thin">
-            {navTabs.map(tab => {
-              const Icon = tab.icon;
-              const isActive = activeTab === tab.id;
+          {/* Navigation Sidebar / Mobile Tab Bar — grouped by function */}
+                    <div className="w-full md:w-56 lg:w-60 bg-slate-950/90 border-b md:border-b-0 md:border-r border-slate-800/80 p-2 md:p-2.5 flex md:flex-col overflow-x-auto md:overflow-y-auto gap-1 md:space-y-2 scrollbar-thin">
+                      {navGroups.map(group => (
+                        <div key={group.key} className="md:w-full shrink-0">
+                          {/* Group header */}
+                          <div className="hidden md:flex items-center gap-1.5 px-2 pt-1 pb-1 text-[10px] font-extrabold uppercase tracking-[0.15em] text-cyan-500/70">
+                            <span className="w-1 h-3 rounded-full bg-cyan-500/50" />
+                            {group.label}
+                          </div>
+                          <div className="flex md:flex-col gap-1 md:space-y-0.5 overflow-x-auto md:overflow-visible shrink-0">
+                            {group.items.map(tab => {
+                              const Icon = tab.icon;
+                              const isActive = activeTab === tab.id;
 
-              return (
-                <button
-                  key={tab.id}
-                  onClick={() => setActiveTab(tab.id)}
-                  className={`w-auto md:w-full shrink-0 flex items-center justify-between gap-2 px-3 py-2 md:py-2.5 rounded-xl text-xs font-semibold transition-all cursor-pointer whitespace-nowrap ${
-                    isActive
-                      ? 'bg-gradient-to-r from-cyan-500 to-blue-600 text-black font-bold shadow-[0_0_15px_rgba(6,182,212,0.35)]'
-                      : 'text-slate-400 hover:text-slate-200 hover:bg-slate-900/60 bg-slate-900/30 md:bg-transparent border border-slate-800/50 md:border-transparent'
-                  }`}
-                >
-                  <div className="flex items-center gap-2 min-w-0">
-                    <Icon className={`w-4 h-4 shrink-0 ${isActive ? 'text-black' : 'text-cyan-400'}`} />
-                    <span className="truncate">{tab.label}</span>
-                  </div>
+                              return (
+                                <button
+                                  key={tab.id}
+                                  onClick={() => setActiveTab(tab.id)}
+                                  className={`w-auto md:w-full shrink-0 flex items-center justify-between gap-2 px-3 py-2 md:py-2 rounded-xl text-xs font-semibold transition-all cursor-pointer whitespace-nowrap ${
+                                    isActive
+                                      ? 'bg-gradient-to-r from-cyan-500 to-blue-600 text-black font-bold shadow-[0_0_15px_rgba(6,182,212,0.35)]'
+                                      : 'text-slate-400 hover:text-slate-200 hover:bg-slate-900/60 bg-slate-900/30 md:bg-transparent border border-slate-800/50 md:border-transparent'
+                                  }`}
+                                >
+                                  <div className="flex items-center gap-2 min-w-0">
+                                    <Icon className={`w-4 h-4 shrink-0 ${isActive ? 'text-black' : 'text-cyan-400'}`} />
+                                    <span className="truncate">{tab.label}</span>
+                                  </div>
 
-                  {tab.badge !== undefined && (
-                    <span className={`text-[10px] px-1.5 py-0.5 rounded-md font-mono shrink-0 ml-1 ${
-                      isActive 
-                        ? 'bg-black/20 text-black font-bold' 
-                        : 'bg-slate-900 text-cyan-400 border border-cyan-500/20'
-                    }`}>
-                      {tab.badge}
-                    </span>
-                  )}
-                </button>
-              );
-            })}
-          </div>
+                                  {tab.badge !== undefined && (
+                                    <span className={`text-[10px] px-1.5 py-0.5 rounded-md font-mono shrink-0 ml-1 ${
+                                      isActive 
+                                        ? 'bg-black/20 text-black font-bold' 
+                                        : 'bg-slate-900 text-cyan-400 border border-cyan-500/20'
+                                    }`}>
+                                      {tab.badge}
+                                    </span>
+                                  )}
+                                </button>
+                              );
+                            })}
+                          </div>
+                        </div>
+                      ))}
+                    </div>
 
           {/* Tab Content Display Viewport */}
           <div className="flex-1 min-w-0 p-3 sm:p-5 md:p-6 overflow-y-auto bg-[#070b14]/70">
