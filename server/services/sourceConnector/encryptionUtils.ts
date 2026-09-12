@@ -4,11 +4,22 @@
 // ==============================================================================
 import crypto from 'crypto';
 
-const MASTER_SECRET = process.env.SOURCE_CONNECTOR_SECRET_KEY || process.env.ENCRYPTION_KEY || 'cyberpool-dev-connector-secret-key-32b-min-2026!';
-
-if (process.env.NODE_ENV === 'production' && !process.env.SOURCE_CONNECTOR_SECRET_KEY && !process.env.ENCRYPTION_KEY) {
-  console.warn('[SECURITY ADVISORY] SOURCE_CONNECTOR_SECRET_KEY environment variable is not explicitly configured. Using hardened fallback key.');
-}
+// CYBERPOOL SECURITY FIX: fail-closed giống paymentSystem/security.ts —
+// trước đây production chỉ console.warn rồi vẫn dùng key hardcode trong repo
+// (ai đọc repo giải mã được toàn bộ credential nhà cung cấp).
+// Production: bắt buộc có env, thiếu là từ chối boot. Dev: key random mỗi lần boot.
+const MASTER_SECRET = process.env.SOURCE_CONNECTOR_SECRET_KEY
+  || process.env.ENCRYPTION_KEY
+  || (process.env.NODE_ENV === 'production'
+    ? (() => {
+        console.error('[SECURITY FATAL] SOURCE_CONNECTOR_SECRET_KEY (hoặc ENCRYPTION_KEY) là BẮT BUỘC ở production. Từ chối khởi động.');
+        process.exit(1);
+      })()
+    : (() => {
+        const dev = crypto.randomBytes(32).toString('hex');
+        console.warn('[SECURITY ADVISORY] SOURCE_CONNECTOR_SECRET_KEY/ENCRYPTION_KEY chưa đặt — dùng key RANDOM mỗi lần boot (chỉ dev). Credential đã mã hóa sẽ không giải mã được sau khi restart.');
+        return dev;
+      })());
 
 // Derive a 32-byte key from master secret
 const DERIVED_KEY = crypto.createHash('sha256').update(MASTER_SECRET).digest();
