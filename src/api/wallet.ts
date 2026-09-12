@@ -20,6 +20,44 @@ export const walletApi = {
     return api.get<{ walletBalance: number; escrowLocked: number; transactions: TransactionRecord[] }>('/wallet/ledger');
   },
 
+  // CYBERPOOL FIX: tạo lệnh thu tiền thật từ Binance Pay (Mô hình A - Merchant Checkout)
+  createBinancePayOrder: async (payload: {
+    amount: number;
+    returnUrl?: string;
+    cancelUrl?: string;
+  }): Promise<ApiResponse<{
+    success: boolean;
+    gateway: string;
+    prepayId?: string;
+    checkoutUrl?: string;
+    qrContent?: string;
+    qrcodeLink?: string;
+    deeplink?: string;
+    universalUrl?: string;
+    merchantTradeNo?: string;
+    message?: string;
+  }>> => {
+    return api.post('/wallet/binance-pay/create-order', payload);
+  },
+
+  // CYBERPOOL FIX: tạo lệnh thu tiền thật từ MoMo captureWallet
+  createMoMoPayment: async (payload: {
+    amount: number;
+    redirectUrl?: string;
+    orderInfo?: string;
+  }): Promise<ApiResponse<{
+    success: boolean;
+    gateway: string;
+    orderId?: string;
+    requestId?: string;
+    payUrl?: string;
+    deeplink?: string;
+    qrCodeUrl?: string;
+    message?: string;
+  }>> => {
+    return api.post('/wallet/momo/create-payment', payload);
+  },
+
   deposit: async (amount: number, methodTitle: string, idempotencyKey?: string): Promise<ApiResponse<{ newBalance: number; transaction: TransactionRecord }>> => {
     return api.post<{ newBalance: number; transaction: TransactionRecord }>('/wallet/deposit', {
       amount,

@@ -64,8 +64,12 @@ export const DepositHubModal: React.FC<DepositHubModalProps> = ({
   const [cryptoNetwork, setCryptoNetwork] = useState<'TRC20' | 'BEP20'>('TRC20');
   const [ltcTxHashInput, setLtcTxHashInput] = useState('');
   const [verificationError, setVerificationError] = useState<string | null>(null);
-  const [verificationSuccess, setVerificationSuccess] = useState<string | null>(null);
-  const [verifiedExplorerUrl, setVerifiedExplorerUrl] = useState<string | null>(null);
+    const [verificationSuccess, setVerificationSuccess] = useState<string | null>(null);
+    const [verifiedExplorerUrl, setVerifiedExplorerUrl] = useState<string | null>(null);
+    // CYBERPOOL FIX: lệnh thu tiền thật từ Binance Pay / MoMo (checkout URL + QR)
+    const [binanceCheckout, setBinanceCheckout] = useState<{ checkoutUrl?: string; qrContent?: string; prepayId?: string } | null>(null);
+    const [momoPayment, setMoMoPayment] = useState<{ payUrl?: string; qrCodeUrl?: string; orderId?: string } | null>(null);
+    const [isCreatingOrder, setIsCreatingOrder] = useState(false);
 
   const bankBin = systemConfig?.bankBin || '970422';
   const customQrImage = systemConfig?.bankQrCustomImage || '';
@@ -189,6 +193,37 @@ export const DepositHubModal: React.FC<DepositHubModalProps> = ({
   };
 
   // Real MoMo E-Wallet API Verification
+  // CYBERPOOL FIX: tạo lệnh thu tiền thật từ MoMo captureWallet
+  const handleCreateMoMoPayment = async () => {
+    if (!depositAmount || depositAmount <= 0) {
+      setVerificationError('Vui lòng nhập số tiền nạp hợp lệ.');
+      return;
+    }
+    setIsCreatingOrder(true);
+    setVerificationError(null);
+    setVerificationSuccess(null);
+    try {
+      const res = await walletApi.createMoMoPayment({
+        amount: depositAmount,
+        redirectUrl: typeof window !== 'undefined' ? window.location.origin + '/wallet' : undefined
+      });
+      if (res.success && res.data && (res.data as any).payUrl) {
+        setMoMoPayment({
+          payUrl: (res.data as any).payUrl,
+          qrCodeUrl: (res.data as any).qrCodeUrl,
+          orderId: (res.data as any).orderId
+        });
+        setVerificationSuccess('Đã tạo lệnh thanh toán MoMo thành công! Mở payUrl hoặc quét QR trong app MoMo để trả tiền.');
+      } else {
+        setVerificationError((res.data as any)?.message || res.error || 'Không tạo được lệnh MoMo.');
+      }
+    } catch (err: any) {
+      setVerificationError(err?.message || 'Lỗi kết nối máy chủ MoMo');
+    } finally {
+      setIsCreatingOrder(false);
+    }
+  };
+
   const handleVerifyMoMo = async () => {
     const cleanTransId = momoTransIdInput.trim();
     if (!cleanTransId) {
@@ -294,8 +329,40 @@ export const DepositHubModal: React.FC<DepositHubModalProps> = ({
     }
   };
 
-  // Real Binance Pay OpenAPI Verification
-  const handleVerifyBinancePay = async () => {
+  // CYBERPOOL FIX: tạo lệnh thu tiền thật từ Binance Pay (Mô hình A)
+    const handleCreateBinanceOrder = async () => {
+      if (!depositAmount || depositAmount <= 0) {
+        setVerificationError('Vui lòng nhập số tiền nạp hợp lệ.');
+        return;
+      }
+      setIsCreatingOrder(true);
+      setVerificationError(null);
+      setVerificationSuccess(null);
+      try {
+        const res = await walletApi.createBinancePayOrder({
+          amount: depositAmount,
+          returnUrl: typeof window !== 'undefined' ? window.location.origin + '/wallet' : undefined,
+          cancelUrl: typeof window !== 'undefined' ? window.location.origin + '/wallet' : undefined
+        });
+        if (res.success && res.data && (res.data as any).checkoutUrl) {
+          setBinanceCheckout({
+            checkoutUrl: (res.data as any).checkoutUrl,
+            qrContent: (res.data as any).qrContent,
+            prepayId: (res.data as any).prepayId
+          });
+          setVerificationSuccess('Đã tạo lệnh thanh toán Binance Pay thành công! Mở ngân hàng Binance hoặc quét QR để trả tiền.');
+        } else {
+          setVerificationError((res.data as any)?.message || res.error || 'Không tạo được lệnh Binance Pay.');
+        }
+      } catch (err: any) {
+        setVerificationError(err?.message || 'Lỗi kết nối máy chủ Binance Pay');
+      } finally {
+        setIsCreatingOrder(false);
+      }
+    };
+
+    // Real Binance Pay OpenAPI Verification
+    const handleVerifyBinancePay = async () => {
     const cleanOrderId = binanceTxInput.trim();
     if (!cleanOrderId) {
       setVerificationError('Vui lòng nhập Mã giao dịch Binance Pay (Order ID / Prepay ID).');
@@ -844,20 +911,64 @@ export const DepositHubModal: React.FC<DepositHubModalProps> = ({
                     </button>
                   </div>
 
-                  {/* MoMo Trans ID Input */}
-                  <div className="space-y-1 pt-1">
-                    <label className="text-[11px] text-slate-300 font-bold flex items-center justify-between">
-                      <span>MÃ GIAO DỊCH MOMO (TRANS ID):</span>
-                      <span className="text-[10px] text-pink-400 font-normal">Xem trong Lịch sử MoMo</span>
-                    </label>
-                    <input
-                      type="text"
-                      placeholder="Ví dụ: 43891028391 hoặc 4481920192"
-                      value={momoTransIdInput}
-                      onChange={(e) => setMomoTransIdInput(e.target.value)}
-                      className="w-full bg-slate-950 border border-slate-700 rounded-xl px-3 py-2 text-pink-300 font-mono text-xs focus:border-pink-500 outline-none"
-                    />
-                  </div>
+                  {/* CYBERPOOL FIX: nút tạo lệnh thu tiền thật MoMo (thay vì chỉ chuyển khoản tay) */}
+                                    {momoPayment?.payUrl && (
+                                      <div className="space-y-2 pt-1">
+                                        <div className="p-3 rounded-xl bg-pink-950/40 border border-pink-500/40 text-pink-200 text-[11px] leading-relaxed">
+                                          <div className="font-bold mb-1">✅ LỆNH THANH TOÁN MOMO ĐÃ TẠO (#{momoPayment.orderId})</div>
+                                          <div className="flex flex-col gap-2 mt-2">
+                                            <a
+                                              href={momoPayment.payUrl}
+                                              target="_blank"
+                                              rel="noreferrer"
+                                              className="px-3 py-2 rounded-lg bg-pink-600 hover:bg-pink-500 text-white font-bold text-[11px] text-center"
+                                            >
+                                              <ExternalLink className="w-3 h-3 inline mr-1" />Mở trang thanh toán MoMo
+                                            </a>
+                                            {momoPayment.qrCodeUrl && (
+                                              <img
+                                                src={`https://api.qrserver.com/v1/create-qr-code/?size=180x180&data=${encodeURIComponent(momoPayment.qrCodeUrl)}`}
+                                                alt="MoMo QR"
+                                                className="mx-auto rounded-lg w-[180px] h-[180px] bg-white p-2"
+                                              />
+                                            )}
+                                          </div>
+                                        </div>
+                                      </div>
+                                    )}
+                                    <button
+                                      type="button"
+                                      onClick={handleCreateMoMoPayment}
+                                      disabled={isCreatingOrder}
+                                      className="w-full py-3 rounded-xl bg-gradient-to-r from-fuchsia-600 to-pink-500 hover:from-fuchsia-500 hover:to-pink-400 text-white font-bold text-xs uppercase tracking-wider flex items-center justify-center gap-2 shadow-[0_0_20px_rgba(217,70,239,0.25)] disabled:opacity-50 transition-all cursor-pointer mb-2"
+                                    >
+                                      {isCreatingOrder ? (
+                                        <>
+                                          <RefreshCw className="w-4 h-4 animate-spin" />
+                                          <span>Đang tạo lệnh MoMo...</span>
+                                        </>
+                                      ) : (
+                                        <>
+                                          <Zap className="w-4 h-4" />
+                                          <span>Tạo Lệnh Thanh Toán MoMo (QR/PayUrl)</span>
+                                        </>
+                                      )}
+                                    </button>
+
+                                    {/* MoMo Trans ID Input */}
+                                    <div className="space-y-1 pt-1">
+                                      <label className="text-[11px] text-slate-300 font-bold flex items-center justify-between">
+                                        <span>MÃ GIAO DỊCH MOMO (TRANS ID):</span>
+                                        <span className="text-[10px] text-pink-400 font-normal">Xem trong Lịch sử MoMo</span>
+                                      </label>
+                                      <input
+                                        type="text"
+                                        placeholder="Ví dụ: 43891028391 hoặc 4481920192"
+                                        value={momoTransIdInput}
+                                        onChange={(e) => setMomoTransIdInput(e.target.value)}
+                                        className="w-full bg-slate-950 border border-slate-700 rounded-xl px-3 py-2 text-pink-300 font-mono text-xs focus:border-pink-500 outline-none"
+                                      />
+                                    </div>
 
                   {renderVerificationFeedback()}
 
@@ -1287,20 +1398,64 @@ export const DepositHubModal: React.FC<DepositHubModalProps> = ({
                   </div>
                 </div>
 
-                {/* Input Binance Order ID / Tx ID */}
-                <div className="space-y-1">
-                  <label className="text-[11px] text-slate-300 font-bold flex items-center justify-between">
-                    <span>MÃ ĐƠN HÀNG / ORDER ID BINANCE PAY:</span>
-                    <span className="text-[10px] text-amber-400 font-normal">Xem trong Lịch sử Binance Pay</span>
-                  </label>
-                  <input
-                    type="text"
-                    placeholder="Ví dụ: 293848192039 hoặc Prepay ID..."
-                    value={binanceTxInput}
-                    onChange={(e) => setBinanceTxInput(e.target.value)}
-                    className="w-full bg-slate-950 border border-slate-700 rounded-xl px-3 py-2 text-amber-300 font-mono text-xs focus:border-amber-400 outline-none"
-                  />
-                </div>
+                {/* CYBERPOOL FIX: nút tạo lệnh thu tiền thật Binance Pay (Mô hình A) */}
+                                  {binanceCheckout?.checkoutUrl && (
+                                    <div className="space-y-2 pt-1">
+                                      <div className="p-3 rounded-xl bg-amber-950/40 border border-amber-500/40 text-amber-200 text-[11px] leading-relaxed">
+                                        <div className="font-bold mb-1">✅ LỆNH BINANCE PAY ĐÃ TẠO (Prepay #{binanceCheckout.prepayId})</div>
+                                        <div className="flex flex-col gap-2 mt-2">
+                                          <a
+                                            href={binanceCheckout.checkoutUrl}
+                                            target="_blank"
+                                            rel="noreferrer"
+                                            className="px-3 py-2 rounded-lg bg-amber-500 hover:bg-amber-400 text-black font-bold text-[11px] text-center"
+                                          >
+                                            <ExternalLink className="w-3 h-3 inline mr-1" />Mở trang thanh toán Binance
+                                          </a>
+                                          {binanceCheckout.qrContent && (
+                                            <img
+                                              src={`https://api.qrserver.com/v1/create-qr-code/?size=180x180&data=${encodeURIComponent(binanceCheckout.qrContent)}`}
+                                              alt="Binance Pay QR"
+                                              className="mx-auto rounded-lg w-[180px] h-[180px] bg-white p-2"
+                                            />
+                                          )}
+                                        </div>
+                                      </div>
+                                    </div>
+                                  )}
+                                  <button
+                                    type="button"
+                                    onClick={handleCreateBinanceOrder}
+                                    disabled={isCreatingOrder}
+                                    className="w-full py-3 rounded-xl bg-gradient-to-r from-amber-600 to-yellow-500 hover:from-amber-500 hover:to-yellow-400 text-black font-bold text-xs uppercase tracking-wider flex items-center justify-center gap-2 shadow-[0_0_20px_rgba(245,158,11,0.3)] disabled:opacity-50 transition-all cursor-pointer mb-2"
+                                  >
+                                    {isCreatingOrder ? (
+                                      <>
+                                        <RefreshCw className="w-4 h-4 animate-spin" />
+                                        <span>Đang tạo lệnh Binance Pay...</span>
+                                      </>
+                                    ) : (
+                                      <>
+                                        <Zap className="w-4 h-4" />
+                                        <span>Tạo Lệnh Thanh Toán Binance Pay (Checkout/QR)</span>
+                                      </>
+                                    )}
+                                  </button>
+
+                                {/* Input Binance Order ID / Tx ID */}
+                                <div className="space-y-1">
+                                  <label className="text-[11px] text-slate-300 font-bold flex items-center justify-between">
+                                    <span>MÃ ĐƠN HÀNG / ORDER ID BINANCE PAY:</span>
+                                    <span className="text-[10px] text-amber-400 font-normal">Xem trong Lịch sử Binance Pay</span>
+                                  </label>
+                                  <input
+                                    type="text"
+                                    placeholder="Ví dụ: 293848192039 hoặc Prepay ID..."
+                                    value={binanceTxInput}
+                                    onChange={(e) => setBinanceTxInput(e.target.value)}
+                                    className="w-full bg-slate-950 border border-slate-700 rounded-xl px-3 py-2 text-amber-300 font-mono text-xs focus:border-amber-400 outline-none"
+                                  />
+                                </div>
 
                 {renderVerificationFeedback()}
 

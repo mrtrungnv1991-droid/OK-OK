@@ -7,6 +7,7 @@ import { db } from '../../../db/store';
 import { requireAuth, requireRole, AuthenticatedRequest } from '../../../middleware/authMiddleware';
 import { ServerUser } from '../../../types';
 import { IdempotencyService } from '../../../services/idempotencyService';
+import { GatewayVerificationService } from '../../../services/gatewayVerificationService';
 
 export const webhookRouter = Router();
 
@@ -550,6 +551,112 @@ export async function handleCard24hCallback(req: Request, res: Response) {
 
 webhookRouter.get('/card24h', handleCard24hCallback);
 webhookRouter.post('/card24h', handleCard24hCallback);
+
+// POST /api/v1/webhooks/momo - MoMo IPN server-to-server (sau khi khách trả tiền)
+// CYBERPOOL FIX: trước đây MoMo chỉ có verify thủ công (query transID) nhưng
+// không có cơ chế tạo lệnh thu tiền. Giờ có create-payment + IPN này để
+// auto-credit: MoMo gọi tới ipnUrl sau khi khách thanh toán xong.
+webhookRouter.post('/momo', async (req: Request, res: Response) => {
+  try {
+    const secretKey = db.systemConfig?.momoSecretKey || process.env.MOMO_SECRET_KEY;
+    if (!secretKey) {
+      return res.status(503).json({ success: false, error: 'MoMo IPN: MOMO_SECRET_KEY chưa được cấu hình.' });
+    }
+
+    const payload = req.body || {};
+    const verified = GatewayVerificationService.verifyMoMoIpnSignature(payload, secretKey);
+    if (!verified) {
+      AuditService.log({
+        actorId: 'UNAUTHORIZED_WEBHOOK',
+        actorName: 'MoMo IPN Attacker',
+        actorRole: 'USER',
+        action: 'MOMO_IPN_SIGNATURE_FAILED',
+        resource: 'WALLET',
+        ipAddress: req.ip,
+        newValue: { orderId: payload.orderId || '', resultCode: payload.resultCode }
+      });
+      return res.status(401).json({ success: false, error: 'Unauthorized: MoMo IPN chữ ký không hợp lệ.' });
+    }
+
+    const orderId = String(payload.orderId || '');
+    const resultCode = Number(payload.resultCode);
+    const amountPaid = Number(payload.amount || 0);
+    const requestId = String(payload.requestId || '');
+
+    if (resultCode !== 0) {
+      return res.json({ success: true, message: 'Thanh toán chưa thành công (không credit).' });
+    }
+
+    // Idempotency: chống double-credit khi MoMo retry IPN
+    if (IdempotencyService.isProcessed(`MOMO_${orderId}_${requestId}`)) {
+      return res.json({ success: true, message: 'Đã xử lý IPN trước đó (Idempotent OK)' });
+    }
+    const lockAcquired = await IdempotencyService.acquireLock(`MOMO_${orderId}_${requestId}`);
+    if (!lockAcquired) {
+      return res.status(429).json({ success: false, error: 'IPN đang được xử lý đồng thời.' });
+    }
+
+    try {
+      // Tìm intent đã lưu khi tạo lệnh (để lấy userId + đối chiếu số tiền)
+      const intent = db.depositIntents.get(orderId) as any;
+      const targetUser = intent?.userId ? db.users.get(intent.userId) : undefined;
+
+      if (!targetUser) {
+        const unmappedRecord = {
+          id: `unmapped-momo-${Date.now()}-${orderId}`,
+          provider: 'MOMO',
+          transactionId: orderId,
+          amount: amountPaid,
+          memo: payload.orderInfo || '',
+          rawPayload: payload,
+          receivedAt: new Date().toISOString(),
+          status: 'PENDING_REVIEW' as const
+        };
+        db.pendingUnmappedDeposits.push(unmappedRecord);
+        console.warn('[MOMO_IPN] Không tìm thấy user cho orderId', orderId, '- đưa vào hàng đợi đối soát.');
+        return res.status(422).json({ success: false, error: 'Không tìm thấy user tương ứng với lệnh MoMo này.' });
+      }
+
+      await LedgerService.executeTransaction({
+        userId: targetUser.id,
+        amount: amountPaid,
+        type: 'DEPOSIT',
+        description: `Nạp tự động Ví MoMo IPN (${amountPaid.toLocaleString('vi-VN')}đ) - Mã: ${orderId}`,
+        referenceId: orderId,
+        actorId: 'MOMO_IPN',
+        actorName: 'MoMo IPN Gateway'
+      });
+
+      if (intent) { intent.status = 'COMPLETED'; db.depositIntents.set(orderId, intent); }
+
+      IdempotencyService.commit({
+        primaryKey: `MOMO_${orderId}_${requestId}`,
+        provider: 'MOMO',
+        referenceId: orderId,
+        memo: payload.orderInfo || '',
+        amount: amountPaid,
+        userId: targetUser.id
+      });
+
+      AuditService.log({
+        actorId: 'MOMO_IPN',
+        actorName: 'MoMo IPN Gateway',
+        actorRole: 'SUPER_ADMIN',
+        action: 'MOMO_IPN_DEPOSIT_COMPLETED',
+        resource: 'WALLET',
+        resourceId: orderId,
+        newValue: { amount: amountPaid, userId: targetUser.id }
+      });
+
+      return res.json({ success: true, message: 'Đã cộng tiền qua MoMo IPN.' });
+    } finally {
+      IdempotencyService.releaseLock(`MOMO_${orderId}_${requestId}`);
+    }
+  } catch (err: any) {
+    console.error('[MOMO_IPN_ERROR]', err);
+    return res.status(500).json({ success: false, error: err?.message });
+  }
+});
 
 // GET /api/v1/webhooks/unmapped-deposits - Admin endpoint to inspect unmapped deposits
 webhookRouter.get('/unmapped-deposits', requireAuth, requireRole('ADMIN'), (req: AuthenticatedRequest, res: Response) => {

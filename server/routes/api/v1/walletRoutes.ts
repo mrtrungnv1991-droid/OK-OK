@@ -58,6 +58,46 @@ walletRouter.post('/deposit', requireAuth, async (req: AuthenticatedRequest, res
   });
 });
 
+// POST /api/v1/wallet/binance-pay/create-order - Tạo lệnh Binance Pay (Mô hình A)
+walletRouter.post('/binance-pay/create-order', requireAuth, async (req: AuthenticatedRequest, res) => {
+  try {
+    const { amount, returnUrl, cancelUrl } = req.body;
+    const result = await GatewayVerificationService.createBinancePayOrder({
+      userId: req.user!.id,
+      amountVnd: Number(amount),
+      returnUrl,
+      cancelUrl,
+      ipAddress: req.ip
+    });
+    if (!result.success) {
+      return res.status(400).json(result);
+    }
+    return res.json(result);
+  } catch (err: any) {
+    return res.status(500).json({ success: false, message: err?.message || 'Lỗi hệ thống tạo lệnh Binance Pay' });
+  }
+});
+
+// POST /api/v1/wallet/momo/create-payment - Tạo lệnh thu tiền MoMo captureWallet
+walletRouter.post('/momo/create-payment', requireAuth, async (req: AuthenticatedRequest, res) => {
+  try {
+    const { amount, redirectUrl, orderInfo } = req.body;
+    const result = await GatewayVerificationService.createMoMoPayment({
+      userId: req.user!.id,
+      amountVnd: Number(amount),
+      redirectUrl,
+      orderInfo,
+      ipAddress: req.ip
+    });
+    if (!result.success) {
+      return res.status(400).json(result);
+    }
+    return res.json(result);
+  } catch (err: any) {
+    return res.status(500).json({ success: false, message: err?.message || 'Lỗi hệ thống tạo lệnh MoMo' });
+  }
+});
+
 // POST /api/v1/wallet/verify-binance - Verify Binance Pay Transaction via Official OpenAPI
 walletRouter.post('/verify-binance', requireAuth, async (req: AuthenticatedRequest, res) => {
   try {

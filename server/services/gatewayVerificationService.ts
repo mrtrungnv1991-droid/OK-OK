@@ -246,10 +246,128 @@ export class GatewayVerificationService {
   }
 
   // ============================================================================
-  // 2. CRYPTO USDT (TRC20 / BEP20) ON-CHAIN BLOCKCHAIN API VERIFICATION
-  // TronScan API: https://apilist.tronscanapi.com/api/transaction-info?hash=...
-  // BscScan API: https://api.bscscan.com/api?module=transaction...
-  // ============================================================================
+    // 1b. BINANCE PAY CREATE ORDER (Mô hình A — Merchant Checkout thật)
+    // POST https://bpay.binanceapi.com/binancepay/openapi/v2/order
+    // Tạo prepay order -> response chứa checkoutUrl / qrContent / deeplink để
+    // khách thanh toán. Sau đó verifyBinancePay() (order/query) xác nhận PAID.
+    // Reference: developers.binance.com/docs/binance-pay/api-order-creation-v2
+    // ============================================================================
+    public static async createBinancePayOrder(params: {
+      userId: string;
+      amountVnd: number;
+      ipAddress?: string;
+      returnUrl?: string;
+      cancelUrl?: string;
+    }): Promise<{
+      success: boolean;
+      gateway: string;
+      prepayId?: string;
+      checkoutUrl?: string;
+      qrContent?: string;
+      qrcodeLink?: string;
+      deeplink?: string;
+      universalUrl?: string;
+      merchantTradeNo?: string;
+      message?: string;
+    }> {
+      const apiKey = db.systemConfig?.binanceApiKey || process.env.BINANCE_PAY_API_KEY;
+      const secretKey = db.systemConfig?.binanceSecretKey || process.env.BINANCE_PAY_SECRET_KEY;
+      const usdRate = db.systemConfig?.usdToVndRate || 25400;
+
+      if (!apiKey || !secretKey || apiKey.includes('live_891823901823')) {
+        return {
+          success: false,
+          gateway: 'BINANCE_PAY',
+          message: 'Cổng Binance Pay chưa được cấu hình credentials đối tác (BINANCE_PAY_API_KEY / BINANCE_PAY_SECRET_KEY). Vui lòng liên hệ quản trị viên.'
+        };
+      }
+
+      const amountVnd = Math.round(Number(params.amountVnd) || 0);
+      if (amountVnd <= 0) {
+        return { success: false, gateway: 'BINANCE_PAY', message: 'Số tiền nạp không hợp lệ.' };
+      }
+      const orderAmountUsdt = Math.max(0.01, Number((amountVnd / usdRate).toFixed(2)));
+
+      const merchantTradeNo = `CYBR${Date.now()}${Math.floor(1000 + Math.random() * 9000)}`;
+      const requestBody = JSON.stringify({
+        env: { terminalType: 'WEB' },
+        merchantTradeNo,
+        orderAmount: orderAmountUsdt,
+        currency: 'USDT',
+        goods: {
+          goodsType: '02',
+          goodsCategory: 'D000',
+          referenceGoodsId: params.userId,
+          goodsName: 'CYBERPOOL Wallet Deposit',
+          goodsDetail: `Nạp tiền ví CyberPool ${amountVnd.toLocaleString('vi-VN')}đ (${orderAmountUsdt} USDT)`
+        },
+        ...(params.returnUrl ? { returnUrl: params.returnUrl } : {}),
+        ...(params.cancelUrl ? { cancelUrl: params.cancelUrl } : {})
+      });
+
+      try {
+        const timestamp = Date.now().toString();
+        const nonce = crypto.randomBytes(16).toString('hex');
+        const payloadToSign = `${timestamp}\n${nonce}\n${requestBody}\n`;
+        const signature = crypto.createHmac('sha512', secretKey).update(payloadToSign).digest('hex').toUpperCase();
+
+        const bpayRes = await fetch('https://bpay.binanceapi.com/binancepay/openapi/v2/order', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'BinancePay-Timestamp': timestamp,
+            'BinancePay-Nonce': nonce,
+            'BinancePay-Certificate-SN': apiKey,
+            'BinancePay-Signature': signature
+          },
+          body: requestBody
+        });
+
+        const raw = await bpayRes.json();
+        if (raw.status === 'SUCCESS' && raw.data?.prepayId) {
+          const intent: any = {
+            id: raw.data.prepayId,
+            userId: params.userId,
+            amountVnd,
+            amountUsdt: orderAmountUsdt,
+            merchantTradeNo,
+            gateway: 'BINANCE_PAY',
+            status: 'PENDING',
+            createdAt: new Date().toISOString(),
+            expireTime: raw.data.expireTime || 0
+          };
+          try { db.depositIntents.set(intent.id, intent); } catch (e) { console.warn('[BINANCE_CREATE] lưu intent lỗi:', e); }
+
+          return {
+            success: true,
+            gateway: 'BINANCE_PAY',
+            prepayId: raw.data.prepayId,
+            checkoutUrl: raw.data.checkoutUrl,
+            qrContent: raw.data.qrContent,
+            qrcodeLink: raw.data.qrcodeLink,
+            deeplink: raw.data.deeplink,
+            universalUrl: raw.data.universalUrl,
+            merchantTradeNo,
+            message: 'Đã tạo lệnh thanh toán Binance Pay. Khách quét QR hoặc mở checkoutUrl để trả tiền.'
+          };
+        }
+
+        return {
+          success: false,
+          gateway: 'BINANCE_PAY',
+          message: `Binance Pay API từ chối tạo lệnh: ${raw.errorMessage || raw.message || JSON.stringify(raw).slice(0, 200)}`
+        };
+      } catch (apiErr: any) {
+        console.error('[BINANCE_PAY_CREATE_ERROR]', apiErr);
+        return { success: false, gateway: 'BINANCE_PAY', message: `Lỗi kết nối Binance Pay API: ${apiErr.message}` };
+      }
+    }
+
+    // ============================================================================
+    // 2. CRYPTO USDT (TRC20 / BEP20) ON-CHAIN BLOCKCHAIN API VERIFICATION
+    // TronScan API: https://apilist.tronscanapi.com/api/transaction-info?hash=...
+    // BscScan API: https://api.bscscan.com/api?module=transaction...
+    // ============================================================================
   public static async verifyCryptoUsdt(params: {
     userId: string;
     txHash: string;
@@ -764,8 +882,143 @@ export class GatewayVerificationService {
   }
 
   // ============================================================================
-  // 5. VIETQR / BANKING 24/7 AUTO VERIFICATION (F01: Chặn cộng tiền khi chưa có đối soát)
-  // ============================================================================
+    // 4b. MOMO CAPTURE WALLET (Tạo lệnh thu tiền thật)
+    // POST https://payment.momo.vn/v2/gateway/api/create
+    // Response chứa payUrl / deeplink / qrCodeUrl để khách thanh toán.
+    // Sau khi khách trả, MoMo gọi ipnUrl (webhook) -> auto-credit.
+    // Reference: developers.momo.vn/v3/docs/payment/api/wallet/onetime
+    // Signature: HmacSHA256("accessKey=...&amount=...&extraData=...&ipnUrl=..."
+    //            + "&orderId=...&orderInfo=...&partnerCode=...&redirectUrl=..."
+    //            + "&requestId=...&requestType=...", secretKey)
+    // ============================================================================
+    public static async createMoMoPayment(params: {
+      userId: string;
+      amountVnd: number;
+      ipAddress?: string;
+      redirectUrl?: string;
+      orderInfo?: string;
+    }): Promise<{
+      success: boolean;
+      gateway: string;
+      orderId?: string;
+      requestId?: string;
+      payUrl?: string;
+      deeplink?: string;
+      qrCodeUrl?: string;
+      message?: string;
+    }> {
+      const partnerCode = db.systemConfig?.momoPartnerCode || process.env.MOMO_PARTNER_CODE;
+      const accessKey = db.systemConfig?.momoAccessKey || process.env.MOMO_ACCESS_KEY;
+      const secretKey = db.systemConfig?.momoSecretKey || process.env.MOMO_SECRET_KEY;
+
+      if (!partnerCode || !accessKey || !secretKey) {
+        return {
+          success: false,
+          gateway: 'MOMO',
+          message: 'Cổng MoMo chưa được cấu hình credentials (MOMO_PARTNER_CODE / MOMO_ACCESS_KEY / MOMO_SECRET_KEY). Vui lòng liên hệ quản trị viên.'
+        };
+      }
+
+      const amountVnd = Math.round(Number(params.amountVnd) || 0);
+      if (amountVnd < 1000 || amountVnd > 50000000) {
+        return { success: false, gateway: 'MOMO', message: 'Số tiền nạp MoMo phải từ 1.000đ đến 50.000.000đ.' };
+      }
+
+      const orderId = `CP${Date.now()}`;
+      const requestId = `REQ${Date.now()}${Math.floor(100 + Math.random() * 900)}`;
+      const orderInfo = params.orderInfo || `Nạp tiền ví CyberPool ${amountVnd.toLocaleString('vi-VN')}đ`;
+      const redirectUrl = params.redirectUrl || 'https://cyberpool.vn/wallet';
+      const ipnUrl = `${process.env.PUBLIC_BASE_URL || 'https://cyberpool.vn'}/api/v1/webhooks/momo`;
+      const extraData = Buffer.from(JSON.stringify({ userId: params.userId })).toString('base64');
+
+      const rawSignature = `accessKey=${accessKey}&amount=${amountVnd}&extraData=${extraData}&ipnUrl=${ipnUrl}`
+        + `&orderId=${orderId}&orderInfo=${orderInfo}&partnerCode=${partnerCode}&redirectUrl=${redirectUrl}`
+        + `&requestId=${requestId}&requestType=captureWallet`;
+      const signature = crypto.createHmac('sha256', secretKey).update(rawSignature).digest('hex');
+
+      try {
+        const momoRes = await fetch('https://payment.momo.vn/v2/gateway/api/create', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            partnerCode,
+            requestId,
+            amount: amountVnd,
+            orderId,
+            orderInfo,
+            redirectUrl,
+            ipnUrl,
+            requestType: 'captureWallet',
+            extraData,
+            lang: 'vi',
+            signature
+          })
+        });
+        const data: any = await momoRes.json();
+
+        if (momoRes.ok && data.resultCode === 0 && data.payUrl) {
+          const intent: any = {
+            id: orderId,
+            userId: params.userId,
+            amountVnd,
+            gateway: 'MOMO',
+            status: 'PENDING',
+            requestId,
+            createdAt: new Date().toISOString()
+          };
+          try { db.depositIntents.set(orderId, intent); } catch (e) { console.warn('[MOMO_CREATE] lưu intent lỗi:', e); }
+
+          return {
+            success: true,
+            gateway: 'MOMO',
+            orderId,
+            requestId,
+            payUrl: data.payUrl,
+            deeplink: data.deeplink,
+            qrCodeUrl: data.qrCodeUrl,
+            message: 'Đã tạo lệnh thanh toán MoMo. Khách mở payUrl hoặc quét QR để trả tiền.'
+          };
+        }
+
+        return {
+          success: false,
+          gateway: 'MOMO',
+          message: `MoMo API từ chối tạo lệnh (resultCode=${data.resultCode}): ${data.message || JSON.stringify(data).slice(0, 200)}`
+        };
+      } catch (apiErr: any) {
+        console.error('[MOMO_CREATE_ERROR]', apiErr);
+        return { success: false, gateway: 'MOMO', message: `Lỗi kết nối MoMo API: ${apiErr.message}` };
+      }
+    }
+
+    // ============================================================================
+    // 4c. MOMO IPN WEBHOOK VERIFY (Server-to-server từ MoMo sau khi khách trả tiền)
+    // MoMo gọi ipnUrl với các tham số giao dịch; xác thực chữ ký HMAC-SHA256
+    // rồi credit ví. Reference: developers.momo.vn/v3/docs/payment/api/payment-api/ipn
+    // ============================================================================
+    public static verifyMoMoIpnSignature(body: Record<string, any>, secretKey: string): boolean {
+        if (!body || !body.signature || !secretKey) return false;
+        const receivedSig = String(body.signature);
+        // Loại bỏ trường signature, sắp xếp key a-z, nối "key=value&..."
+        const pairs: string[] = [];
+        for (const key of Object.keys(body).sort()) {
+          if (key === 'signature') continue;
+          if (body[key] === undefined || body[key] === null) continue;
+          pairs.push(`${key}=${body[key]}`);
+        }
+        const raw = pairs.join('&');
+        const expected = crypto.createHmac('sha256', secretKey).update(raw).digest('hex');
+        const expectedBuf = Buffer.from(expected);
+        const actualBuf = Buffer.from(receivedSig);
+        // timingSafeEqual ném lỗi nếu 2 buffer khác độ dài — check trước để
+        // signature sai luôn trả 401 thay vì 500.
+        if (expectedBuf.length !== actualBuf.length) return false;
+        return crypto.timingSafeEqual(expectedBuf, actualBuf);
+      }
+
+    // ============================================================================
+    // 5. VIETQR / BANKING 24/7 AUTO VERIFICATION (F01: Chặn cộng tiền khi chưa có đối soát)
+    // ============================================================================
   public static async verifyVietQr(params: {
     userId: string;
     transferCode: string;
