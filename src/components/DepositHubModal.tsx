@@ -24,6 +24,7 @@ import { UserProfile, TransactionRecord, TelcoCardSubmission, SystemConfig, Curr
 import { formatCurrency } from '../utils/formatters';
 import { useTranslation } from '../i18n';
 import { walletApi } from '../api/wallet';
+import { CryptoGatePanel } from './CryptoGatePanel';
 
 interface DepositHubModalProps {
   isOpen: boolean;
@@ -52,7 +53,7 @@ export const DepositHubModal: React.FC<DepositHubModalProps> = ({
 }) => {
   const { t } = useTranslation();
 
-  const [activeChannel, setActiveChannel] = useState<'vietqr' | 'momo' | 'crypto' | 'ltc' | 'binance' | 'card' | 'history'>('vietqr');
+  const [activeChannel, setActiveChannel] = useState<'vietqr' | 'momo' | 'cryptogate' | 'crypto' | 'ltc' | 'binance' | 'card' | 'history'>('vietqr');
   const [depositAmount, setDepositAmount] = useState<number>(200000);
   const [copiedField, setCopiedField] = useState<string | null>(null);
   const [isVerifying, setIsVerifying] = useState(false);
@@ -659,38 +660,21 @@ export const DepositHubModal: React.FC<DepositHubModalProps> = ({
             )}
           </button>
 
+          {/* CYBERPOOL CRYPTOGATE: thay 2 tab crypto/ltc cũ (1 ví USDT chung +
+              LTC) bằng 1 tab hợp nhất multi-network direct-to-wallet */}
           <button
-            onClick={() => setActiveChannel('crypto')}
+            onClick={() => setActiveChannel('cryptogate')}
             className={`pb-2.5 px-3 border-b-2 font-bold transition-all flex items-center gap-1.5 whitespace-nowrap cursor-pointer ${
-              activeChannel === 'crypto'
+              activeChannel === 'cryptogate'
                 ? 'border-emerald-400 text-emerald-300'
                 : 'border-transparent text-slate-400 hover:text-slate-200'
             }`}
           >
             <Coins className="w-4 h-4 text-emerald-400" />
-            <span>USDT (TRC20 / BEP20)</span>
-            {!isModuleEnabled('crypto') && (
-              <span className="px-1.5 py-0.2 rounded bg-amber-500/20 text-amber-400 border border-amber-500/30 text-[9px] font-sans font-bold">
-                Bảo trì
-              </span>
-            )}
-          </button>
-
-          <button
-            onClick={() => setActiveChannel('ltc')}
-            className={`pb-2.5 px-3 border-b-2 font-bold transition-all flex items-center gap-1.5 whitespace-nowrap cursor-pointer ${
-              activeChannel === 'ltc'
-                ? 'border-blue-400 text-blue-300'
-                : 'border-transparent text-slate-400 hover:text-slate-200'
-            }`}
-          >
-            <Zap className="w-4 h-4 text-blue-400" />
-            <span className="font-bold">Litecoin (LTC)</span>
-            {!isModuleEnabled('ltc') && (
-              <span className="px-1.5 py-0.2 rounded bg-amber-500/20 text-amber-400 border border-amber-500/30 text-[9px] font-sans font-bold">
-                Bảo trì
-              </span>
-            )}
+            <span>Crypto (USDT/LTC 5 Mạng)</span>
+            <span className="px-1.5 py-0.2 rounded bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 text-[9px] font-sans font-bold">
+              AUTO
+            </span>
           </button>
 
           <button
@@ -1082,328 +1066,28 @@ export const DepositHubModal: React.FC<DepositHubModalProps> = ({
             )
           )}
 
-          {activeChannel === 'crypto' && (
-                      !isModuleEnabled('crypto') ? (
-                        renderChannelMaintenance('crypto', 'Cổng Nạp Crypto USDT (TRC20 / BEP20)')
-                      ) : !usdtAccount.address ? (
-                        renderChannelNotConfigured(
-                          'crypto',
-                          'Cổng Nạp Crypto USDT (TRC20 / BEP20)',
-                          'Shop chưa cấu hình địa chỉ ví nhận USDT (systemConfig.cryptoUsdtAddress). ' +
-                          'Quản trị vui lòng vào Admin Panel → Tài Chính → Nạp Tiền → mục "CỔNG CRYPTO USDT" ' +
-                          'để nhập địa chỉ ví TRC20/BEP20 thật của shop trước khi mở cổng này. ' +
-                          'Hiện cổng tạm khóa để tránh khách chuyển tiền sai địa chỉ.'
-                        )
-                      ) : (
-                      <div className="space-y-4">
-              {/* Crypto Network & Rate Banner */}
-              <div className="p-4 rounded-xl bg-emerald-950/30 border border-emerald-500/30 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-                <div>
-                  <div className="font-bold text-xs text-emerald-300">TỶ GIÁ QUY ĐỔI USDT:</div>
-                  <div className="text-lg font-black text-white mt-0.5">
-                    1 USDT = {formatCurrency(usdtAccount.rate, user.currency)}
-                  </div>
-                  <div className="text-xs text-emerald-400 font-bold mt-1">
-                    Số tiền nạp: {formatCurrency(depositAmount, user.currency)} ≈ {(depositAmount / usdtAccount.rate).toFixed(2)} USDT
-                  </div>
-                </div>
-
-                {/* Network Switcher */}
-                <div className="flex items-center gap-1.5 bg-black/40 p-1 rounded-xl border border-emerald-500/30">
-                  <button
-                    type="button"
-                    onClick={() => setCryptoNetwork('TRC20')}
-                    className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${
-                      cryptoNetwork === 'TRC20'
-                        ? 'bg-emerald-500 text-black shadow-md'
-                        : 'text-slate-400 hover:text-white'
-                    }`}
-                  >
-                    TRC20 (Tron)
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setCryptoNetwork('BEP20')}
-                    className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${
-                      cryptoNetwork === 'BEP20'
-                        ? 'bg-emerald-500 text-black shadow-md'
-                        : 'text-slate-400 hover:text-white'
-                    }`}
-                  >
-                    BEP20 (BSC)
-                  </button>
-                </div>
-              </div>
-
-              {/* Amount presets picker */}
-              <div className="p-3 rounded-xl bg-slate-900/60 border border-slate-800 space-y-1.5">
-                <div className="text-xs text-slate-300 font-bold">1. Chọn mức nạp VND:</div>
-                <div className="grid grid-cols-4 sm:grid-cols-7 gap-1.5">
-                  {DEPOSIT_PRESETS.map((amt) => (
-                    <button
-                      key={amt}
-                      type="button"
-                      onClick={() => setDepositAmount(amt)}
-                      className={`p-1.5 rounded-lg border text-center text-xs transition-all cursor-pointer ${
-                        depositAmount === amt
-                          ? 'bg-emerald-500 text-black font-bold border-emerald-400 shadow-md'
-                          : 'bg-slate-900/60 border-slate-800 text-slate-300 hover:border-slate-700'
-                      }`}
-                    >
-                      {formatCurrency(amt, user.currency)}
-                    </button>
-                  ))}
-                </div>
-              </div>
-
-              <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
-                {/* Left: USDT QR Code */}
-                <div className="lg:col-span-5 flex flex-col items-center bg-slate-900/60 p-4 rounded-2xl border border-emerald-500/20 space-y-3 text-center">
-                  <div className="p-2.5 rounded-xl bg-white shadow-xl relative group">
-                    <img
-                      src={`https://api.qrserver.com/v1/create-qr-code/?size=250x250&data=${encodeURIComponent(usdtAccount.address)}`}
-                      alt="USDT QR Code"
-                      className="w-48 h-48 object-contain rounded-lg"
-                    />
-                    <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 flex flex-col items-center justify-center transition-opacity rounded-lg text-white font-bold text-xs p-2">
-                      <span>Mạng {cryptoNetwork}</span>
-                    </div>
-                  </div>
-                  <div className="text-xs text-emerald-400 font-bold bg-emerald-950/40 px-3 py-1 rounded-lg border border-emerald-500/30">
-                    Mạng: {cryptoNetwork} • Xác thực tự động On-Chain
-                  </div>
-                </div>
-
-                {/* Right: Address and TxID verification */}
-                <div className="lg:col-span-7 space-y-3 bg-slate-900/80 p-4 rounded-2xl border border-slate-800">
-                  <div className="space-y-1">
-                    <label className="text-xs font-bold text-slate-300">2. ĐỊA CHỈ VÍ USDT ({cryptoNetwork}):</label>
-                    <div className="flex items-center gap-2">
-                      <input
-                        type="text"
-                        readOnly
-                        value={usdtAccount.address}
-                        className="flex-1 bg-slate-950 border border-slate-800 rounded-xl p-2.5 text-cyan-300 font-mono font-bold text-xs"
-                      />
-                      <button
-                        onClick={() => handleCopy(usdtAccount.address, 'usdt_addr')}
-                        className="px-3.5 py-2.5 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-black font-bold text-xs flex items-center gap-1.5 cursor-pointer shrink-0"
-                      >
-                        <Copy className="w-3.5 h-3.5" />
-                        <span>{copiedField === 'usdt_addr' ? t('common.copied') : t('common.copy')}</span>
-                      </button>
-                    </div>
-                  </div>
-
-                  <div className="p-2.5 rounded-lg bg-red-950/40 border border-red-500/40 flex items-center justify-between">
-                    <div>
-                      <div className="text-[10px] text-red-300 uppercase font-bold">Nội dung chuyển / Memo:</div>
-                      <div className="text-xs text-yellow-300 font-black tracking-wider mt-0.5">{transferCode}</div>
-                    </div>
-                    <button
-                      onClick={() => handleCopy(transferCode, 'usdt_memo')}
-                      className="px-2.5 py-1 rounded bg-yellow-500 hover:bg-yellow-400 text-black font-bold text-[11px] cursor-pointer"
-                    >
-                      <Copy className="w-3 h-3" />
-                      <span>{copiedField === 'usdt_memo' ? t('common.copied') : t('common.copy')}</span>
-                    </button>
-                  </div>
-
-                  {/* TxID Input Field */}
-                  <div className="space-y-1 pt-1">
-                    <label className="text-[11px] text-slate-300 font-bold flex items-center justify-between">
-                      <span>3. MÃ BĂM GIAO DỊCH (TXID / HASH):</span>
-                      <span className="text-[10px] text-emerald-400 font-normal">Từ ví Trust/Binance/OKX</span>
-                    </label>
-                    <input
-                      type="text"
-                      placeholder="Dán mã băm TxID (Ví dụ: b3f2a18c09... 64 ký tự)"
-                      value={cryptoTxHashInput}
-                      onChange={(e) => setCryptoTxHashInput(e.target.value)}
-                      className="w-full bg-slate-950 border border-slate-700 rounded-xl px-3 py-2 text-cyan-300 font-mono text-xs focus:border-emerald-500 outline-none"
-                    />
-                  </div>
-
-                  {renderVerificationFeedback()}
-
-                  <button
-                    type="button"
-                    onClick={handleVerifyCryptoUsdt}
-                    disabled={isVerifying}
-                    className="w-full py-3.5 rounded-xl bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-400 hover:to-teal-400 text-black font-bold text-xs uppercase tracking-wider flex items-center justify-center gap-2 shadow-[0_0_20px_rgba(16,185,129,0.3)] disabled:opacity-50 transition-all cursor-pointer"
-                  >
-                    {isVerifying ? (
-                      <>
-                        <RefreshCw className="w-4 h-4 animate-spin" />
-                        <span>Đang quét khối TronScan / BSC...</span>
-                      </>
-                    ) : (
-                      <>
-                        <Zap className="w-4 h-4" />
-                        <span>Xác Minh On-Chain ({cryptoNetwork} API)</span>
-                      </>
-                    )}
-                  </button>
-                </div>
-              </div>
+          {/* CHANNEL: CYBERPOOL CRYPTOGATE — multi-network direct-to-wallet
+              (TRON/BSC/POLYGON/SOLANA USDT + LTC). Thay thế 2 kênh cũ 'crypto'
+              (1 ví USDT chung TRC20/BEP20, ví chưa cấu hình → fail-closed) và
+              'ltc': giờ mỗi mạng có ví riêng do admin cấu hình, số coin duy
+              nhất per-order, scanner on-chain tự động cộng ví. */}
+          {activeChannel === 'cryptogate' && (
+            <div className="p-4 sm:p-5">
+              <CryptoGatePanel
+                currency={user.currency}
+                userBalance={user.walletBalance}
+                onDepositSuccess={(amount, method, txCode) => {
+                  if (onDepositSuccess) onDepositSuccess(amount, method, txCode);
+                }}
+                showToast={(msg, type) => {
+                  if (type === 'success') {
+                    setVerificationSuccess(msg);
+                  } else {
+                    setVerificationError(msg);
+                  }
+                }}
+              />
             </div>
-            )
-          )}
-
-          {/* CHANNEL: LITECOIN (LTC) */}
-          {activeChannel === 'ltc' && (
-                      !isModuleEnabled('ltc') ? (
-                        renderChannelMaintenance('ltc', 'Cổng Nạp Litecoin (LTC Core)')
-                      ) : !ltcAccount.address ? (
-                        renderChannelNotConfigured(
-                          'ltc',
-                          'Cổng Nạp Litecoin (LTC Core)',
-                          'Shop chưa cấu hình địa chỉ ví nhận LTC (systemConfig.cryptoLtcAddress). ' +
-                          'Quản trị vui lòng vào Admin Panel → Tài Chính → Nạp Tiền → mục "CỔNG NẠP LITECOIN" ' +
-                          'để nhập địa chỉ ví LTC mainnet thật của shop trước khi mở cổng này. ' +
-                          'Hiện cổng tạm khóa để tránh khách chuyển tiền sai địa chỉ.'
-                        )
-                      ) : (
-            <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
-              {/* Left: LTC QR Code */}
-              <div className="lg:col-span-5 flex flex-col items-center bg-slate-900/60 p-4 rounded-2xl border border-blue-500/30 space-y-3 text-center">
-                <div className="p-2.5 rounded-xl bg-white shadow-xl relative group">
-                  <img
-                    src={ltcQrUrl}
-                    alt="Litecoin LTC QR Code"
-                    className="w-52 h-52 object-contain rounded-lg"
-                    onError={(e) => {
-                      e.currentTarget.src = `https://api.qrserver.com/v1/create-qr-code/?size=250x250&data=${encodeURIComponent(ltcAccount.address)}`;
-                    }}
-                  />
-                  <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 flex flex-col items-center justify-center transition-opacity rounded-lg text-white font-bold text-xs p-2">
-                    <span>Trust Wallet / Binance LTC</span>
-                  </div>
-                </div>
-
-                <div className="flex items-center gap-2 text-blue-400 text-xs font-bold bg-blue-950/40 px-3 py-1.5 rounded-lg border border-blue-500/30">
-                  <Zap className="w-4 h-4" />
-                  <span>Confirmation: {ltcAccount.confirmations} Blocks</span>
-                </div>
-              </div>
-
-              {/* Right: LTC Details & Rate Calculator */}
-              <div className="lg:col-span-7 space-y-3.5">
-                {/* LTC Rate Box */}
-                <div className="p-3.5 rounded-xl bg-blue-950/30 border border-blue-500/30 text-blue-300 flex items-center justify-between">
-                  <div>
-                    <div className="font-bold text-[11px] text-blue-300">LTC RATE:</div>
-                    <div className="text-base font-black text-white mt-0.5">
-                      1 LTC = {formatCurrency(ltcAccount.rate, user.currency)}
-                    </div>
-                  </div>
-                  <span className="px-2.5 py-1 rounded-lg bg-blue-950 text-blue-300 border border-blue-500/40 text-[10px] font-bold">
-                    LTC Core Mainnet
-                  </span>
-                </div>
-
-                {/* Amount presets picker */}
-                <div className="space-y-1.5">
-                  <div className="flex justify-between items-center text-xs">
-                    <label className="font-bold text-slate-200">1. {t('common.amount')}:</label>
-                    <span className="text-blue-400 font-bold">≈ {calculatedLtcAmount} LTC</span>
-                  </div>
-                  <div className="grid grid-cols-4 gap-1.5">
-                    {DEPOSIT_PRESETS.slice(0, 4).map((amt) => (
-                      <button
-                        key={amt}
-                        type="button"
-                        onClick={() => setDepositAmount(amt)}
-                        className={`p-1.5 rounded-lg border text-center transition-all cursor-pointer ${
-                          depositAmount === amt
-                            ? 'bg-blue-500 text-black font-bold border-blue-400 shadow-md'
-                            : 'bg-slate-900/60 border-slate-800 text-slate-300 hover:border-slate-700'
-                        }`}
-                      >
-                        {formatCurrency(amt, user.currency)}
-                      </button>
-                    ))}
-                  </div>
-                </div>
-
-                {/* LTC Address details box */}
-                <div className="p-3.5 rounded-xl bg-slate-900/80 border border-slate-800 space-y-2.5">
-                  <div className="text-xs font-bold text-white border-b border-slate-800 pb-1.5 flex items-center justify-between">
-                    <span>2. LTC WALLET ADDRESS:</span>
-                    <span className="text-[10px] text-blue-400">Network: LTC Core</span>
-                  </div>
-
-                  <div className="flex items-center gap-2 bg-black/50 p-2 rounded-lg">
-                    <input
-                      type="text"
-                      readOnly
-                      value={ltcAccount.address}
-                      className="flex-1 bg-transparent text-blue-300 font-mono font-bold text-xs outline-none"
-                    />
-                    <button
-                      onClick={() => handleCopy(ltcAccount.address, 'ltc_addr')}
-                      className="px-3 py-1.5 rounded bg-blue-600 hover:bg-blue-500 text-white font-bold text-xs flex items-center gap-1 cursor-pointer"
-                    >
-                      <Copy className="w-3.5 h-3.5" />
-                      <span>{copiedField === 'ltc_addr' ? t('common.copied') : t('common.copy')}</span>
-                    </button>
-                  </div>
-
-                  {/* Memo */}
-                  <div className="p-2.5 rounded-lg bg-red-950/40 border border-red-500/40 flex items-center justify-between">
-                    <div>
-                      <div className="text-[10px] text-red-300 uppercase font-bold">Memo / Note:</div>
-                      <div className="text-xs text-yellow-300 font-black tracking-wider mt-0.5">{transferCode}</div>
-                    </div>
-                    <button
-                      onClick={() => handleCopy(transferCode, 'ltc_memo')}
-                      className="px-2.5 py-1 rounded bg-yellow-500 hover:bg-yellow-400 text-black font-bold text-[11px] flex items-center gap-1 cursor-pointer"
-                    >
-                      <Copy className="w-3 h-3" />
-                      <span>{copiedField === 'ltc_memo' ? t('common.copied') : t('common.copy')}</span>
-                    </button>
-                  </div>
-
-                  {/* LTC TxID Hash Input */}
-                  <div className="space-y-1 pt-1">
-                    <label className="text-[11px] text-slate-300 font-bold flex items-center justify-between">
-                      <span>3. MÃ BĂM GIAO DỊCH (LTC TXID):</span>
-                      <span className="text-[10px] text-blue-400 font-normal">Blockchair / BlockCypher Node</span>
-                    </label>
-                    <input
-                      type="text"
-                      placeholder="Dán mã băm LTC TxID (Ví dụ: 8a4c1f9d2...)"
-                      value={ltcTxHashInput}
-                      onChange={(e) => setLtcTxHashInput(e.target.value)}
-                      className="w-full bg-slate-950 border border-slate-700 rounded-xl px-3 py-2 text-blue-300 font-mono text-xs focus:border-blue-500 outline-none"
-                    />
-                  </div>
-                </div>
-
-                {renderVerificationFeedback()}
-
-                {/* Instant Verification Trigger */}
-                <button
-                  type="button"
-                  onClick={handleVerifyLTC}
-                  disabled={isVerifying}
-                  className="w-full py-3.5 rounded-xl bg-gradient-to-r from-blue-600 to-cyan-500 hover:from-blue-500 hover:to-cyan-400 text-white font-bold text-xs uppercase tracking-wider flex items-center justify-center gap-2 shadow-[0_0_20px_rgba(59,130,246,0.3)] disabled:opacity-50 transition-all cursor-pointer"
-                >
-                  {isVerifying ? (
-                    <>
-                      <RefreshCw className="w-4 h-4 animate-spin" />
-                      <span>Đang truy vấn Blockchair & Cypher API...</span>
-                    </>
-                  ) : (
-                    <>
-                      <Zap className="w-4 h-4" />
-                      <span>Xác Minh Khối Litecoin (Core API)</span>
-                    </>
-                  )}
-                </button>
-              </div>
-            </div>
-            )
           )}
 
           {/* CHANNEL: BINANCE PAY / ID BINANCE (UID) */}

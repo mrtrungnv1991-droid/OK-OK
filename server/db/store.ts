@@ -58,6 +58,24 @@ class DatabaseStore {
     // lưu lịch sử spin thật (trước đây client tự Math.random + bịa txId/winners).
     public wheelSpins: Array<{ id: string; userId: string; userName: string; prizeId: string; prizeName: string; prizeType: string; value: number; deliveredCode?: string; ledgerTxId?: string; createdAt: string }> = [];
 
+    // CYBERPOOL CRYPTOGATE: lệnh nạp crypto direct-to-wallet (amount-unique matching)
+    public cryptoGateIntents: Map<string, {
+      id: string;
+      userId: string;
+      network: 'TRON' | 'BSC' | 'POLYGON' | 'SOLANA' | 'LTC';
+      address: string;
+      amountCrypto: number;   // số coin UNIQUE phải chuyển (vd 3.944821 USDT)
+      amountVnd: number;      // giá trị mong muốn quy đổi
+      coin: 'USDT' | 'LTC';
+      status: 'PENDING' | 'COMPLETED' | 'EXPIRED';
+      txHash?: string;
+      creditedVnd?: number;
+      createdAt: string;
+      expiresAt: string;
+    }> = new Map();
+    // Cursor quét on-chain theo từng ví (chống quét lại từ đầu mỗi cycle)
+    public cryptoGateCursors: Map<string, { lastTs?: number; lastBlock?: number; lastSig?: string; updatedAt: string }> = new Map();
+
   // Mutex lock trackers (CYBERPOOL FIX #15: thay bằng FIFO mutex lockState bên dưới)
 
   constructor() {
@@ -97,6 +115,8 @@ class DatabaseStore {
       depositIntents: Array.from(this.depositIntents.values()),
       pendingUnmappedDeposits: this.pendingUnmappedDeposits,
       wheelSpins: this.wheelSpins,
+      cryptoGateIntents: Array.from(this.cryptoGateIntents.values()),
+      cryptoGateCursors: Array.from(this.cryptoGateCursors.entries()).map(([k, v]) => ({ key: k, value: v })),
       systemConfig: this.systemConfig
     };
   }
@@ -147,6 +167,12 @@ class DatabaseStore {
       }
       if (Array.isArray(snap.pendingUnmappedDeposits)) this.pendingUnmappedDeposits = snap.pendingUnmappedDeposits;
       if (Array.isArray(snap.wheelSpins)) this.wheelSpins = snap.wheelSpins;
+      if (Array.isArray(snap.cryptoGateIntents)) {
+        for (const it of snap.cryptoGateIntents) if (it?.id) this.cryptoGateIntents.set(it.id, it);
+      }
+      if (Array.isArray(snap.cryptoGateCursors)) {
+        for (const e of snap.cryptoGateCursors) if (e?.key) this.cryptoGateCursors.set(e.key, e.value);
+      }
       if (snap.systemConfig && typeof snap.systemConfig === 'object') {
         // Merge: snapshot ghi đè seed, nhưng env-configured secrets mới nhất vẫn thắng
         this.systemConfig = { ...this.systemConfig, ...snap.systemConfig };
@@ -355,7 +381,32 @@ class DatabaseStore {
       telcoPartnerId: process.env.CARD24H_PARTNER_ID || '',
       telcoPartnerKey: process.env.CARD24H_PARTNER_KEY || '',
       telcoWalletId: process.env.CARD24H_WALLET_ID || '',
-      telcoCallbackUrl: '/api/v1/webhooks/card24h'
+      telcoCallbackUrl: '/api/v1/webhooks/card24h',
+      // ============================================================
+      // CYBERPOOL CRYPTOGATE — ví nhận thanh toán direct-to-wallet
+      // (địa chỉ công khai, cấu hình bởi chủ shop — KHÔNG phải secret)
+      // ============================================================
+      cryptoGateEnabled: true,
+      cryptoGateTronAddress: process.env.CRYPTOGATE_TRON_ADDRESS || 'TVhJziSD2nm9kD4pSoGBErJTgGiSVdgZ3z',
+      cryptoGateBscAddress: process.env.CRYPTOGATE_BSC_ADDRESS || '0x3202a720d192b93574b68f9246688002c6e3c884',
+      cryptoGatePolygonAddress: process.env.CRYPTOGATE_POLYGON_ADDRESS || '',
+      cryptoGateSolanaAddress: process.env.CRYPTOGATE_SOLANA_ADDRESS || 'Fbpw6F85fxF1XivW95nTN2Ha7FhxnatXwG4e1z4ZDq9H',
+      cryptoGateLtcAddress: process.env.CRYPTOGATE_LTC_ADDRESS || 'LWYGurq3FqYbP4BxL5f8CMgJf8stVuXDP7',
+      cryptoGateBinanceId: process.env.CRYPTOGATE_BINANCE_ID || '159582002',
+      // Merchant API (nhà cung cấp cấp — dùng khi có docs; hiện fail-closed
+      // nếu endpoint chưa được xác nhận): Merchant ID + Api Key là SECRET.
+      cryptoGateMerchantId: process.env.CRYPTOGATE_MERCHANT_ID || '',
+      cryptoGateApiKey: process.env.CRYPTOGATE_API_KEY || '',
+      cryptoGateApiBase: process.env.CRYPTOGATE_API_BASE || '',
+      // Kinh tế: unique-amount tail (6 số thập phân) để match không cần memo
+      cryptoGateUniqueDecimals: 6,
+      cryptoGateOrderTtlMinutes: 30,
+      cryptoGateScanIntervalSeconds: 30,
+      // Tương thích cổng cũ (1 địa chỉ USDT chung): giữ trống — cổng mới
+      // multi-network thay thế; verify-crypto-usdt cũ vẫn fail-closed đúng.
+      cryptoUsdtAddress: '',
+      cryptoLtcAddress: process.env.CRYPTOGATE_LTC_ADDRESS || 'LWYGurq3FqYbP4BxL5f8CMgJf8stVuXDP7',
+      cryptoLtcRate: 2150000
     };
   }
 

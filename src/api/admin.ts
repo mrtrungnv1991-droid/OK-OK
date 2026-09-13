@@ -101,5 +101,14 @@ export const adminApi = {
 
   testMoMo: async (params?: { phone?: string; name?: string }): Promise<ApiResponse<any>> => {
     return api.post<any>('/admin/test-momo', params || {});
+  },
+
+  // CYBERPOOL CRYPTOGATE — admin: trigger quét on-chain + xem lệnh nạp
+  cryptoGateScan: async (): Promise<ApiResponse<{ scanned: number; credited: number; errors: string[] }>> => {
+    return api.post<{ scanned: number; credited: number; errors: string[] }>('/admin/crypto-gate/scan', {});
+  },
+
+  getCryptoGateIntents: async (): Promise<ApiResponse<{ intents: any[] }>> => {
+    return api.get<{ intents: any[] }>('/admin/crypto-gate/intents');
   }
 };

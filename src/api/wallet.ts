@@ -104,7 +104,6 @@ export const walletApi = {
   getMyWithdrawals: async (): Promise<ApiResponse<{ withdrawals: any[] }>> => {
     return api.get<{ withdrawals: any[] }>('/wallet/withdrawals');
   },
-
   // CYBERPOOL FIX (#5 frontend audit): Lucky Wheel server-authoritative
   getWheelConfig: async (): Promise<ApiResponse<{ spinCost: number; prizes: any[] }>> => {
     return api.get<{ spinCost: number; prizes: any[] }>('/wallet/wheel/config');
@@ -121,6 +120,37 @@ export const walletApi = {
     newBalance?: number;
   }>> => {
     return api.post('/wallet/wheel/spin', {});
+  },
+
+  // ==========================================================================
+  // CYBERPOOL CRYPTOGATE — cổng nạp crypto multi-network direct-to-wallet
+  // ==========================================================================
+  getCryptoGateNetworks: async (): Promise<ApiResponse<{
+    enabled: boolean;
+    usdToVndRate: number;
+    ltcRate: number;
+    binanceId: string;
+    orderTtlMinutes: number;
+    networks: Array<{ network: string; coin: string; address: string; configured: boolean; minConfirmations: number }>;
+  }>> => {
+    return api.get('/wallet/crypto-gate/networks');
+  },
+
+  createCryptoGateIntent: async (payload: { network: string; amount: number }): Promise<ApiResponse<{ intent: {
+    id: string; userId: string; network: string; address: string; amountCrypto: number;
+    amountVnd: number; coin: string; status: string; createdAt: string; expiresAt: string;
+  } }>> => {
+    return api.post('/wallet/crypto-gate/create-intent', payload);
+  },
+
+  verifyCryptoGateTx: async (payload: { txHash: string; network: string }): Promise<ApiResponse<{
+    message: string; creditedVnd?: number; intentId?: string;
+  }>> => {
+    return api.post('/wallet/crypto-gate/verify-tx', payload);
+  },
+
+  getMyCryptoGateIntents: async (): Promise<ApiResponse<{ intents: any[] }>> => {
+    return api.get('/wallet/crypto-gate/my-intents');
   },
 
   verifyBinancePay: async (payload: {

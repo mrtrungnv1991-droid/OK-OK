@@ -800,6 +800,25 @@ export interface SystemConfig {
   cryptoLtcAddress?: string;
   cryptoLtcRate?: number;
   cryptoLtcConfirmations?: number;
+  // CYBERPOOL CRYPTOGATE — multi-network direct-to-wallet deposit gateway
+  cryptoGateEnabled?: boolean;
+  cryptoGateTronAddress?: string;
+  cryptoGateBscAddress?: string;
+  cryptoGatePolygonAddress?: string;
+  cryptoGateSolanaAddress?: string;
+  cryptoGateLtcAddress?: string;
+  cryptoGateBinanceId?: string;
+  cryptoGateMerchantId?: string;
+  cryptoGateApiKey?: string;
+  cryptoGateApiBase?: string;
+  cryptoGateUniqueDecimals?: number;
+  cryptoGateOrderTtlMinutes?: number;
+  cryptoGateScanIntervalSeconds?: number;
+  cryptoGateMinConfTron?: number;
+  cryptoGateMinConfBsc?: number;
+  cryptoGateMinConfPolygon?: number;
+  cryptoGateMinConfSolana?: number;
+  cryptoGateMinConfLtc?: number;
   binancePayId?: string;
   binanceUid?: string;
   binanceNickname?: string;

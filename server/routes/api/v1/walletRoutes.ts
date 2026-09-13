@@ -4,6 +4,7 @@ import { db } from '../../../db/store';
 import { requireAuth, requireRole, AuthenticatedRequest } from '../../../middleware/authMiddleware';
 import { LedgerService } from '../../../services/ledgerService';
 import { InventoryService } from '../../../services/inventoryService';
+import { CryptoGateService } from '../../../services/cryptoGateService';
 import { GatewayVerificationService } from '../../../services/gatewayVerificationService';
 
 export const walletRouter = Router();
@@ -655,4 +656,65 @@ walletRouter.post('/wheel/spin', requireAuth, async (req: AuthenticatedRequest, 
     ledgerTxId: creditTxId,
     newBalance: freshUser?.walletBalance
   });
+});
+
+// ==============================================================================
+// CYBERPOOL CRYPTOGATE — cổng nạp crypto multi-network direct-to-wallet
+// (TRON / BSC / POLYGON / SOLANA / LTC + Binance ID display)
+// ==============================================================================
+
+// GET /api/v1/wallet/crypto-gate/networks — trạng thái các mạng khả dụng
+walletRouter.get('/crypto-gate/networks', requireAuth, (req: AuthenticatedRequest, res) => {
+  res.json({
+    success: true,
+    enabled: Boolean(db.systemConfig?.cryptoGateEnabled),
+    usdToVndRate: Number(db.systemConfig?.usdToVndRate) || 25400,
+    ltcRate: Number(db.systemConfig?.cryptoLtcRate) || 2150000,
+    binanceId: String(db.systemConfig?.cryptoGateBinanceId || ''),
+    orderTtlMinutes: Number(db.systemConfig?.cryptoGateOrderTtlMinutes) || 30,
+    networks: CryptoGateService.getNetworkStatus()
+  });
+});
+
+// POST /api/v1/wallet/crypto-gate/create-intent — tạo lệnh nạp với số coin duy nhất
+walletRouter.post('/crypto-gate/create-intent', requireAuth, (req: AuthenticatedRequest, res) => {
+  const { network, amount } = req.body || {};
+  const validNetworks = ['TRON', 'BSC', 'POLYGON', 'SOLANA', 'LTC'];
+  if (!network || !validNetworks.includes(String(network).toUpperCase())) {
+    return res.status(400).json({ success: false, error: `Mạng không hợp lệ. Chọn: ${validNetworks.join(', ')}` });
+  }
+  const result = CryptoGateService.createDepositIntent({
+    userId: req.user!.id,
+    network: String(network).toUpperCase() as any,
+    amountVnd: Number(amount)
+  });
+  if (!result.success || !result.intent) {
+    return res.status(400).json({ success: false, error: result.error || 'Không tạo được lệnh nạp.' });
+  }
+  res.json({ success: true, intent: result.intent });
+});
+
+// POST /api/v1/wallet/crypto-gate/verify-tx — user dán TxID để verify ngay
+walletRouter.post('/crypto-gate/verify-tx', requireAuth, async (req: AuthenticatedRequest, res) => {
+  const { txHash, network } = req.body || {};
+  const validNetworks = ['TRON', 'BSC', 'POLYGON', 'SOLANA', 'LTC'];
+  if (!txHash || !network || !validNetworks.includes(String(network).toUpperCase())) {
+    return res.status(400).json({ success: false, error: 'Thiếu txHash hoặc network không hợp lệ.' });
+  }
+  try {
+    const result = await CryptoGateService.verifyTxByHash({
+      txHash: String(txHash),
+      network: String(network).toUpperCase() as any,
+      userId: req.user!.id,
+      ipAddress: req.ip
+    });
+    return res.status(result.success ? 200 : 400).json(result);
+  } catch (err: any) {
+    return res.status(500).json({ success: false, message: err?.message || 'Lỗi xác minh giao dịch.' });
+  }
+});
+
+// GET /api/v1/wallet/crypto-gate/my-intents — lệnh nạp crypto của user
+walletRouter.get('/crypto-gate/my-intents', requireAuth, (req: AuthenticatedRequest, res) => {
+  res.json({ success: true, intents: CryptoGateService.listIntents(req.user!.id) });
 });

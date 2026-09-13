@@ -5,6 +5,7 @@ import { requireAuth, requireRole, AuthenticatedRequest } from '../../../middlew
 import { AuditService } from '../../../services/auditService';
 import { LedgerService } from '../../../services/ledgerService';
 import { GatewayVerificationService } from '../../../services/gatewayVerificationService';
+import { CryptoGateService } from '../../../services/cryptoGateService';
 
 export const adminRouter = Router();
 
@@ -114,7 +115,8 @@ adminRouter.get('/system-config', (req, res) => {
   // state/localStorage. Giờ mask: admin UI chỉ cần biết "đã cấu hình" hay chưa.
   const SECRET_FIELDS = [
     'telcoPartnerKey', 'momoSecretKey', 'momoAccessKey', 'momoApiToken',
-    'binanceApiKey', 'binanceSecretKey', 'vietQrApiToken'
+    'binanceApiKey', 'binanceSecretKey', 'vietQrApiToken',
+    'cryptoGateApiKey'
   ];
   const masked: any = { ...db.systemConfig };
   for (const f of SECRET_FIELDS) {
@@ -137,7 +139,8 @@ adminRouter.put('/system-config', (req: AuthenticatedRequest, res) => {
   // Giờ: (1) whitelist field cấu hình hợp lệ, (2) bỏ qua giá trị sentinel.
   const SECRET_FIELDS = [
     'telcoPartnerKey', 'momoSecretKey', 'momoAccessKey', 'momoApiToken',
-    'binanceApiKey', 'binanceSecretKey', 'vietQrApiToken'
+    'binanceApiKey', 'binanceSecretKey', 'vietQrApiToken',
+    'cryptoGateApiKey'
   ];
   const ALLOWED_CONFIG_FIELDS = new Set<string>([
     // Site / branding
@@ -155,6 +158,13 @@ adminRouter.put('/system-config', (req: AuthenticatedRequest, res) => {
     // Crypto USDT / LTC
     'cryptoUsdtAddress', 'cryptoNetwork', 'cryptoUsdtMinConfirmations',
     'cryptoLtcAddress', 'cryptoLtcRate', 'cryptoLtcConfirmations',
+    // CYBERPOOL CRYPTOGATE (multi-network direct-to-wallet)
+    'cryptoGateEnabled', 'cryptoGateTronAddress', 'cryptoGateBscAddress',
+    'cryptoGatePolygonAddress', 'cryptoGateSolanaAddress', 'cryptoGateLtcAddress',
+    'cryptoGateBinanceId', 'cryptoGateMerchantId', 'cryptoGateApiKey', 'cryptoGateApiBase',
+    'cryptoGateUniqueDecimals', 'cryptoGateOrderTtlMinutes', 'cryptoGateScanIntervalSeconds',
+    'cryptoGateMinConfTron', 'cryptoGateMinConfBsc', 'cryptoGateMinConfPolygon',
+    'cryptoGateMinConfSolana', 'cryptoGateMinConfLtc',
     // Binance Pay
     'binancePayId', 'binanceUid', 'binanceNickname', 'binanceApiKey', 'binanceSecretKey',
     // Deposit module toggles + sections header config
@@ -491,5 +501,24 @@ adminRouter.post('/test-momo', async (req: AuthenticatedRequest, res) => {
     res.json(result);
   } catch (err: any) {
     res.status(500).json({ success: false, error: err?.message || 'Lỗi kiểm tra MoMo API' });
+  }
+});
+
+// ==============================================================================
+// CYBERPOOL CRYPTOGATE — admin endpoints
+// ==============================================================================
+
+// GET /api/v1/admin/crypto-gate/intents — tất cả lệnh nạp crypto (mọi user)
+adminRouter.get('/crypto-gate/intents', (req: AuthenticatedRequest, res) => {
+  res.json({ success: true, intents: CryptoGateService.listIntents() });
+});
+
+// POST /api/v1/admin/crypto-gate/scan — trigger quét on-chain ngay (không đợi cycle)
+adminRouter.post('/crypto-gate/scan', async (req: AuthenticatedRequest, res) => {
+  try {
+    const result = await CryptoGateService.scanCycle();
+    res.json({ success: true, ...result });
+  } catch (err: any) {
+    res.status(500).json({ success: false, error: err?.message || 'Lỗi quét on-chain' });
   }
 });

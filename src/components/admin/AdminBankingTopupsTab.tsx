@@ -117,6 +117,20 @@ export const AdminBankingTopupsTab: React.FC<AdminBankingTopupsTabProps> = ({
         cryptoLtcAddress: systemConfig?.cryptoLtcAddress || '',
         cryptoLtcRate: systemConfig?.cryptoLtcRate || 2150000,
         cryptoLtcConfirmations: systemConfig?.cryptoLtcConfirmations || 2,
+
+    // CYBERPOOL CRYPTOGATE — ví nhận multi-network direct-to-wallet
+    cryptoGateEnabled: systemConfig?.cryptoGateEnabled !== false,
+    cryptoGateTronAddress: systemConfig?.cryptoGateTronAddress || '',
+    cryptoGateBscAddress: systemConfig?.cryptoGateBscAddress || '',
+    cryptoGatePolygonAddress: systemConfig?.cryptoGatePolygonAddress || '',
+    cryptoGateSolanaAddress: systemConfig?.cryptoGateSolanaAddress || '',
+    cryptoGateLtcAddress: systemConfig?.cryptoGateLtcAddress || '',
+    cryptoGateBinanceId: systemConfig?.cryptoGateBinanceId || '',
+    cryptoGateMerchantId: systemConfig?.cryptoGateMerchantId || '',
+    cryptoGateApiKey: systemConfig?.cryptoGateApiKey || '',
+    cryptoGateApiBase: systemConfig?.cryptoGateApiBase || '',
+    cryptoGateOrderTtlMinutes: systemConfig?.cryptoGateOrderTtlMinutes || 30,
+    cryptoGateScanIntervalSeconds: systemConfig?.cryptoGateScanIntervalSeconds || 30,
     
     binancePayId: systemConfig?.binancePayId || '',
         binanceUid: systemConfig?.binanceUid || '',
@@ -226,6 +240,30 @@ export const AdminBankingTopupsTab: React.FC<AdminBankingTopupsTabProps> = ({
     ? `${systemConfig.bankName}_${systemConfig.bankAccountNo}_${systemConfig.bankBin}_${systemConfig.qrDisplayMode}_${systemConfig.telcoPartnerId}`
     : '';
 
+  // CYBERPOOL CRYPTOGATE: sync fields ví multi-network từ server config khi load
+  // (useState initializer chỉ chạy 1 lần; config có thể đến sau khi mount).
+  const cryptoGateKey = systemConfig
+    ? `${systemConfig.cryptoGateTronAddress}_${systemConfig.cryptoGateBscAddress}_${systemConfig.cryptoGatePolygonAddress}_${systemConfig.cryptoGateSolanaAddress}_${systemConfig.cryptoGateLtcAddress}_${systemConfig.cryptoGateBinanceId}_${systemConfig.cryptoGateEnabled}`
+    : '';
+  useEffect(() => {
+    if (systemConfig) {
+      setGatewayForm(prev => ({
+        ...prev,
+        cryptoGateEnabled: systemConfig.cryptoGateEnabled !== undefined ? systemConfig.cryptoGateEnabled : prev.cryptoGateEnabled,
+        cryptoGateTronAddress: systemConfig.cryptoGateTronAddress || prev.cryptoGateTronAddress,
+        cryptoGateBscAddress: systemConfig.cryptoGateBscAddress || prev.cryptoGateBscAddress,
+        cryptoGatePolygonAddress: systemConfig.cryptoGatePolygonAddress || prev.cryptoGatePolygonAddress,
+        cryptoGateSolanaAddress: systemConfig.cryptoGateSolanaAddress || prev.cryptoGateSolanaAddress,
+        cryptoGateLtcAddress: systemConfig.cryptoGateLtcAddress || prev.cryptoGateLtcAddress,
+        cryptoGateBinanceId: systemConfig.cryptoGateBinanceId || prev.cryptoGateBinanceId,
+        cryptoGateMerchantId: systemConfig.cryptoGateMerchantId || prev.cryptoGateMerchantId,
+        cryptoGateApiBase: systemConfig.cryptoGateApiBase || prev.cryptoGateApiBase,
+        cryptoGateOrderTtlMinutes: systemConfig.cryptoGateOrderTtlMinutes || prev.cryptoGateOrderTtlMinutes,
+        cryptoGateScanIntervalSeconds: systemConfig.cryptoGateScanIntervalSeconds || prev.cryptoGateScanIntervalSeconds
+      }));
+    }
+  }, [cryptoGateKey]);
+
   useEffect(() => {
     if (systemConfig) {
       setGatewayForm(prev => ({
@@ -263,6 +301,9 @@ export const AdminBankingTopupsTab: React.FC<AdminBankingTopupsTabProps> = ({
       raw?: any;
     } | null>(null);
     const [cryptoUsdtTesting, setCryptoUsdtTesting] = useState(false);
+    // CYBERPOOL CRYPTOGATE: state nút quét on-chain thủ công
+    const [cryptoGateScanning, setCryptoGateScanning] = useState(false);
+    const [cryptoGateScanResult, setCryptoGateScanResult] = useState<{ success: boolean; message: string } | null>(null);
     const [cryptoUsdtTestResult, setCryptoUsdtTestResult] = useState<{
       success: boolean;
       message: string;
@@ -381,6 +422,28 @@ export const AdminBankingTopupsTab: React.FC<AdminBankingTopupsTabProps> = ({
     };
 
     // CYBERPOOL FIX: LTC — test Blockchair explorer live với địa chỉ ví đang nhập
+    const handleTestCryptoGateScan = async () => {
+      setCryptoGateScanning(true);
+      setCryptoGateScanResult(null);
+      try {
+        const res = await adminApi.cryptoGateScan();
+        if (res.success && res.data) {
+          const errs = res.data.errors || [];
+          setCryptoGateScanResult({
+            success: errs.length === 0,
+            message: `Quét ${res.data.scanned || 0} giao dịch, cộng ${res.data.credited || 0} lệnh.` +
+              (errs.length ? ` Lỗi: ${errs.slice(0, 3).join('; ')}` : ' (không lỗi mạng)')
+          });
+        } else {
+          setCryptoGateScanResult({ success: false, message: res.error || 'Không quét được.' });
+        }
+      } catch (err: any) {
+        setCryptoGateScanResult({ success: false, message: err?.message || 'Lỗi kết nối server.' });
+      } finally {
+        setCryptoGateScanning(false);
+      }
+    };
+
     const handleTestLtcConnection = async () => {
       setLtcTesting(true);
       setLtcTestResult(null);
@@ -1829,6 +1892,115 @@ export const AdminBankingTopupsTab: React.FC<AdminBankingTopupsTabProps> = ({
                                 />
                               </div>
                             </div>
+            </div>
+
+            {/* ============================================================ */}
+            {/* CYBERPOOL CRYPTOGATE — multi-network direct-to-wallet */}
+            {/* ============================================================ */}
+            <div className="p-4 rounded-xl bg-slate-900/60 border border-emerald-500/40 space-y-3 mb-4">
+              <div className="flex items-center justify-between border-b border-slate-800 pb-2">
+                <div className="flex items-center gap-2">
+                  <Coins className="w-4 h-4 text-emerald-400" />
+                  <span className="font-bold text-white text-xs">CỔNG CRYPTO MULTI-NETWORK (DIRECT-TO-WALLET)</span>
+                  <span className="px-2 py-0.5 rounded bg-emerald-950 text-emerald-300 border border-emerald-500/30 text-[10px] font-bold">5 MẠNG • AUTO-DETECT</span>
+                </div>
+                <label className="flex items-center gap-2 cursor-pointer">
+                  <span className="text-[11px] text-slate-400 font-bold">Bật cổng:</span>
+                  <input
+                    type="checkbox"
+                    checked={gatewayForm.cryptoGateEnabled}
+                    onChange={(e) => setGatewayForm({ ...gatewayForm, cryptoGateEnabled: e.target.checked })}
+                    className="w-4 h-4 accent-emerald-500 cursor-pointer"
+                  />
+                </label>
+              </div>
+
+              <p className="text-[11px] text-slate-400 bg-slate-950/60 border border-slate-800 rounded-lg p-2.5 leading-relaxed">
+                Mỗi lệnh nạp được gán <b className="text-emerald-300">một số coin duy nhất</b> (vd 3.944821 USDT) — khách chuyển đúng số đó vào đúng ví mạng, hệ thống quét blockchain mỗi {gatewayForm.cryptoGateScanIntervalSeconds}s và <b className="text-emerald-300">tự động cộng ví</b> khi đủ xác nhận. Không cần memo. Nhập địa chỉ ví THẬT của shop cho từng mạng bên dưới (mạng bỏ trống = tự khóa với khách).
+              </p>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                {[
+                  { key: 'cryptoGateTronAddress', label: 'Ví USDT — TRON (TRC20)', color: 'text-rose-300', ph: 'T... (34 ký tự base58)' },
+                  { key: 'cryptoGateBscAddress', label: 'Ví USDT — BNB Chain (BEP20)', color: 'text-amber-300', ph: '0x... (42 ký tự)' },
+                  { key: 'cryptoGatePolygonAddress', label: 'Ví USDT — Polygon', color: 'text-purple-300', ph: '0x... (42 ký tự)' },
+                  { key: 'cryptoGateSolanaAddress', label: 'Ví USDT — Solana', color: 'text-cyan-300', ph: 'base58 (32-44 ký tự)' },
+                  { key: 'cryptoGateLtcAddress', label: 'Ví Litecoin (LTC)', color: 'text-blue-300', ph: 'L... / M... / ltc1...' },
+                  { key: 'cryptoGateBinanceId', label: 'Binance ID (hiển thị, nạp qua tab Binance Pay)', color: 'text-yellow-300', ph: 'vd 159582002' }
+                ].map(field => (
+                  <div key={field.key}>
+                    <label className="text-[11px] text-slate-400">{field.label}:</label>
+                    <input
+                      type="text"
+                      value={(gatewayForm as any)[field.key]}
+                      onChange={(e) => setGatewayForm({ ...gatewayForm, [field.key]: e.target.value })}
+                      placeholder={field.ph}
+                      className={`w-full bg-slate-950 border border-slate-700 rounded-lg p-2 font-mono mt-1 text-xs ${field.color}`}
+                    />
+                  </div>
+                ))}
+              </div>
+
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-2 pt-1 border-t border-slate-800">
+                <div>
+                  <label className="text-[11px] text-slate-400">Thời hạn lệnh (phút):</label>
+                  <input
+                    type="number" min={5} max={120}
+                    value={gatewayForm.cryptoGateOrderTtlMinutes}
+                    onChange={(e) => setGatewayForm({ ...gatewayForm, cryptoGateOrderTtlMinutes: parseInt(e.target.value) || 30 })}
+                    className="w-full bg-slate-950 border border-slate-700 rounded-lg p-2 text-cyan-300 font-bold mt-1 text-xs"
+                  />
+                </div>
+                <div>
+                  <label className="text-[11px] text-slate-400">Chu kỳ quét (giây):</label>
+                  <input
+                    type="number" min={15} max={300}
+                    value={gatewayForm.cryptoGateScanIntervalSeconds}
+                    onChange={(e) => setGatewayForm({ ...gatewayForm, cryptoGateScanIntervalSeconds: parseInt(e.target.value) || 30 })}
+                    className="w-full bg-slate-950 border border-slate-700 rounded-lg p-2 text-cyan-300 font-bold mt-1 text-xs"
+                  />
+                </div>
+                <div>
+                  <label className="text-[11px] text-slate-400">Merchant ID (nhà cung cấp):</label>
+                  <input
+                    type="text"
+                    value={gatewayForm.cryptoGateMerchantId}
+                    onChange={(e) => setGatewayForm({ ...gatewayForm, cryptoGateMerchantId: e.target.value })}
+                    placeholder="chưa dùng — on-chain là nguồn thật"
+                    className="w-full bg-slate-950 border border-slate-700 rounded-lg p-2 text-slate-300 font-mono mt-1 text-xs"
+                  />
+                </div>
+                <div>
+                  <label className="text-[11px] text-slate-400">Api Key (nhà cung cấp):</label>
+                  <input
+                    type="password"
+                    value={gatewayForm.cryptoGateApiKey}
+                    onChange={(e) => setGatewayForm({ ...gatewayForm, cryptoGateApiKey: e.target.value })}
+                    placeholder="•••• (tùy chọn)"
+                    className="w-full bg-slate-950 border border-slate-700 rounded-lg p-2 text-slate-300 font-mono mt-1 text-xs"
+                  />
+                </div>
+              </div>
+
+              <div className="flex items-center gap-2.5 pt-0.5">
+                <button
+                  type="button"
+                  onClick={handleTestCryptoGateScan}
+                  disabled={cryptoGateScanning}
+                  className="px-3 py-2 rounded-lg bg-emerald-500/15 hover:bg-emerald-500/25 border border-emerald-500/40 text-emerald-300 text-[11px] font-bold flex items-center gap-1.5 cursor-pointer disabled:opacity-50"
+                >
+                  <RefreshCw className={`w-3 h-3 ${cryptoGateScanning ? 'animate-spin' : ''}`} />
+                  {cryptoGateScanning ? 'Đang quét on-chain...' : 'Quét On-Chain Ngay'}
+                </button>
+                {cryptoGateScanResult && (
+                  <span className={`text-[10px] font-bold flex-1 ${cryptoGateScanResult.success ? 'text-emerald-400' : 'text-rose-400'}`}>
+                    {cryptoGateScanResult.message}
+                  </span>
+                )}
+              </div>
+              <p className="text-[10px] text-slate-500 font-mono">
+                Merchant ID / Api Key được lưu an toàn (mask khi đọc) nhưng hiện CHƯNG dùng để tự động cộng tiền — nguồn sự thật duy nhất là blockchain. Khi có tài liệu API chính thức của nhà cung cấp, trường cryptoGateApiBase sẽ nối lệnh tạo đơn/webhook.
+              </p>
             </div>
 
             <div className="p-4 rounded-xl bg-slate-900/60 border border-purple-500/30 space-y-3">

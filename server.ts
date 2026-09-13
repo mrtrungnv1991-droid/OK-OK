@@ -22,6 +22,7 @@ import { supplierHubRouter } from './server/routes/api/v1/supplierHubRoutes';
 import { cronRouter } from './server/routes/api/v1/cronRoutes';
 import { CronService } from './server/services/cronService';
 import { securityHeaders, corsPolicy } from './server/middleware/securityHeaders';
+import { startCryptoGateScanner } from './server/services/cryptoGateService';
 
 async function startServer() {
   const app = express();
@@ -81,6 +82,9 @@ async function startServer() {
 
   // Initialize Background Daemon for Automated Cron Stock Checking
   CronService.init();
+
+  // CYBERPOOL CRYPTOGATE: on-chain scanner cho nạp crypto multi-network
+  startCryptoGateScanner();
 
   // Vite middleware for development vs Static files for production
   if (process.env.NODE_ENV !== 'production') {
