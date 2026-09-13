@@ -135,7 +135,7 @@ Mọi fix tiền tệ (escrow, withdrawal, voucher, lucky wheel, card24h, momo) 
    Lưu ý: đây vẫn là JSON snapshot 1 instance — production đa instance cần
    PostgreSQL/Redis (roadmap P4).
 2. **Rate limit 1 instance**: xem mục 5.
-3. **g2up/cmsnt API key dùng chung** hardcode trong connector (`885e5...`) — là key nền tảng công khai có chủ đích (không phải secret thanh toán), xóa sẽ phá connector out-of-box. **Flag, không tự xóa.**
+3. ~~**g2up/cmsnt API key dùng chung** hardcode trong connector~~ → **ĐÃ XÓA** (`369922b`): theo quyết định vận hành, g2up.net không còn cần key dùng chung. Đã gỡ `885e5d18...62c0af` khỏi **cả 7 vị trí** (G2upConnector, sourceConnectorService seed, AccountSupplierConnector ×5, ApiSupplierConnector ×4, ProductScanner, AdminCyborgPipelineStation UI, mockTopupGames). Connector vẫn chạy: key riêng admin cấu hình được tôn trọng; không có key thì bỏ `api_key` param và fallback web-session/scanner (đều có guard). Verify: 0 match trong tracked files + runtime data + production bundle.
 4. **Forgot-password** vẫn chưa có reset flow thật (chỉ trả thông báo trung thực thay vì báo thành công giả).
 5. **Chưa test giao dịch tiền thật** với Binance/MoMo/Card24h/USDT/LTC (không có credential thật) — chỉ verify được fail-closed, chữ ký, cấu trúc request, logic nội bộ (đúng như đã thống nhất từ trước).
 6. **Reliable-orders `escrow_locked=true` không đi qua ledger** — sau khi xem kỹ:
