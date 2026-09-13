@@ -2,6 +2,7 @@ import crypto from 'crypto';
 import { db } from '../db/store';
 import { LedgerService } from './ledgerService';
 import { IdempotencyService } from './idempotencyService';
+import { AuditService } from './auditService';
 
 export interface VerificationResult {
   success: boolean;
@@ -362,6 +363,200 @@ export class GatewayVerificationService {
         return { success: false, gateway: 'BINANCE_PAY', message: `Lỗi kết nối Binance Pay API: ${apiErr.message}` };
       }
     }
+
+  // ============================================================================
+  // 1c. BINANCE PAY WEBHOOK — RSA signature verification + auto-credit
+  // Official: developers.binance.com/docs/binance-pay/webhook-common
+  //   - Chữ ký webhook = RSA SHA256withRSA trên payload:
+  //       timestamp + "\n" + nonce + "\n" + RAW_BODY + "\n"
+  //   - Public key (certPublic) lấy từ POST /binancepay/openapi/certificates
+  //     (endpoint này ký HMAC-SHA512 bằng merchant Key+Secret như các call khác)
+  //   - Ack bắt buộc HTTP 200 + {"returnCode":"SUCCESS"} — FAIL thì Binance retry
+  //   - Idempotency CANONICAL: prepayId (alias merchantTradeNo) dùng chung với
+  //     verifyBinancePay thủ công → không thể double-credit chéo đường (bài học MoMo)
+  // ============================================================================
+  private static binanceCertCache: { serial: string; certPublic: string; fetchedAt: number } | null = null;
+
+  /** Ký request HMAC-SHA512 chuẩn Binance Pay (dùng chung cho certificates API) */
+  private static signBinanceRequest(body: string, secretKey: string): { timestamp: string; nonce: string; signature: string } {
+    const timestamp = Date.now().toString();
+    const nonce = crypto.randomBytes(16).toString('hex');
+    const payload = `${timestamp}\n${nonce}\n${body}\n`;
+    const signature = crypto.createHmac('sha512', secretKey).update(payload).digest('hex').toUpperCase();
+    return { timestamp, nonce, signature };
+  }
+
+  /** Lấy public cert RSA từ Binance để verify chữ ký webhook (có cache 24h) */
+  public static async fetchBinancePayCert(serialNumber: string): Promise<{ success: boolean; certPublic?: string; error?: string }> {
+    const apiKey = db.systemConfig?.binanceApiKey || process.env.BINANCE_PAY_API_KEY;
+    const secretKey = db.systemConfig?.binanceSecretKey || process.env.BINANCE_PAY_SECRET_KEY;
+    if (!apiKey || !secretKey) {
+      return { success: false, error: 'Chưa cấu hình binanceApiKey/binanceSecretKey — không lấy được cert webhook.' };
+    }
+    const sn = String(serialNumber || '').trim();
+    if (!sn) return { success: false, error: 'Thiếu BinancePay-Certificate-SN trong header webhook.' };
+
+    const cached = this.binanceCertCache;
+    if (cached && cached.serial === sn && Date.now() - cached.fetchedAt < 24 * 3600 * 1000) {
+      return { success: true, certPublic: cached.certPublic };
+    }
+
+    try {
+      const body = JSON.stringify({ serialNumber: sn });
+      const { timestamp, nonce, signature } = this.signBinanceRequest(body, secretKey);
+      const res = await fetch('https://bpay.binanceapi.com/binancepay/openapi/certificates', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'BinancePay-Timestamp': timestamp,
+          'BinancePay-Nonce': nonce,
+          'BinancePay-Certificate-SN': apiKey,
+          'BinancePay-Signature': signature
+        },
+        body
+      });
+      const raw: any = await res.json();
+      const cert = Array.isArray(raw?.data) ? raw.data.find((c: any) => String(c.serialNumber) === sn) : null;
+      if (raw?.status === 'SUCCESS' && cert?.certPublic) {
+        this.binanceCertCache = { serial: sn, certPublic: cert.certPublic, fetchedAt: Date.now() };
+        return { success: true, certPublic: cert.certPublic };
+      }
+      return { success: false, error: `Binance certificates API: ${raw?.errorMessage || raw?.message || 'không tìm thấy cert'}` };
+    } catch (err: any) {
+      return { success: false, error: `Lỗi kết nối certificates API: ${err?.message}` };
+    }
+  }
+
+  /** Verify chữ ký RSA webhook Binance Pay (fail-closed: thiếu header/cert/sai chữ ký → false) */
+  public static async verifyBinancePayWebhookSignature(params: {
+    rawBody: string;
+    timestamp?: string;
+    nonce?: string;
+    signature?: string;
+    certificateSn?: string;
+  }): Promise<{ valid: boolean; reason?: string }> {
+    const { rawBody, timestamp, nonce, signature, certificateSn } = params;
+    if (!rawBody || !timestamp || !nonce || !signature || !certificateSn) {
+      return { valid: false, reason: 'Thiếu header webhook (timestamp/nonce/signature/cert-sn) hoặc raw body.' };
+    }
+    // Chống replay theo thời gian: từ chối notification lệch quá 5 phút
+    const tsNum = Number(timestamp);
+    if (!Number.isFinite(tsNum) || Math.abs(Date.now() - tsNum) > 5 * 60 * 1000) {
+      return { valid: false, reason: 'Timestamp webhook lệch quá 5 phút (nghi replay).' };
+    }
+    const certRes = await this.fetchBinancePayCert(certificateSn);
+    if (!certRes.success || !certRes.certPublic) {
+      return { valid: false, reason: certRes.error || 'Không lấy được cert public từ Binance.' };
+    }
+    try {
+      const payload = `${timestamp}\n${nonce}\n${rawBody}\n`;
+      const decodedSig = Buffer.from(signature, 'base64');
+      const verifier = crypto.createVerify('RSA-SHA256');
+      verifier.update(payload, 'utf8');
+      const ok = verifier.verify(certRes.certPublic, decodedSig);
+      return ok ? { valid: true } : { valid: false, reason: 'Chữ ký RSA không khớp payload.' };
+    } catch (err: any) {
+      return { valid: false, reason: `Lỗi verify RSA: ${err?.message}` };
+    }
+  }
+
+  /**
+   * Xử lý notification PAY_SUCCESS: tra intent theo merchantTradeNo, credit ví VND,
+   * idempotent theo canonical key (prepayId + alias merchantTradeNo) dùng CHUNG với
+   * verifyBinancePay thủ công.
+   */
+  public static async handleBinancePayOrderNotification(params: {
+    payload: any;
+    ipAddress?: string;
+  }): Promise<{ processed: boolean; credited: number; message: string }> {
+    const { payload } = params;
+    const bizStatus = String(payload?.bizStatus || '');
+    const bizIdStr = String(payload?.bizIdStr || payload?.bizId || '');
+    // data là JSON STRING (đúng spec Binance) — parse an toàn
+    let data: any = {};
+    try { data = typeof payload?.data === 'string' ? JSON.parse(payload.data) : (payload?.data || {}); } catch { data = {}; }
+    const merchantTradeNo = String(data?.merchantTradeNo || '');
+    const totalFeeUsdt = Number(data?.totalFee || 0);
+
+    if (!bizIdStr && !merchantTradeNo) {
+      return { processed: false, credited: 0, message: 'Webhook thiếu định danh đơn (bizIdStr/merchantTradeNo).' };
+    }
+    if (bizStatus !== 'PAY_SUCCESS') {
+      return { processed: false, credited: 0, message: `Trạng thái ${bizStatus || 'UNKNOWN'} — không credit (chỉ PAY_SUCCESS được cộng tiền).` };
+    }
+
+    // Canonical idempotency: prepayId (bizIdStr) là khóa chính, merchantTradeNo là alias.
+    // verifyBinancePay thủ công redeem theo orderId user dán (có thể là prepayId HOẶC
+    // merchantTradeNo) → cả 2 khóa đều phải được mark để chặn double-credit chéo đường.
+    const canonicalKey = bizIdStr || merchantTradeNo;
+    if (this.isAlreadyRedeemed(canonicalKey) || (merchantTradeNo && this.isAlreadyRedeemed(merchantTradeNo))) {
+      return { processed: false, credited: 0, message: 'Đơn Binance Pay này đã được cộng tiền trước đó (idempotent OK — chống nạp trùng webhook/verify).' };
+    }
+
+    // Tra intent tạo bởi createBinancePayOrder (id = prepayId, có merchantTradeNo)
+    let intent: any = bizIdStr ? db.depositIntents.get(bizIdStr) : undefined;
+    if (!intent && merchantTradeNo) {
+      for (const d of db.depositIntents.values()) {
+        if ((d as any).merchantTradeNo === merchantTradeNo) { intent = d; break; }
+      }
+    }
+    if (!intent) {
+      AuditService.log({
+        actorId: 'BINANCE_PAY_WEBHOOK', actorName: 'Binance Pay Webhook', actorRole: 'ADMIN',
+        action: 'BINANCE_WEBHOOK_UNKNOWN_ORDER', resource: 'WALLET', ipAddress: params.ipAddress,
+        newValue: { bizIdStr, merchantTradeNo, bizStatus }
+      });
+      return { processed: false, credited: 0, message: `Không tìm thấy lệnh nạp khớp (merchantTradeNo=${merchantTradeNo || 'N/A'}, prepayId=${bizIdStr || 'N/A'}) — đơn không do hệ thống tạo, KHÔNG credit.` };
+    }
+
+    // Chống lệch số tiền: webhook phải khớp số USDT của intent (dung sai 1%)
+    const intentUsdt = Number(intent.amountUsdt || 0);
+    if (intentUsdt > 0 && totalFeeUsdt > 0 && Math.abs(totalFeeUsdt - intentUsdt) / intentUsdt > 0.01) {
+      AuditService.log({
+        actorId: 'BINANCE_PAY_WEBHOOK', actorName: 'Binance Pay Webhook', actorRole: 'ADMIN',
+        action: 'BINANCE_WEBHOOK_AMOUNT_MISMATCH', resource: 'WALLET', ipAddress: params.ipAddress,
+        newValue: { bizIdStr, merchantTradeNo, webhookUsdt: totalFeeUsdt, intentUsdt }
+      });
+      return { processed: false, credited: 0, message: `Số tiền webhook (${totalFeeUsdt} USDT) lệch lệnh (${intentUsdt} USDT) — không credit, cần đối soát thủ công.` };
+    }
+
+    const usdRate = db.systemConfig?.usdToVndRate || 25400;
+    const creditedVnd = Math.round((totalFeeUsdt > 0 ? totalFeeUsdt : intentUsdt) * usdRate);
+    if (creditedVnd <= 0) {
+      return { processed: false, credited: 0, message: 'Số tiền credit tính ra <= 0 — không cộng ví.' };
+    }
+
+    const ledgerRes = await LedgerService.executeTransaction({
+      userId: intent.userId,
+      amount: creditedVnd,
+      type: 'DEPOSIT',
+      description: `Nạp tự động qua Binance Pay webhook (PAY_SUCCESS ${totalFeeUsdt || intentUsdt} USDT ≈ ${creditedVnd.toLocaleString('vi-VN')}₫) - Order ${merchantTradeNo || bizIdStr}`,
+      referenceId: canonicalKey,
+      actorId: 'BINANCE_PAY_WEBHOOK',
+      actorName: 'Binance Pay Webhook',
+      ipAddress: params.ipAddress
+    });
+    if (!ledgerRes.success) {
+      return { processed: false, credited: 0, message: `Ledger từ chối credit: ${ledgerRes.error || 'unknown'}` };
+    }
+
+    // Mark CẢ HAI khóa (prepayId + merchantTradeNo) để verify thủ công sau này bị chặn
+    this.markRedeemed(canonicalKey, { gateway: 'BINANCE_PAY', amount: creditedVnd, userId: intent.userId, memo: merchantTradeNo || undefined });
+    if (merchantTradeNo && merchantTradeNo !== canonicalKey) {
+      this.markRedeemed(merchantTradeNo, { gateway: 'BINANCE_PAY', amount: creditedVnd, userId: intent.userId });
+    }
+    try {
+      db.depositIntents.set(intent.id, { ...intent, status: 'PAID', paidAt: new Date().toISOString() });
+    } catch { /* intent shape cũ không có paidAt — bỏ qua */ }
+
+    AuditService.log({
+      actorId: 'BINANCE_PAY_WEBHOOK', actorName: 'Binance Pay Webhook', actorRole: 'ADMIN',
+      action: 'BINANCE_WEBHOOK_CREDITED', resource: 'WALLET', ipAddress: params.ipAddress,
+      newValue: { userId: intent.userId, merchantTradeNo, prepayId: bizIdStr, creditedVnd, usdt: totalFeeUsdt || intentUsdt }
+    });
+
+    return { processed: true, credited: creditedVnd, message: `Đã cộng +${creditedVnd.toLocaleString('vi-VN')}₫ qua Binance Pay webhook (order ${merchantTradeNo || bizIdStr}).` };
+  }
 
     // ============================================================================
   // 2+3. CRYPTO USDT / LTC — ĐÃ GỠ (CYBERPOOL CRYPTOGATE)

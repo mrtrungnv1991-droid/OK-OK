@@ -827,3 +827,84 @@ webhookRouter.post('/unmapped-deposits/:id/resolve', requireAuth, requireRole('A
   }
 });
 
+// ============================================================================
+// POST /api/v1/webhooks/binance-pay — Binance Pay Order Notification (auto-credit)
+// Official: developers.binance.com/docs/binance-pay/webhook-common
+// - Chữ ký RSA SHA256withRSA trên `timestamp + "\n" + nonce + "\n" + RAW_BODY + "\n"`
+//   verify bằng certPublic lấy từ /binancepay/openapi/certificates (cần Key+Secret
+//   merchant cấu hình trong admin — chưa có thì fail-closed 503).
+// - Ack ĐÚNG chuẩn Binance: HTTP 200 + {"returnCode":"SUCCESS"|"FAIL"} — nếu trả
+//   FAIL, Binance sẽ retry notification.
+// - Idempotency canonical (prepayId + alias merchantTradeNo) dùng CHUNG với
+//   verifyBinancePay thủ công → không thể double-credit chéo đường.
+// ============================================================================
+webhookRouter.post('/binance-pay', async (req: Request, res: Response) => {
+  const binanceAck = (returnCode: 'SUCCESS' | 'FAIL', returnMessage?: string) =>
+    res.status(200).json({ returnCode, returnMessage: returnMessage || null });
+
+  try {
+    const apiKey = db.systemConfig?.binanceApiKey || process.env.BINANCE_PAY_API_KEY;
+    const secretKey = db.systemConfig?.binanceSecretKey || process.env.BINANCE_PAY_SECRET_KEY;
+    if (!apiKey || !secretKey) {
+      // Fail-closed: chưa cấu hình credential thì KHÔNG chấp nhận webhook nào
+      // (trả FAIL để Binance retry sau khi admin cấu hình xong, không mất tiền).
+      return binanceAck('FAIL', 'BINANCE_PAY_API_KEY/BINANCE_PAY_SECRET_KEY chưa được cấu hình.');
+    }
+
+    const rawBody = (req as any).rawBody;
+    if (!rawBody) {
+      AuditService.log({
+        actorId: 'UNAUTHORIZED_WEBHOOK', actorName: 'Binance Pay Webhook Attacker', actorRole: 'USER',
+        action: 'BINANCE_WEBHOOK_NO_RAWBODY', resource: 'WALLET', ipAddress: req.ip, newValue: {}
+      });
+      return binanceAck('FAIL', 'Thiếu raw body — không verify được chữ ký.');
+    }
+
+    const sigRes = await GatewayVerificationService.verifyBinancePayWebhookSignature({
+      rawBody,
+      timestamp: req.headers['binancepay-timestamp'] as string,
+      nonce: req.headers['binancepay-nonce'] as string,
+      signature: req.headers['binancepay-signature'] as string,
+      certificateSn: req.headers['binancepay-certificate-sn'] as string
+    });
+    if (!sigRes.valid) {
+      AuditService.log({
+        actorId: 'UNAUTHORIZED_WEBHOOK', actorName: 'Binance Pay Webhook Attacker', actorRole: 'USER',
+        action: 'BINANCE_WEBHOOK_SIGNATURE_FAILED', resource: 'WALLET', ipAddress: req.ip,
+        newValue: { reason: sigRes.reason }
+      });
+      return binanceAck('FAIL', 'Chữ ký không hợp lệ.');
+    }
+
+    const payload = req.body || {};
+    const result = await GatewayVerificationService.handleBinancePayOrderNotification({
+      payload,
+      ipAddress: req.ip
+    });
+
+    if (result.processed) {
+      // Notify user (best-effort, không chặn ack)
+      try {
+        const bizIdStr = String(payload?.bizIdStr || payload?.bizId || '');
+        const intent: any = bizIdStr ? db.depositIntents.get(bizIdStr) : undefined;
+        if (intent?.userId) {
+          notificationService.send(
+            intent.userId,
+            'PAYMENT_SUCCESS',
+            'Nạp tiền thành công',
+            `Binance Pay đã xác nhận +${result.credited.toLocaleString('vi-VN')}₫ vào ví của bạn.`,
+            { prepayId: bizIdStr, creditedVnd: result.credited, gateway: 'BINANCE_PAY' }
+          );
+        }
+      } catch { /* ignore notify error */ }
+    }
+
+    // Cả processed và "không credit có lý do" (idempotent/unknown order/PAY_CLOSED)
+    // đều ack SUCCESS để Binance KHÔNG retry vô hạn — lý do đã ghi audit + message.
+    return binanceAck('SUCCESS', result.message);
+  } catch (err: any) {
+    console.error('[BINANCE_PAY_WEBHOOK_ERROR]', err);
+    return binanceAck('FAIL', `Lỗi xử lý webhook: ${err?.message}`);
+  }
+});
+

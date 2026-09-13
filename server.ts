@@ -29,7 +29,17 @@ async function startServer() {
   const PORT = Number(process.env.PORT) || 3000;
 
   // Middleware
-  app.use(express.json({ limit: '10mb' }));
+  // CYBERPOOL BINANCE PAY WEBHOOK: chữ ký webhook của Binance là RSA trên RAW BODY
+  // nguyên trạng (payload = timestamp + "\n" + nonce + "\n" + body + "\n"). Nếu để
+  // express.json() parse trước rồi mới JSON.stringify lại, key order/whitespace có
+  // thể khác bản gốc → verify chữ ký FAIL dù webhook hợp lệ. Dùng verify callback
+  // lưu raw body vào req.rawBody trước khi parse (pattern chuẩn, không thêm dep).
+  app.use(express.json({
+    limit: '10mb',
+    verify: (req: any, _res, buf) => {
+      try { req.rawBody = buf.toString('utf8'); } catch { /* ignore */ }
+    }
+  }));
   app.use(express.urlencoded({ extended: true }));
 
   // CYBERPOOL FIX (audit #7 systemic): security headers + CORS whitelist —
