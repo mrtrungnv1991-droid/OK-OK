@@ -121,48 +121,12 @@ walletRouter.post('/verify-binance', requireAuth, async (req: AuthenticatedReque
   }
 });
 
-// POST /api/v1/wallet/verify-crypto-usdt - Verify USDT TRC20 / BEP20 On-Chain Blockchain API
-walletRouter.post('/verify-crypto-usdt', requireAuth, async (req: AuthenticatedRequest, res) => {
-  try {
-    const { txHash, network = 'TRC20', expectedUsdt, memo } = req.body;
-    const result = await GatewayVerificationService.verifyCryptoUsdt({
-      userId: req.user!.id,
-      txHash,
-      network,
-      expectedUsdt,
-      memo,
-      ipAddress: req.ip
-    });
-
-    if (!result.success) {
-      return res.status(400).json(result);
-    }
-    return res.json(result);
-  } catch (err: any) {
-    return res.status(500).json({ success: false, message: err?.message || 'Lỗi hệ thống xác minh USDT' });
-  }
-});
-
-// POST /api/v1/wallet/verify-ltc - Verify Litecoin (LTC Mainnet Core) Blockchain API
-walletRouter.post('/verify-ltc', requireAuth, async (req: AuthenticatedRequest, res) => {
-  try {
-    const { txHash, expectedLtc, memo } = req.body;
-    const result = await GatewayVerificationService.verifyCryptoLtc({
-      userId: req.user!.id,
-      txHash,
-      expectedLtc,
-      memo,
-      ipAddress: req.ip
-    });
-
-    if (!result.success) {
-      return res.status(400).json(result);
-    }
-    return res.json(result);
-  } catch (err: any) {
-    return res.status(500).json({ success: false, message: err?.message || 'Lỗi hệ thống xác minh Litecoin' });
-  }
-});
+// CYBERPOOL CRYPTOGATE: hai route cũ /verify-crypto-usdt và /verify-ltc đã GỠ.
+// Chúng gọi GatewayVerificationService.verifyCryptoUsdt/verifyCryptoLtc dùng các
+// explorer API đã CHẾT (apilist.tronscanapi.com 404, api.bscscan.com V1 deprecated
+// → NOTOK) và đọc systemConfig.cryptoUsdtAddress giờ để trống (fail-closed) → không
+// bao giờ xác minh được giao dịch thật. Cổng nạp crypto nay đi qua CryptoGate
+// (/wallet/crypto-gate/*) verify on-chain thật (TronGrid/publicnode/BlockCypher).
 
 // POST /api/v1/wallet/verify-momo - Verify MoMo E-Wallet Transaction
 walletRouter.post('/verify-momo', requireAuth, async (req: AuthenticatedRequest, res) => {

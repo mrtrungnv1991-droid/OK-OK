@@ -161,22 +161,10 @@ export const walletApi = {
     return api.post('/wallet/verify-binance', payload);
   },
 
-  verifyCryptoUsdt: async (payload: {
-    txHash: string;
-    network?: 'TRC20' | 'BEP20';
-    expectedUsdt?: number;
-    memo?: string;
-  }): Promise<ApiResponse<GatewayVerificationResponse>> => {
-    return api.post('/wallet/verify-crypto-usdt', payload);
-  },
-
-  verifyCryptoLtc: async (payload: {
-    txHash: string;
-    expectedLtc?: number;
-    memo?: string;
-  }): Promise<ApiResponse<GatewayVerificationResponse>> => {
-    return api.post('/wallet/verify-ltc', payload);
-  },
+  // CYBERPOOL CRYPTOGATE: verifyCryptoUsdt/verifyCryptoLtc đã gỡ — 2 wrapper này
+  // gọi /wallet/verify-crypto-usdt + /verify-ltc (route đã xóa, dùng explorer API
+  // chết). Nạp crypto giờ qua getCryptoGateNetworks/createCryptoGateIntent/
+  // verifyCryptoGateTx ở trên.
 
   verifyMoMo: async (payload: {
     transId: string;
