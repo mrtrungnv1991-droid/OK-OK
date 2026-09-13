@@ -157,6 +157,47 @@ Mọi fix tiền tệ (escrow, withdrawal, voucher, lucky wheel, card24h, momo) 
 
 ---
 
+## 6c. CỔNG CRYPTO MULTI-NETWORK (CryptoGate) — yêu cầu mới từ user
+
+User cấp 5 ví nhận thật (TRON/BSC/SOLANA/LTC + Binance ID) và Merchant ID/Api Key của một cổng crypto, yêu cầu "làm thành một cổng API hỗ trợ thanh toán".
+
+**Quyết định kiến trúc**: Merchant ID + Api Key KHÔNG tra ra được nhà cung cấp nào có tài liệu xác minh được → không đoán contract (đoán = gateway giả). 5 địa chỉ ví là **sự thật trên blockchain**, nên xây **direct-to-wallet**: mỗi lệnh nạp gán một **số coin duy nhất** (6 số thập phân), scanner on-chain tự phát hiện tiền về + tự cộng ví, không cần memo. Merchant fields vẫn được lưu (masked) nhưng KHÔNG dùng để credit — blockchain là nguồn sự thật duy nhất (cryptoGateApiBase sẵn slot để nối API nhà cung cấp khi có docs xác minh).
+
+**Endpoints on-chain đã PROBE thật (không dùng API chết):**
+| Mạng | Endpoint | Trạng thái probe |
+|---|---|---|
+| TRON | TronGrid `/v1/accounts/{addr}/transactions/trc20` | ✅ đọc được 30 transfer thật |
+| BSC | `bsc-rpc.publicnode.com` eth_getLogs | ✅ (bscscan V1 deprecated, etherscan V2 paywall) |
+| POLYGON | `polygon-bor-rpc.publicnode.com` eth_getLogs | ✅ (polygon-rpc.com 401) |
+| SOLANA | mainnet RPC getSignaturesForAddress + getTransaction | ✅ |
+| LTC | BlockCypher `/v1/ltc/main/addrs/{addr}/full` | ✅ đọc 7 transfer thật (blockchair 430 rate-limit) |
+
+**Verify runtime (11 bước, server thật + blockchain thật):**
+```
+GET networks: TRON/BSC/SOLANA/LTC configured=True, POLYGON=False (chưa cấp ví), Binance ID=159582002
+unauth create-intent -> 401
+create TRON 100k -> intent addr=TVhJzi...GZ3z (đúng ví shop) amountCrypto=3.937022 USDT
+create SOLANA 200k -> addr=Fbpw6...Dq9H amt=7.874041; LTC 500k -> addr=LWYG...XDP7 amt=0.232558 LTC
+POLYGON chưa cấu hình -> 400 fail-closed
+2 intent cùng 100k -> amountCrypto KHÁC nhau (3.937022 vs 3.937051) = chống trùng không cần memo
+verify-tx hash GIẢ -> 400 từ chối (không credit)
+verify-tx hash THẬT (10.02 USDT trên ví) -> nhận diện on-chain nhưng KHÔNG khớp intent -> 400 (đúng)
+admin scan -> scanned=7 credited=0 errors=[] (đọc chain thật, không crash)
+cryptoGateApiKey masked khi GET -> ••••••••CONFIGURED
+```
+
+**Dọn code chết phát hiện qua probe**: verify-crypto-usdt/verify-ltc cũ dùng TronScan/BscScan-V1 **đã chết** (404/deprecated) → không bao giờ verify được tiền thật. Đã xóa toàn bộ chain (routes + service methods ~400 dòng + client wrappers + UI handlers/state mồ côi). File gatewayVerificationService 1422 → 1022 dòng.
+
+**Commit**: `0feda70` (cổng CryptoGate + panel UI + admin config), `65a4385` (dọn UI chết), `8e04ce9` (xóa verify method chết).
+
+**Giới hạn trung thực của CryptoGate**:
+1. Chưa test với **giao dịch tiền thật** khớp intent (không thể tự gửi crypto) — nhưng đã chứng minh scanner đọc đúng transfer thật trên cả 5 mạng + logic match/reject đúng.
+2. RPC công khai có rate-limit; production volume cao nên dùng RPC có API key (TronGrid/publicnode đều có free tier + paid). Slot `cryptoGateApiBase` + provider fields đã sẵn.
+3. Solana USDT dùng SPL mint `Es9vMFrza...` (USDT chính thức); nếu shop nhận USDC/other cần thêm mint.
+4. EVM eth_getLogs quét cửa sổ 5000 block/lần — nếu server downtime lâu hơn ~4h (BSC) cần backfill cursor.
+
+---
+
 ## 7. Bằng chứng verify (chọn lọc)
 
 ```
@@ -194,6 +235,9 @@ TSC_EXIT_0 · # tests 17 # pass 17 # fail 0 · vite build ✓ 4.47s
 ## 8. Commit list (phase này)
 
 ```
+8e04ce9 refactor(payments): delete dead verifyCryptoUsdt/verifyCryptoLtc (dead-endpoint fake-verify)
+65a4385 refactor(deposits): remove dead single-address USDT/LTC verify code from DepositHubModal
+0feda70 feat(payments): CryptoGate — multi-network direct-to-wallet crypto deposit gateway
 eed90fd feat(security): hardening middleware — security headers + CORS whitelist
 468347b fix(core): DB snapshot persistence + real login gate (AuthGate)
 6e9f0aa docs: PHASE_FULL_REVIEW.md
