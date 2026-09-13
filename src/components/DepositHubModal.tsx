@@ -59,11 +59,7 @@ export const DepositHubModal: React.FC<DepositHubModalProps> = ({
   const [isVerifying, setIsVerifying] = useState(false);
   const [countdownSeconds, setCountdownSeconds] = useState(900); // 15 mins
   const [binanceTxInput, setBinanceTxInput] = useState('');
-  const [ltcCustomInput, setLtcCustomInput] = useState<string>('');
   const [momoTransIdInput, setMomoTransIdInput] = useState('');
-  const [cryptoTxHashInput, setCryptoTxHashInput] = useState('');
-  const [cryptoNetwork, setCryptoNetwork] = useState<'TRC20' | 'BEP20'>('TRC20');
-  const [ltcTxHashInput, setLtcTxHashInput] = useState('');
   const [verificationError, setVerificationError] = useState<string | null>(null);
     const [verificationSuccess, setVerificationSuccess] = useState<string | null>(null);
     const [verifiedExplorerUrl, setVerifiedExplorerUrl] = useState<string | null>(null);
@@ -107,20 +103,8 @@ export const DepositHubModal: React.FC<DepositHubModalProps> = ({
     holder: systemConfig?.momoName || 'CYBERPOOL VIETNAM'
   };
 
-  const usdtAccount = {
-      network: 'TRC20 & BEP20',
-      // CYBERPOOL FIX: fail-closed — chưa cấu hình ví thật thì để rỗng,
-      // UI sẽ chặn nạp thay vì cho user chuyển tiền vào địa chỉ placeholder
-      address: systemConfig?.cryptoUsdtAddress || '',
-      rate: systemConfig?.usdToVndRate || 25400
-    };
-
-    const ltcAccount = {
-      network: 'Litecoin Core (LTC Mainnet)',
-      address: systemConfig?.cryptoLtcAddress || '',
-      rate: systemConfig?.cryptoLtcRate || 2150000,
-      confirmations: 2
-    };
+  // CYBERPOOL CRYPTOGATE: usdtAccount/ltcAccount (kênh crypto/ltc cũ 1-ví) đã gỡ
+  // — CryptoGatePanel lấy ví đa mạng từ GET /wallet/crypto-gate/networks.
 
   const binanceAccount = {
       // CYBERPOOL FIX: không hardcode Pay ID/UID giả làm default — cấu hình từ
@@ -132,17 +116,9 @@ export const DepositHubModal: React.FC<DepositHubModalProps> = ({
       rate: systemConfig?.usdToVndRate || 25400
     };
 
-  // Calculated LTC amount
-  const calculatedLtcAmount = (depositAmount / ltcAccount.rate).toFixed(6);
-
   // VietQR Dynamic URL (QuickLink compatible with custom Bank BIN)
   const dynamicVietQrUrl = `https://api.vietqr.io/image/${bankBin}-${bankAccount.accountNumber}-compact2.jpg?amount=${depositAmount}&addInfo=${encodeURIComponent(transferCode)}&accountName=${encodeURIComponent(bankAccount.accountHolder)}`;
   const displayQrUrl = activeQrView === 'custom_image' && customQrImage ? customQrImage : dynamicVietQrUrl;
-
-  // LTC QR Code URL
-  const ltcQrUrl = `https://api.qrserver.com/v1/create-qr-code/?size=250x250&data=${encodeURIComponent(
-    `litecoin:${ltcAccount.address}?amount=${calculatedLtcAmount}&label=CyberPool_${user.id}&message=${transferCode}`
-  )}`;
 
   // Binance Pay QR Code URL
   const binanceQrUrl = `https://api.qrserver.com/v1/create-qr-code/?size=250x250&data=${encodeURIComponent(
@@ -264,79 +240,11 @@ export const DepositHubModal: React.FC<DepositHubModalProps> = ({
     }
   };
 
-  // Real Crypto USDT On-Chain Blockchain API Verification
-  const handleVerifyCryptoUsdt = async () => {
-    const cleanHash = cryptoTxHashInput.trim();
-    if (!cleanHash) {
-      setVerificationError('Vui lòng dán mã băm giao dịch (TxID / Transaction Hash) từ ví của bạn.');
-      return;
-    }
-    setIsVerifying(true);
-    setVerificationError(null);
-    setVerificationSuccess(null);
-    setVerifiedExplorerUrl(null);
-    try {
-      const expectedUsdt = Number((depositAmount / usdtAccount.rate).toFixed(2));
-      const res = await walletApi.verifyCryptoUsdt({
-        txHash: cleanHash,
-        network: cryptoNetwork,
-        expectedUsdt,
-        memo: transferCode
-      });
-      if (res.success && res.data?.verified) {
-        setVerificationSuccess(res.data.message);
-        if (res.data.explorerUrl) {
-          setVerifiedExplorerUrl(res.data.explorerUrl);
-        }
-        setTimeout(() => {
-          onDepositSuccess(res.data!.amount, `Crypto USDT (${cryptoNetwork})`, res.data!.referenceId);
-          onClose();
-        }, 1800);
-      } else {
-        setVerificationError(res.error || res.data?.message || 'Không tìm thấy TxID trên blockchain hoặc chưa đủ block xác nhận.');
-      }
-    } catch (err: any) {
-      setVerificationError(err?.message || 'Lỗi kết nối node TronScan / BSC');
-    } finally {
-      setIsVerifying(false);
-    }
-  };
-
-  // Real Litecoin LTC Core Mainnet Blockchain Verification
-  const handleVerifyLTC = async () => {
-    const cleanHash = (ltcTxHashInput || ltcCustomInput).trim();
-    if (!cleanHash) {
-      setVerificationError('Vui lòng dán mã băm giao dịch Litecoin (LTC TxID) từ ví của bạn.');
-      return;
-    }
-    setIsVerifying(true);
-    setVerificationError(null);
-    setVerificationSuccess(null);
-    setVerifiedExplorerUrl(null);
-    try {
-      const res = await walletApi.verifyCryptoLtc({
-        txHash: cleanHash,
-        expectedLtc: Number(calculatedLtcAmount),
-        memo: transferCode
-      });
-      if (res.success && res.data?.verified) {
-        setVerificationSuccess(res.data.message);
-        if (res.data.explorerUrl) {
-          setVerifiedExplorerUrl(res.data.explorerUrl);
-        }
-        setTimeout(() => {
-          onDepositSuccess(res.data!.amount, 'Litecoin (LTC Mainnet Core)', res.data!.referenceId);
-          onClose();
-        }, 1800);
-      } else {
-        setVerificationError(res.error || res.data?.message || 'Không tìm thấy giao dịch LTC trên Blockchain hoặc chưa có confirmations.');
-      }
-    } catch (err: any) {
-      setVerificationError(err?.message || 'Lỗi kết nối mạng lưới Litecoin');
-    } finally {
-      setIsVerifying(false);
-    }
-  };
+  // CYBERPOOL CRYPTOGATE: hai handler verify thủ công cũ (handleVerifyCryptoUsdt
+  // / handleVerifyLTC) đã bị GỠ cùng kênh 'crypto'/'ltc' cũ — chúng trỏ tới các
+  // endpoint dùng TronScan/BscScan-V1 đã CHẾT (404/deprecated) và đọc
+  // cryptoUsdtAddress giờ để trống (fail-closed). CryptoGatePanel thay thế hoàn
+  // toàn bằng verify-tx on-chain thật (TronGrid/publicnode/BlockCypher).
 
   // CYBERPOOL FIX: tạo lệnh thu tiền thật từ Binance Pay (Mô hình A)
     const handleCreateBinanceOrder = async () => {
