@@ -715,7 +715,7 @@ export const INITIAL_SUPPLIERS: SupplierApiConfig[] = [
     id: 'sup-g2up-net',
     providerName: 'G2UP.NET (Roblox Blox Fruits & Game Accounts Direct API)',
     apiUrl: 'https://g2up.net/api/profile.php',
-    apiKey: '885e5d18c3626f03b8356130b162c0af',
+    apiKey: '',
     balance: 100000,
     status: 'connected',
     lastSync: 'Vừa xong (Live Connected - cyborg)',

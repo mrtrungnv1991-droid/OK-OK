@@ -425,7 +425,7 @@ export const AdminCyborgPipelineStation: React.FC<AdminCyborgPipelineStationProp
           <div className="bg-black/40 p-2.5 rounded-xl border border-slate-800">
             <span className="text-[10px] text-slate-500 uppercase font-mono block">API Key Đấu Nối</span>
             <span className="font-bold text-slate-300 font-mono mt-0.5 block truncate">
-              885e5d18••••••••62c0af
+              Không cần key (g2up/cmsnt public API)
             </span>
           </div>
 

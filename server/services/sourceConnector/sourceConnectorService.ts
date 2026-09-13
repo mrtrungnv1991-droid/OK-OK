@@ -113,7 +113,9 @@ export class SourceConnectorService {
       domain: 'g2up.net',
       username: 'cyborg',
       encrypted_password: encryptSecret('123123ad'),
-      encrypted_session: encryptSecret('885e5d18c3626f03b8356130b162c0af'),
+      // CYBERPOOL FIX: g2up.net không còn yêu cầu API key dùng chung —
+      // đã xóa key hardcode '885e5d18...62c0af' khỏi repo.
+      encrypted_session: undefined,
       browser_profile_id: 'prof_g2up_cyborg',
       connector_type: 'API',
       scanner_profile: 'G2UP_API_CONNECTOR',

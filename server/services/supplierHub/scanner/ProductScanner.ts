@@ -44,8 +44,7 @@ export class ProductScanner {
     let finalUrl = targetUrl;
     const headers: Record<string, string> = { ...(this.authHeaders || {}) };
 
-    const effectiveApiKey = this.apiKey || 
-      (this.baseUrl.includes('g2up') || this.baseUrl.includes('cmsnt') ? '885e5d18c3626f03b8356130b162c0af' : '');
+    const effectiveApiKey = this.apiKey || '';
 
     if (effectiveApiKey) {
       const authMethod = this.adapterConfig.authMethod;

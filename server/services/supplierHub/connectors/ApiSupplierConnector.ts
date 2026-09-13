@@ -71,9 +71,8 @@ export class ApiSupplierConnector implements ISupplierConnector {
     if (!rawKey && (credentials as any).apiKey) {
       rawKey = (credentials as any).apiKey;
     }
-    if (!rawKey && (this.websiteUrl.toLowerCase().includes('g2up') || this.websiteUrl.toLowerCase().includes('cmsnt'))) {
-      rawKey = '885e5d18c3626f03b8356130b162c0af';
-    }
+    // CYBERPOOL FIX: g2up/cmsnt không còn cần API key dùng chung — đã xóa key
+    // hardcode '885e5d18...62c0af' khỏi repo.
     this.apiKey = rawKey;
 
     const steps: DiagnosticStep[] = [];
@@ -255,10 +254,6 @@ export class ApiSupplierConnector implements ISupplierConnector {
   }
 
   public async getBalance(): Promise<{ balance: number; currency: string; status: string }> {
-    if (!this.apiKey && (this.websiteUrl.toLowerCase().includes('g2up') || this.websiteUrl.toLowerCase().includes('cmsnt'))) {
-      this.apiKey = '885e5d18c3626f03b8356130b162c0af';
-    }
-
     const balEp = this.adapterConfig.endpoints.balance;
     if (!balEp || !balEp.path) {
       return { balance: this.liveBalance, currency: 'VND', status: 'ONLINE' };
@@ -284,9 +279,6 @@ export class ApiSupplierConnector implements ISupplierConnector {
   }
 
   public async getCategories(): Promise<NormalizedCategory[]> {
-    if (!this.apiKey && (this.websiteUrl.toLowerCase().includes('g2up') || this.websiteUrl.toLowerCase().includes('cmsnt'))) {
-      this.apiKey = '885e5d18c3626f03b8356130b162c0af';
-    }
     if (this.apiKey) {
       this.scanner.setAuth(this.apiKey);
     }
@@ -294,9 +286,6 @@ export class ApiSupplierConnector implements ISupplierConnector {
   }
 
   public async getProducts(): Promise<NormalizedProduct[]> {
-    if (!this.apiKey && (this.websiteUrl.toLowerCase().includes('g2up') || this.websiteUrl.toLowerCase().includes('cmsnt'))) {
-      this.apiKey = '885e5d18c3626f03b8356130b162c0af';
-    }
     if (this.apiKey) {
       this.scanner.setAuth(this.apiKey);
     }

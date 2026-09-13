@@ -99,9 +99,8 @@ export class AccountSupplierConnector implements ISupplierConnector {
     if (providedApiKey) {
       this.activeApiKey = providedApiKey;
     }
-    if (!this.activeApiKey && (this.websiteUrl.toLowerCase().includes('g2up') || this.websiteUrl.toLowerCase().includes('cmsnt'))) {
-      this.activeApiKey = '885e5d18c3626f03b8356130b162c0af';
-    }
+    // CYBERPOOL FIX: g2up/cmsnt không còn cần API key dùng chung — đã xóa key
+    // hardcode. Không có key cấu hình thì gọi API không kèm api_key.
     this.scanner.setAuth(this.activeApiKey);
 
     // STEP 1: Real Network Ping
@@ -306,10 +305,8 @@ export class AccountSupplierConnector implements ISupplierConnector {
       }
     }
 
-    // Default fallback for G2UP if session authenticated
-    if (!this.activeApiKey && isG2upOrCmsnt) {
-      this.activeApiKey = '885e5d18c3626f03b8356130b162c0af';
-    }
+    // CYBERPOOL FIX: g2up/cmsnt không còn cần API key dùng chung (đã xóa key
+    // hardcode khỏi repo).
 
     if (this.activeApiKey) {
       this.adapterConfig = { ...this.adapterConfig, ...PRESET_ADAPTERS.G2UP_CMSNT };
@@ -420,9 +417,7 @@ export class AccountSupplierConnector implements ISupplierConnector {
   }
 
   public async getBalance(): Promise<{ balance: number; currency: string; status: string }> {
-    if (!this.activeApiKey && (this.websiteUrl.toLowerCase().includes('g2up') || this.websiteUrl.toLowerCase().includes('cmsnt'))) {
-      this.activeApiKey = '885e5d18c3626f03b8356130b162c0af';
-    }
+    // CYBERPOOL FIX: đã xóa key dùng chung g2up/cmsnt — chỉ dùng key admin cấu hình.
 
     // 1. If API Key is available, use official /api/profile.php endpoint
     if (this.activeApiKey) {
@@ -476,9 +471,7 @@ export class AccountSupplierConnector implements ISupplierConnector {
   }
 
   public async getCategories(): Promise<NormalizedCategory[]> {
-    if (!this.activeApiKey && (this.websiteUrl.toLowerCase().includes('g2up') || this.websiteUrl.toLowerCase().includes('cmsnt'))) {
-      this.activeApiKey = '885e5d18c3626f03b8356130b162c0af';
-    }
+    // CYBERPOOL FIX: đã xóa key dùng chung g2up/cmsnt — chỉ dùng key admin cấu hình.
 
     // 1. Direct API call if API key exists
     if (this.activeApiKey) {
@@ -509,9 +502,7 @@ export class AccountSupplierConnector implements ISupplierConnector {
   }
 
   public async getProducts(): Promise<NormalizedProduct[]> {
-    if (!this.activeApiKey && (this.websiteUrl.toLowerCase().includes('g2up') || this.websiteUrl.toLowerCase().includes('cmsnt'))) {
-      this.activeApiKey = '885e5d18c3626f03b8356130b162c0af';
-    }
+    // CYBERPOOL FIX: đã xóa key dùng chung g2up/cmsnt — chỉ dùng key admin cấu hình.
 
     // 1. Direct API call if API key exists
     if (this.activeApiKey) {

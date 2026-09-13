@@ -13,14 +13,17 @@ import { decryptSecret } from '../encryptionUtils';
 
 export class G2upConnector extends BaseSourceConnector {
   private readonly baseUrl = 'https://g2up.net';
-  private readonly defaultApiKey = '885e5d18c3626f03b8356130b162c0af';
+  // CYBERPOOL FIX: g2up.net KHÔNG còn yêu cầu API key dùng chung. Đã xóa key
+  // hardcode '885e5d18...62c0af' khỏi repo. Nếu tài khoản có session key riêng
+  // (admin cấu hình) thì vẫn dùng; ngược lại connector gọi API không cần key.
+  private readonly defaultApiKey = '';
 
   constructor(account: SourceAccount, profileConfig: ScannerProfileConfig) {
     super(account, profileConfig);
   }
 
   /**
-   * Resolve active API Key from account credentials or default verified key
+   * Resolve active API Key from account credentials (empty if none configured)
    */
   private getApiKey(): string {
     if (this.account.encrypted_session) {
@@ -37,12 +40,26 @@ export class G2upConnector extends BaseSourceConnector {
   }
 
   /**
+   * Build an API URL, appending api_key ONLY when a key is configured.
+   * (g2up.net no longer requires the shared key, so we omit it when empty.)
+   */
+  private apiUrl(endpoint: string, extraQuery?: Record<string, string>): string {
+    const params = new URLSearchParams();
+    const key = this.getApiKey();
+    if (key) params.set('api_key', key);
+    if (extraQuery) {
+      for (const [k, v] of Object.entries(extraQuery)) params.set(k, v);
+    }
+    const qs = params.toString();
+    return `${this.baseUrl}/api/${endpoint}${qs ? '?' + qs : ''}`;
+  }
+
+  /**
    * Ping / verify accessibility to G2UP domain
    */
   public async test_connection(): Promise<ConnectorExecutionResult<boolean>> {
     try {
-      const apiKey = this.getApiKey();
-      const res = await fetch(`${this.baseUrl}/api/profile.php?api_key=${apiKey}`, {
+      const res = await fetch(this.apiUrl('profile.php'), {
         headers: {
           'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0.0.0 Safari/537.36'
         }
@@ -75,11 +92,9 @@ export class G2upConnector extends BaseSourceConnector {
    */
   public async login(): Promise<ConnectorExecutionResult<{ sessionValid: boolean; balance?: number; currency?: string }>> {
     try {
-      const apiKey = this.getApiKey();
-
       // 1. Check API Key directly first for high-speed rate-limit-free verification
       try {
-        const profileRes = await fetch(`${this.baseUrl}/api/profile.php?api_key=${apiKey}`, {
+        const profileRes = await fetch(this.apiUrl('profile.php'), {
           headers: {
             'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0.0.0 Safari/537.36'
           }
@@ -164,7 +179,7 @@ export class G2upConnector extends BaseSourceConnector {
       }
 
       // Re-verify API profile after web login
-      const retryRes = await fetch(`${this.baseUrl}/api/profile.php?api_key=${apiKey}`, {
+      const retryRes = await fetch(this.apiUrl('profile.php'), {
         headers: {
           'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0.0.0 Safari/537.36'
         }
@@ -212,8 +227,7 @@ export class G2upConnector extends BaseSourceConnector {
    */
   public async get_categories(): Promise<ConnectorExecutionResult<Array<{ id: string; name: string; url?: string }>>> {
     try {
-      const apiKey = this.getApiKey();
-      const res = await fetch(`${this.baseUrl}/api/products.php?api_key=${apiKey}`, {
+      const res = await fetch(this.apiUrl('products.php'), {
         headers: {
           'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0.0.0 Safari/537.36'
         }
@@ -261,8 +275,7 @@ export class G2upConnector extends BaseSourceConnector {
     onProductFound?: (product: RawScannedProduct) => void
   ): Promise<ConnectorExecutionResult<RawScannedProduct[]>> {
     try {
-      const apiKey = this.getApiKey();
-      const res = await fetch(`${this.baseUrl}/api/products.php?api_key=${apiKey}`, {
+      const res = await fetch(this.apiUrl('products.php'), {
         headers: {
           'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0.0.0 Safari/537.36'
         }
@@ -346,8 +359,7 @@ export class G2upConnector extends BaseSourceConnector {
   public async get_product_detail(source_product_id: string): Promise<ConnectorExecutionResult<RawScannedProduct>> {
     try {
       const rawId = source_product_id.replace('g2up-', '');
-      const apiKey = this.getApiKey();
-      const res = await fetch(`${this.baseUrl}/api/product.php?api_key=${apiKey}&product=${rawId}`);
+      const res = await fetch(this.apiUrl('product.php', { product: rawId }));
       const json: any = await res.json().catch(() => null);
 
       if (json && json.status === 'success' && json.product && json.product.length > 0) {
@@ -518,12 +530,11 @@ export class G2upConnector extends BaseSourceConnector {
   ): Promise<ConnectorExecutionResult<{ purchaseId: string; status: string; key?: string; balanceRemaining?: number }>> {
     try {
       const rawId = product_id.replace('g2up-', '');
-      const apiKey = this.getApiKey();
 
       // Check balance first
       let currentBalance = 0;
       try {
-        const profRes = await fetch(`${this.baseUrl}/api/profile.php?api_key=${apiKey}`);
+        const profRes = await fetch(this.apiUrl('profile.php'));
         const profData: any = await profRes.json().catch(() => null);
         currentBalance = parseFloat(profData?.data?.money || '0');
       } catch (err) {
