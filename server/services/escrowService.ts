@@ -89,17 +89,26 @@ export class EscrowService {
         const { poolId, productId, user, ipAddress } = params;
 
         let contract = db.escrowContracts.get(poolId);
-        const product = db.products.find(p => p.id === productId);
+                // CYBERPOOL FIX (P1 #2 — tiền): product phải lấy từ CONTRACT (đã lưu lúc
+                // tạo pool), KHÔNG tin productId do client gửi. Trước đây code lấy product
+                // theo client productId nhưng khóa tiền theo contract.pricePerSlot → có thể
+                // dùng productId sản phẩm ĐẮT (500k) vào pool sản phẩm RẺ (1k): trả 1k,
+                // nhận key sản phẩm 500k. Chặn mọi cặp poolId/productId không khớp.
+                const product = db.products.find(p => p.id === contract?.productId);
 
-        // CYBERPOOL FIX: re-validate SAU khi giành mutex, TRƯỚC khi khóa tiền —
-        // trạng thái pool có thể đã đổi (COMPLETED/CANCELLED/full) giữa lúc
-        // check ở joinPool() và lúc vào đây.
-        if (!contract || !product) {
-          return { success: false, error: 'Pool hoặc sản phẩm không còn tồn tại' };
-        }
-        if (contract.status !== 'FILLING' || contract.filledSlots >= contract.targetSlots) {
-          return { success: false, error: 'Escrow pool không còn nhận thêm thành viên' };
-        }
+                // CYBERPOOL FIX: re-validate SAU khi giành mutex, TRƯỚC khi khóa tiền —
+                // trạng thái pool có thể đã đổi (COMPLETED/CANCELLED/full) giữa lúc
+                // check ở joinPool() và lúc vào đây.
+                if (!contract || !product) {
+                  return { success: false, error: 'Pool hoặc sản phẩm không còn tồn tại' };
+                }
+                if (contract.productId !== productId) {
+                  // Vẫn phòng thủ thêm cả lớp này (dù product đã lấy từ contract)
+                  return { success: false, error: 'Sản phẩm không khớp với Pool này (poolId/productId không nhất quán).' };
+                }
+                if (contract.status !== 'FILLING' || contract.filledSlots >= contract.targetSlots) {
+                  return { success: false, error: 'Escrow pool không còn nhận thêm thành viên' };
+                }
 
         // CYBERPOOL FIX (CRITICAL — tiền): trước đây join pool KHÔNG trừ/khóa tiền
         // user (ESCROW_LOCK chỉ là case chết trong ledger, không ai gọi) → user nhận
@@ -146,40 +155,43 @@ export class EscrowService {
     }
 
     let completedOrder: ServerOrder | undefined;
+        let allDelivered = true;
 
-    // Step 3: Check completion / Quorum trigger
-    if (isCompleted) {
-      contract.status = 'COMPLETED';
+        // Step 3: Check completion / Quorum trigger
+        if (isCompleted) {
 
-      // Reserve & deliver item for each participant
-            for (const pt of contract.participants) {
-              const orderId = `ord-escrow-${contract.id}-${pt.slotNumber}`;
-              const item = await InventoryService.reserveItem(productId, pt.userId, orderId);
+          // Reserve & deliver item for each participant
+                for (const pt of contract.participants) {
+                  const orderId = `ord-escrow-${contract.id}-${pt.slotNumber}`;
+                  const item = await InventoryService.reserveItem(productId, pt.userId, orderId);
 
-              // CYBERPOOL FIX (F04): never fabricate delivery keys/cards/hashes.
-              // If inventory has no real key, mark the slot as awaiting stock instead
-              // of handing the participant a fake "CYBER-...-AUTO" key.
-              if (!item) {
-                pt.deliveredKey = undefined;
-                const blockedOrder: ServerOrder = {
-                  id: orderId,
-                  buyerId: pt.userId,
-                  productId: product.id,
-                  productTitle: product.title,
-                  orderType: 'GROUP_POOL',
-                  status: 'PENDING_STOCK',
-                  pricePaid: contract.pricePerSlot,
-                  originalPrice: product.retailPrice,
-                  discountAmount: product.retailPrice - contract.pricePerSlot,
-                  deliveredData: undefined,
-                  escrowId: contract.id,
-                  poolId,
-                  createdAt: new Date().toISOString(),
-                  txHash: ''
-                };
-                db.orders.set(blockedOrder.id, blockedOrder);
-                continue; // keep funds locked; admin must restock or refund
-              }
+                  // CYBERPOOL FIX (F04): never fabricate delivery keys/cards/hashes.
+                  // If inventory has no real key, mark the slot as awaiting stock instead
+                  // of handing the participant a fake "CYBER-...-AUTO" key.
+                  if (!item) {
+                    allDelivered = false;
+                    pt.deliveredKey = undefined;
+                    const blockedOrder: ServerOrder = {
+                      id: orderId,
+                      buyerId: pt.userId,
+                      productId: product.id,
+                      productTitle: product.title,
+                      orderType: 'GROUP_POOL',
+                      status: 'PENDING_STOCK',
+                      pricePaid: contract.pricePerSlot,
+                      originalPrice: product.retailPrice,
+                      discountAmount: product.retailPrice - contract.pricePerSlot,
+                      deliveredData: undefined,
+                      escrowId: contract.id,
+                      poolId,
+                      createdAt: new Date().toISOString(),
+                      txHash: ''
+                    };
+                    db.orders.set(blockedOrder.id, blockedOrder);
+                    // CYBERPOOL FIX (P1 #7): giữ tiền KHÓA của slot này trong
+                    // escrowLocked đúng như lúc join — không release, không COMPLETED.
+                    continue;
+                  }
 
               const deliveredKey = item.keyCode;
               InventoryService.markDelivered(item.id);
@@ -227,15 +239,21 @@ export class EscrowService {
         }
       }
 
-      AuditService.log({
-        actorId: 'SYSTEM_ESCROW_ENGINE',
-        actorName: 'Cyber Escrow Oracle',
-        actorRole: 'SUPER_ADMIN',
-        action: 'ESCROW_POOL_COMPLETED',
-        resource: 'ESCROW_CONTRACT',
-        resourceId: contract.id,
-        newValue: { totalSlots: contract.targetSlots, totalDelivered: contract.participants.length }
-      });
+      // CYBERPOOL FIX (P1 #7): chỉ đánh dấu COMPLETED khi MỌI slot đã giao key.
+            // Còn slot PENDING_STOCK (thiếu kho) → contract ở trạng thái
+            // AWAITING_STOCK để (a) UI admin thấy rõ cần nhập hàng/xử lý, (b)
+            // forceRefundPool vẫn cho phép hoàn tiền đúng theo slot còn khóa.
+            contract.status = allDelivered ? 'COMPLETED' : 'AWAITING_STOCK';
+
+            AuditService.log({
+              actorId: 'SYSTEM_ESCROW_ENGINE',
+              actorName: 'Cyber Escrow Oracle',
+              actorRole: 'SUPER_ADMIN',
+              action: 'ESCROW_POOL_COMPLETED',
+              resource: 'ESCROW_CONTRACT',
+              resourceId: contract.id,
+              newValue: { totalSlots: contract.targetSlots, totalDelivered: contract.participants.length, awaitingStock: !allDelivered }
+            });
     }
 
     db.escrowContracts.set(poolId, contract);
@@ -251,26 +269,44 @@ export class EscrowService {
    * Admin Force Refund on disputed or expired escrow pool
    */
   public static async forceRefundPool(poolId: string, adminId: string, adminName: string): Promise<boolean> {
-    const contract = db.escrowContracts.get(poolId);
-    if (!contract || contract.status !== 'FILLING') return false;
+      const contract = db.escrowContracts.get(poolId);
+      // CYBERPOOL FIX (P1 #7): trước đây chỉ nhận FILLING → pool đủ slot nhưng
+      // thiếu key (đang AWAITING_STOCK) không hoàn tiền được. Giờ chấp nhận cả
+      // AWAITING_STOCK và chỉ hoàn đúng những slot CHƯA release (money còn bị khóa).
+      if (!contract || (contract.status !== 'FILLING' && contract.status !== 'AWAITING_STOCK')) return false;
 
-    contract.status = 'CANCELLED';
+      contract.status = 'CANCELLED';
 
-    // Refund every participant
-    for (const pt of contract.participants) {
-      await LedgerService.executeTransaction({
-        userId: pt.userId,
-        type: 'ESCROW_REFUND',
-        amount: contract.pricePerSlot,
-        description: `Hoàn tiền Escrow nhóm #${poolId} bị hủy bởi Quản Trị Viên`,
-        referenceId: contract.id,
-        actorId: adminId,
-        actorName: adminName,
-        actorRole: 'SUPER_ADMIN'
-      });
+      // Refund per-participant, chỉ slot còn giữ tiền escrow (order chưa COMPLETED)
+      for (const pt of contract.participants) {
+        const orderId = `ord-escrow-${contract.id}-${pt.slotNumber}`;
+        const order = db.orders.get(orderId);
+        // Slot đã giao key → ESCROW_RELEASE đã chạy, escrowLocked đã về 0.
+        // Hoàn thêm = tạo tiền từ không khí. Chỉ refund khi order:
+        //   - PENDING_STOCK (đủ slot nhưng thiếu kho) → tiền vẫn khóa ✓ hoàn
+        //   - không tồn tại (pool chưa đủ slot, FILLING) → tiền vẫn khóa ✓ hoàn
+        //   - COMPLETED → đã release ✗ KHÔNG hoàn
+        if (order && order.status === 'COMPLETED') continue;
+
+        await LedgerService.executeTransaction({
+          userId: pt.userId,
+          type: 'ESCROW_REFUND',
+          amount: contract.pricePerSlot,
+          description: `Hoàn tiền Escrow nhóm #${poolId} (${order ? order.status : 'pool chưa đủ thành viên'})`,
+          referenceId: contract.id,
+          actorId: adminId,
+          actorName: adminName,
+          actorRole: 'SUPER_ADMIN'
+        });
+
+        if (order && order.status === 'PENDING_STOCK') {
+          // Đóng order bị treo stock sau khi hoàn tiền
+          order.status = 'CANCELLED' as any;
+          db.orders.set(order.id, order);
+        }
+      }
+
+      db.escrowContracts.set(poolId, contract);
+      return true;
     }
-
-    db.escrowContracts.set(poolId, contract);
-    return true;
-  }
 }

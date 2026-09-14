@@ -1,0 +1,14 @@
+node_modules
+dist
+.git
+.github
+*.log
+.env
+.env.*
+!.env.example
+server/data/
+*.local
+coverage
+.eslintcache
+Dockerfile
+docker-compose*.yml

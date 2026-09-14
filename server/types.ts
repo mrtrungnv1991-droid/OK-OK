@@ -98,7 +98,7 @@ export interface ServerEscrowContract {
   filledSlots: number;
   pricePerSlot: number;
   totalLockedAmount: number;
-  status: 'FILLING' | 'COMPLETED' | 'CANCELLED' | 'DISPUTED';
+  status: 'FILLING' | 'COMPLETED' | 'CANCELLED' | 'DISPUTED' | 'AWAITING_STOCK';
   expiresAt: string;
   participants: Array<{
     userId: string;

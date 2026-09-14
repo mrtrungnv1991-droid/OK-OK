@@ -14,7 +14,24 @@ services:
       - PORT=3000
       - DATABASE_URL=postgres://${DB_USER:-cyber_user}:${DB_PASSWORD:-cyber_secret_2026}@postgres:5432/${DB_NAME:-cyberpool_db}
       - REDIS_URL=redis://:${REDIS_PASSWORD:-redis_secret}@redis:6379
-      - JWT_SECRET=${JWT_SECRET:-cyber_jwt_production_secret_key_long_secure_hash_2026}
+      # CYBERPOOL FIX (P1 #3): JWT_SECRET KHÔNG có giá trị fallback mặc định trong
+      # repo. Compose fail NGAY nếu .env không set (syntax :? bắt buộc), thay vì
+      # giữ secret công khai cho ai đọc repo cũng tự ký token admin được.
+      - JWT_SECRET=${JWT_SECRET:?JWT_SECRET phải được đặt trong .env (>=32 ký tự, random)}
+      # CYBERPOOL FIX (P1 #4): production fail-closed ở server/services/paymentSystem/
+      # security.ts + sourceConnector/encryptionUtils.ts — nếu thiếu ENCRYPTION_KEY /
+      # SOURCE_CONNECTOR_SECRET_KEY backend process.exit(1) lúc boot. Truyền rõ vào
+      # container (biến .env chỉ có tác dụng nội suy nếu không khai báo environment).
+      - ENCRYPTION_KEY=${ENCRYPTION_KEY:?ENCRYPTION_KEY phải được đặt trong .env (>=32 ký tự, random)}
+      - SOURCE_CONNECTOR_SECRET_KEY=${SOURCE_CONNECTOR_SECRET_KEY:-${ENCRYPTION_KEY}}
+      # P1 #5: thư mục dữ liệu bền vững — mount volume để recreate container
+      # không mất snapshot (DB snapshot JSON dùng DatabaseStore, KHÔNG nằm trong PostgreSQL)
+      - CRYPTOGATE_TRON_ADDRESS=${CRYPTOGATE_TRON_ADDRESS:-}
+      - CRYPTOGATE_BSC_ADDRESS=${CRYPTOGATE_BSC_ADDRESS:-}
+      - CRYPTOGATE_SOLANA_ADDRESS=${CRYPTOGATE_SOLANA_ADDRESS:-}
+      - CRYPTOGATE_LTC_ADDRESS=${CRYPTOGATE_LTC_ADDRESS:-}
+    volumes:
+      - app_data_prod:/app/server/data
     depends_on:
       postgres:
         condition: service_healthy
@@ -53,3 +70,4 @@ services:
 volumes:
   postgres_data_prod:
   redis_data_prod:
+  app_data_prod:

@@ -285,12 +285,26 @@ export class OrderService {
     }
 
     // Store in real server memory/database
-    db.orders.set(order.id, order);
+        db.orders.set(order.id, order);
 
-    // Reduce product stock in database
-    if (product.stockAvailable !== undefined && product.stockAvailable > 0) {
-      product.stockAvailable = Math.max(0, product.stockAvailable - validQuantity);
-    }
+        // CYBERPOOL FIX (P1 #6 — stock double-deduct): với kho NỘI BỘ, reserveItem()
+        // (đã chạy trước khi trừ tiền) đã giảm stockAvailable cho từng key giữ chỗ.
+        // Đoạn trừ cuối này trước đây trừ thêm validQuantity lần nữa → kho giảm
+        // gấp đôi, khách mua hết key thật rồi vẫn bị chặn "hết hàng".
+        // Chỉ áp dụng trừ cuối cho nhánh SUPPLIER (không đi qua reserveItem).
+        if (isSupplierProduct && product.stockAvailable !== undefined && product.stockAvailable > 0) {
+          product.stockAvailable = Math.max(0, product.stockAvailable - validQuantity);
+        }
+        else if (!isSupplierProduct) {
+          // Validate phòng thủ: stockAvailable phải khớp số key thật còn AVAILABLE
+          // (nếu lệch do dữ liệu cũ, không tự trừ thêm — reserveItem là nguồn chuẩn)
+          const availNow = Array.from(db.inventory.values()).filter(
+            i => i.productId === productId && i.state === 'AVAILABLE'
+          ).length;
+          if (product.stockAvailable !== availNow) {
+            product.stockAvailable = availNow;
+          }
+        }
 
     AuditService.log({
       actorId: buyer.id,

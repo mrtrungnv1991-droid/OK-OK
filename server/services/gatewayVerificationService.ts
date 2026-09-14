@@ -76,35 +76,55 @@ export class GatewayVerificationService {
   // Official Binance Pay OpenAPI v2: POST https://bpay.binanceapi.com/binancepay/openapi/v2/order/query
   // ============================================================================
   public static async verifyBinancePay(params: {
-    userId: string;
-    orderId: string; // Binance Pay Order ID, Prepay ID or Merchant Trade No
-    declaredAmount?: number;
-    userCurrency?: string;
-    memo?: string;
-    ipAddress?: string;
-  }): Promise<VerificationResult> {
-    const cleanOrderId = String(params.orderId || '').trim();
-    if (!cleanOrderId || cleanOrderId.length < 5) {
-      return {
-        success: false,
-        verified: false,
-        gateway: 'BINANCE_PAY',
-        referenceId: cleanOrderId,
-        amount: 0,
-        message: 'Mã giao dịch Binance Pay không hợp lệ (yêu cầu ít nhất 5 ký tự)'
-      };
-    }
+      userId: string;
+      orderId: string; // Binance Pay Order ID, Prepay ID or Merchant Trade No
+      declaredAmount?: number;
+      userCurrency?: string;
+      memo?: string;
+      ipAddress?: string;
+    }): Promise<VerificationResult> {
+      const cleanOrderId = String(params.orderId || '').trim();
+      if (!cleanOrderId || cleanOrderId.length < 5) {
+        return {
+          success: false,
+          verified: false,
+          gateway: 'BINANCE_PAY',
+          referenceId: cleanOrderId,
+          amount: 0,
+          message: 'Mã giao dịch Binance Pay không hợp lệ (yêu cầu ít nhất 5 ký tự)'
+        };
+      }
 
-    if (this.isAlreadyRedeemed(cleanOrderId)) {
-      return {
-        success: false,
-        verified: false,
-        gateway: 'BINANCE_PAY',
-        referenceId: cleanOrderId,
-        amount: 0,
-        message: 'Mã giao dịch Binance Pay này đã được cộng tiền vào tài khoản trước đó (Chống gian lận nạp trùng).'
-      };
-    }
+      // CYBERPOOL FIX (P1 #1 — double-credit concurrent): trước đây check
+      // isAlreadyRedeemed → await API (vài trăm ms) → credit → markRedeemed KHÔNG có
+      // lock. Hai request cùng mã đều vượt qua check trước khi API trả lời → cả hai
+      // đều credit = nạp 1 lần cộng 2 lần tiền. Giờ: lock theo orderId NGAY TỪ ĐẦU,
+      // re-check sau khi có lock (đồng bộ với webhook đánh dấu PAY_SUCCESS cùng id).
+      const lockKey = `VERIFY_BINANCE_${cleanOrderId}`;
+      const locked = await IdempotencyService.acquireLock(lockKey, 5000);
+      if (!locked) {
+        return {
+          success: false,
+          verified: false,
+          gateway: 'BINANCE_PAY',
+          referenceId: cleanOrderId,
+          amount: 0,
+          message: 'Giao dịch này đang được xử lý đồng thời (lock) — vui lòng thử lại sau.'
+        };
+      }
+
+      try {
+        // Re-check SAU khi có lock: có thể request trước (hoặc webhook) đã credit
+        if (this.isAlreadyRedeemed(cleanOrderId)) {
+          return {
+            success: false,
+            verified: false,
+            gateway: 'BINANCE_PAY',
+            referenceId: cleanOrderId,
+            amount: 0,
+            message: 'Mã giao dịch Binance Pay này đã được cộng tiền vào tài khoản trước đó (Chống gian lận nạp trùng).'
+          };
+        }
 
     const targetUser = db.users.get(params.userId);
     if (!targetUser) {
@@ -238,13 +258,16 @@ export class GatewayVerificationService {
       message: `Xác minh Binance Pay thành công! Đã cộng +${creditedVnd.toLocaleString()}₫ (${verifiedAmountUsdt} USDT) vào ví.`,
       newBalance: targetUser.walletBalance,
       details: {
-        orderId: cleanOrderId,
-        status: orderStatus,
-        rate: usdRate,
-        txTime: new Date().toISOString()
-      }
-    };
-  }
+              orderId: cleanOrderId,
+              status: orderStatus,
+              rate: usdRate,
+              txTime: new Date().toISOString()
+            }
+          };
+          } finally {
+            IdempotencyService.releaseLock(lockKey);
+          }
+        }
 
   // ============================================================================
     // 1b. BINANCE PAY CREATE ORDER (Mô hình A — Merchant Checkout thật)
@@ -482,16 +505,35 @@ export class GatewayVerificationService {
       return { processed: false, credited: 0, message: 'Webhook thiếu định danh đơn (bizIdStr/merchantTradeNo).' };
     }
     if (bizStatus !== 'PAY_SUCCESS') {
-      return { processed: false, credited: 0, message: `Trạng thái ${bizStatus || 'UNKNOWN'} — không credit (chỉ PAY_SUCCESS được cộng tiền).` };
-    }
+          return { processed: false, credited: 0, message: `Trạng thái ${bizStatus || 'UNKNOWN'} — không credit (chỉ PAY_SUCCESS được cộng tiền).` };
+        }
 
-    // Canonical idempotency: prepayId (bizIdStr) là khóa chính, merchantTradeNo là alias.
-    // verifyBinancePay thủ công redeem theo orderId user dán (có thể là prepayId HOẶC
-    // merchantTradeNo) → cả 2 khóa đều phải được mark để chặn double-credit chéo đường.
-    const canonicalKey = bizIdStr || merchantTradeNo;
-    if (this.isAlreadyRedeemed(canonicalKey) || (merchantTradeNo && this.isAlreadyRedeemed(merchantTradeNo))) {
-      return { processed: false, credited: 0, message: 'Đơn Binance Pay này đã được cộng tiền trước đó (idempotent OK — chống nạp trùng webhook/verify).' };
-    }
+        // CYBERPOOL FIX (P1 #1 — double-credit cross-path): khóa ĐỒNG BỘ với
+        // verifyBinancePay thủ công (cùng prefix VERIFY_BINANCE_) trên CẢ HAI key
+        // (prepayId + merchantTradeNo, sort để tránh deadlock nếu Binance retry
+        // webhook song song). User verify thủ công có thể dán 1 trong 2 key → nếu
+        // webhook chỉ khóa 1 key thì 1 request kia vẫn lọt, cả 2 cùng credit.
+        const whLockKeys = Array.from(new Set([bizIdStr, merchantTradeNo].filter(Boolean)))
+          .map(k => `VERIFY_BINANCE_${k}`)
+          .sort();
+        const whHeldLocks: string[] = [];
+        let whAllLocked = true;
+        for (const k of whLockKeys) {
+          const ok = await IdempotencyService.acquireLock(k, 5000);
+          if (!ok) { whAllLocked = false; break; }
+          whHeldLocks.push(k);
+        }
+        if (!whAllLocked) {
+          for (const k of whHeldLocks) IdempotencyService.releaseLock(k);
+          return { processed: false, credited: 0, message: 'Đơn này đang được xử lý đồng thời — Binance sẽ retry.' };
+        }
+
+        try {
+          // Re-check SAU khi có lock (cả 2 key)
+          const canonicalKey = bizIdStr || merchantTradeNo;
+          if (this.isAlreadyRedeemed(canonicalKey) || (merchantTradeNo && this.isAlreadyRedeemed(merchantTradeNo))) {
+            return { processed: false, credited: 0, message: 'Đơn Binance Pay này đã được cộng tiền trước đó (idempotent OK — chống nạp trùng webhook/verify).' };
+          }
 
     // Tra intent tạo bởi createBinancePayOrder (id = prepayId, có merchantTradeNo)
     let intent: any = bizIdStr ? db.depositIntents.get(bizIdStr) : undefined;
@@ -556,7 +598,10 @@ export class GatewayVerificationService {
     });
 
     return { processed: true, credited: creditedVnd, message: `Đã cộng +${creditedVnd.toLocaleString('vi-VN')}₫ qua Binance Pay webhook (order ${merchantTradeNo || bizIdStr}).` };
-  }
+        } finally {
+          for (const k of whHeldLocks) IdempotencyService.releaseLock(k);
+        }
+      }
 
     // ============================================================================
   // 2+3. CRYPTO USDT / LTC — ĐÃ GỠ (CYBERPOOL CRYPTOGATE)
@@ -592,15 +637,44 @@ export class GatewayVerificationService {
     }
 
     if (this.isAlreadyRedeemed(cleanTransId)) {
-      return {
-        success: false,
-        verified: false,
-        gateway: 'MOMO',
-        referenceId: cleanTransId,
-        amount: 0,
-        message: 'Mã giao dịch MoMo này đã được cộng tiền vào tài khoản trước đó (Chống nạp trùng).'
-      };
-    }
+          return {
+            success: false,
+            verified: false,
+            gateway: 'MOMO',
+            referenceId: cleanTransId,
+            amount: 0,
+            message: 'Mã giao dịch MoMo này đã được cộng tiền vào tài khoản trước đó (Chống nạp trùng).'
+          };
+        }
+
+        // CYBERPOOL FIX (P1 #1 — double-credit concurrent): cùng pattern với
+        // verifyBinancePay. Khóa theo transId ngay, re-check sau khi có lock để
+        // chặn 2 request đồng thời cùng mã giao dịch cộng tiền 2 lần.
+        const momoLockKey = `VERIFY_MOMO_${cleanTransId}`;
+        const momoLocked = await IdempotencyService.acquireLock(momoLockKey, 5000);
+        if (!momoLocked) {
+          return {
+            success: false,
+            verified: false,
+            gateway: 'MOMO',
+            referenceId: cleanTransId,
+            amount: 0,
+            message: 'Giao dịch này đang được xử lý đồng thời (lock) — vui lòng thử lại sau.'
+          };
+        }
+
+        try {
+          // Re-check SAU khi có lock: request trước / MoMo IPN có thể đã credit
+          if (this.isAlreadyRedeemed(cleanTransId)) {
+            return {
+              success: false,
+              verified: false,
+              gateway: 'MOMO',
+              referenceId: cleanTransId,
+              amount: 0,
+              message: 'Mã giao dịch MoMo này đã được cộng tiền vào tài khoản trước đó (Chống nạp trùng).'
+            };
+          }
 
     const targetUser = db.users.get(params.userId);
     if (!targetUser) {
@@ -731,13 +805,16 @@ export class GatewayVerificationService {
       message: `Xác minh giao dịch MoMo thành công! Đã cộng +${verifiedAmount.toLocaleString()}₫ vào tài khoản.`,
       newBalance: targetUser.walletBalance,
       details: {
-        transId: cleanTransId,
-        receiver: `${momoPhone} (${momoName})`,
-        status: momoStatus,
-        verifiedAt: new Date().toISOString()
-      }
-    };
-  }
+              transId: cleanTransId,
+              receiver: `${momoPhone} (${momoName})`,
+              status: momoStatus,
+              verifiedAt: new Date().toISOString()
+            }
+          };
+            } finally {
+              IdempotencyService.releaseLock(momoLockKey);
+            }
+        }
 
   // ============================================================================
     // 4b. MOMO CAPTURE WALLET (Tạo lệnh thu tiền thật)
