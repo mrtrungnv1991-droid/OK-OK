@@ -79,16 +79,63 @@ class DatabaseStore {
   // Mutex lock trackers (CYBERPOOL FIX #15: thay bằng FIFO mutex lockState bên dưới)
 
   constructor() {
-    this.seedDatabase();
-    // CYBERPOOL FIX (systemic #1): khôi phục state đã lưu sau khi seed —
-    // bản ghi trên đĩa ghi đè dữ liệu seed (ví dụ số dư user, đơn hàng,
-    // trạng thái escrow). Khi chạy test thì bỏ qua để seed luôn sạch.
-    if (!IS_TEST_RUN) {
-      this.loadSnapshot();
-      this.startSnapshotTimer();
-      this.registerShutdownFlush();
+      this.seedDatabase();
+      // CYBERPOOL FIX (systemic #1): khôi phục state đã lưu sau khi seed —
+      // bản ghi trên đĩa ghi đè dữ liệu seed (ví dụ số dư user, đơn hàng,
+      // trạng thái escrow). Khi chạy test thì bỏ qua để seed luôn sạch.
+      if (!IS_TEST_RUN) {
+        this.loadSnapshot();
+        this.bootstrapCustomAdmin();
+        this.startSnapshotTimer();
+        this.registerShutdownFlush();
+      }
     }
-  }
+
+    /**
+     * CYBERPOOL: admin vận hành từ ENV (ADMIN_USERNAME/ADMIN_PASSWORD/ADMIN_EMAIL).
+     * Chạy SAU loadSnapshot để không bị ghi đè. Mật khẩu KHÔNG nằm trong repo —
+     * chỉ qua env trên server. Tạo mới nếu chưa có; nếu đã có thì đồng bộ lại
+     * password từ env (đổi mật khẩu = sửa env + restart).
+     */
+    private bootstrapCustomAdmin(): void {
+      const username = String(process.env.ADMIN_USERNAME || '').trim();
+      const password = process.env.ADMIN_PASSWORD || '';
+      if (!username || !password) return; // không cấu hình thì không làm gì
+      const email = String(process.env.ADMIN_EMAIL || `${username}@cyberpool.vn`).trim().toLowerCase();
+      const existing = Array.from(this.users.values()).find(
+        u => u.email.toLowerCase() === email ||
+             String((u as any).username || '').toLowerCase() === username.toLowerCase()
+      );
+      if (existing) {
+        (existing as any).username = username;
+        existing.passwordHash = hashPassword(password);
+        existing.role = 'SUPER_ADMIN';
+        existing.status = 'active';
+        this.users.set(existing.id, existing);
+        console.log(`[SECURITY] Bootstrap admin '${username}' (${existing.id}) đã được đồng bộ mật khẩu từ env.`);
+        return;
+      }
+      const id = `usr-admin-${username.toLowerCase().replace(/[^a-z0-9]/g, '')}`;
+      const admin: ServerUser = {
+        id,
+        email,
+        name: username,
+        role: 'SUPER_ADMIN',
+        passwordHash: hashPassword(password),
+        walletBalance: 0,
+        escrowLocked: 0,
+        affiliateEarnings: 0,
+        avatar: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=150&q=80',
+        isVerified: true,
+        status: 'active',
+        createdAt: new Date().toISOString(),
+        lastLoginAt: new Date().toISOString(),
+        ipAddress: '127.0.0.1'
+      } as ServerUser;
+      (admin as any).username = username;
+      this.users.set(id, admin);
+      console.log(`[SECURITY] Bootstrap admin '${username}' (${id}) đã được tạo với mật khẩu từ env.`);
+    }
 
   // ==================== SNAPSHOT PERSISTENCE ====================
   // Snapshot toàn bộ collections "sống" (users, transactions, orders, escrow,

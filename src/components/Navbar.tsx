@@ -2,7 +2,8 @@ import React, { useState, useRef, useEffect } from 'react';
 import { 
   Zap, 
   ShieldCheck, 
-  Key, 
+  LogIn,
+  Key,
   PlusCircle, 
   Wallet, 
   Flame,
@@ -51,6 +52,9 @@ interface NavbarProps {
   onOpenTopup: () => void;
   onOpenTickets: () => void;
   onOpenSuppliers: () => void;
+  // CYBERPOOL: guest mode — hiện nút Đăng nhập thay avatar khi chưa auth
+  isGuest?: boolean;
+  onLoginClick?: () => void;
   onOpenAdmin: () => void;
   onOpenTelcoCard: () => void;
   onOpenLuckyWheel: () => void;
@@ -78,6 +82,8 @@ export const Navbar: React.FC<NavbarProps> = ({
   onOpenTopup,
   onOpenTickets,
   onOpenSuppliers,
+  isGuest,
+  onLoginClick,
   onOpenAdmin,
   onOpenTelcoCard,
   onOpenLuckyWheel,
@@ -342,6 +348,15 @@ export const Navbar: React.FC<NavbarProps> = ({
           </button>
 
           {/* Prominent User Account Section with Dropdown */}
+          {isGuest ? (
+            <button
+              onClick={() => onLoginClick?.()}
+              className="flex items-center gap-1.5 px-3 sm:px-4 py-2 bg-gradient-to-r from-cyan-500 to-blue-600 hover:from-cyan-400 hover:to-blue-500 text-black font-black text-xs rounded-lg transition-all active:scale-95 shadow-[0_0_15px_rgba(6,182,212,0.4)] cursor-pointer"
+            >
+              <LogIn className="w-4 h-4" />
+              <span className="hidden xs:inline">ĐĂNG NHẬP</span>
+            </button>
+          ) : (
           <div className="relative shrink-0" ref={accountMenuRef}>
             <button
               onClick={() => setIsAccountMenuOpen(!isAccountMenuOpen)}
@@ -592,6 +607,7 @@ export const Navbar: React.FC<NavbarProps> = ({
               </>
             )}
           </div>
+          )}
         </div>
       </div>
     </header>

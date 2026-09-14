@@ -6,9 +6,9 @@
 // ==============================================================================
 import React, { useState } from 'react';
 import { useAuth } from '../contexts/AuthContext';
-import { ShieldCheck, LogIn, UserPlus, Eye, EyeOff, Loader2, Sparkles } from 'lucide-react';
+import { ShieldCheck, LogIn, UserPlus, Eye, EyeOff, Loader2, Sparkles, X } from 'lucide-react';
 
-export const AuthGate: React.FC = () => {
+export const AuthGate: React.FC<{ onClose?: () => void }> = ({ onClose }) => {
   const { login, register, isLoading } = useAuth();
   const [mode, setMode] = useState<'login' | 'register'>('login');
   const [email, setEmail] = useState('');
@@ -22,7 +22,12 @@ export const AuthGate: React.FC = () => {
     e.preventDefault();
     setError(null);
 
-    if (!email.trim() || !email.includes('@')) {
+    if (!email.trim()) {
+      setError('Vui lòng nhập email hoặc tên đăng nhập.');
+      return;
+    }
+    // Đăng nhập cho phép username ngắn (vd mrtee) — chỉ register mới bắt email thật
+    if (mode === 'register' && !email.includes('@')) {
       setError('Email không hợp lệ.');
       return;
     }
@@ -39,6 +44,8 @@ export const AuthGate: React.FC = () => {
       const res = await register({ email: email.trim(), name: name.trim(), phone: phone.trim() || undefined, password });
       if (!res.success) {
         setError(res.error || 'Đăng ký thất bại.');
+      } else {
+        onClose?.();
       }
     } else {
       if (!password) {
@@ -48,16 +55,27 @@ export const AuthGate: React.FC = () => {
       const res = await login(email.trim(), password);
       if (!res.success) {
         setError(res.error || 'Đăng nhập thất bại.');
+      } else {
+        onClose?.();
       }
     }
   };
 
   return (
-    <div className="fixed inset-0 z-[100] flex items-center justify-center bg-[#05070d] p-4 overflow-y-auto">
+    <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/70 backdrop-blur-sm p-4 overflow-y-auto" onClick={() => onClose?.()}>
       {/* Ambient glow */}
       <div className="absolute inset-0 bg-[radial-gradient(circle_at_50%_20%,rgba(6,182,212,0.12),transparent_60%)] pointer-events-none" />
 
-      <div className="relative w-full max-w-md">
+      <div className="relative w-full max-w-md" onClick={e => e.stopPropagation()}>
+        {onClose && (
+          <button
+            onClick={onClose}
+            className="absolute -top-3 -right-3 z-10 w-9 h-9 rounded-full bg-slate-900 border border-cyan-500/40 text-cyan-300 hover:text-white hover:bg-cyan-600 flex items-center justify-center transition-colors cursor-pointer"
+            aria-label="Đóng"
+          >
+            <X className="w-4 h-4" />
+          </button>
+        )}
         <div className="bg-[#0b0f19]/95 border border-cyan-500/40 rounded-2xl shadow-[0_0_40px_rgba(6,182,212,0.15)] p-6 sm:p-8 space-y-5">
           {/* Header */}
           <div className="text-center space-y-2">

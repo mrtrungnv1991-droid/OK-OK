@@ -370,6 +370,8 @@ function AppContent() {
   // bao giờ được gọi từ UI. Giờ gọi server trước; chỉ cập nhật UI khi server
   // xác nhận, và số dư lấy từ refreshUserProfile (OrdersContext đã gọi).
   const handleConfirmJoinPool = async (product: Product, pool: GroupPool) => {
+    // CYBERPOOL: gom đơn khóa tiền thật — bắt buộc đăng nhập
+    if (!isAuthenticated) { setAuthGateOpen(true); return; }
     const result = await joinPoolServer(pool.id, product);
 
     if (!result.success) {
@@ -436,7 +438,8 @@ function AppContent() {
 
   // Instant Single Purchase Handler (Opens InstantBuy Modal with full specs & payment options)
   const handleInstantBuy = (product: Product) => {
-    openModal('instantBuy', { selectedProduct: product });
+    // CYBERPOOL: khách chưa đăng nhập → mở modal đăng nhập trước khi mua
+    requireAuth(() => openModal('instantBuy', { selectedProduct: product }));
   };
 
   // Instant Single Purchase Finalized Execution Handler
@@ -584,9 +587,16 @@ function AppContent() {
 
     const siteContainerClass = systemConfig.uiLayoutConfig?.siteContainerWidth || systemConfig.heroConfig?.containerMaxWidth || 'max-w-7xl';
 
-  // CYBERPOOL FIX: auth gate — trước đây app luôn render như đã đăng nhập
-  // (auto-login admin hardcode). Giờ: đang boot → splash; chưa xác thực →
-  // màn hình đăng nhập/đăng ký thật (AuthGate).
+  // CYBERPOOL FIX (auth gate): trước đây app luôn render như đã đăng nhập
+  // (auto-login admin hardcode). Sau đó sửa thành chặn cứng cả trang bằng
+  // AuthGate — khách muốn XEM web cũng phải đăng ký. Theo yêu cầu vận hành:
+  // khách vào THẲNG web xem/mua sắm công khai; AuthGate chỉ mở như modal khi
+  // bấm Đăng nhập hoặc thao tác cần tài khoản.
+  const [authGateOpen, setAuthGateOpen] = useState(false);
+  // Thao tác cần tài khoản mà khách chưa đăng nhập → mở modal AuthGate
+  const requireAuth = (fn: () => void) => {
+    if (isAuthenticated) { fn(); } else { setAuthGateOpen(true); }
+  };
   if (isBooting) {
     return (
       <div className="min-h-screen bg-[#050811] flex items-center justify-center">
@@ -598,7 +608,8 @@ function AppContent() {
     );
   }
   if (!isAuthenticated) {
-    return <AuthGate />;
+    // KHÔNG chặn cứng cả trang nữa — khách xem web trực tiếp.
+    // (AuthGate được render như modal ở cuối tree khi authGateOpen=true)
   }
 
   return (
@@ -609,10 +620,12 @@ function AppContent() {
         currentLanguage={currentUser.language || 'vi'}
         activeOrdersCount={orders.length}
         containerMaxWidth={siteContainerClass}
-        onOpenWallet={() => openModal('wallet')}
-        onOpenDepositHub={() => openModal('depositHub')}
-        onOpenVault={() => openModal('vault')}
-        onOpenCreatePool={() => openModal('createPool')}
+        isGuest={!isAuthenticated}
+        onLoginClick={() => setAuthGateOpen(true)}
+        onOpenWallet={() => requireAuth(() => openModal('wallet'))}
+        onOpenDepositHub={() => requireAuth(() => openModal('depositHub'))}
+        onOpenVault={() => requireAuth(() => openModal('vault'))}
+        onOpenCreatePool={() => requireAuth(() => openModal('createPool'))}
         onOpenLanguageModal={() => openModal('aiConfig')}
         onCurrencyToggle={() => openModal('aiConfig')}
         onQuickChangeLanguage={(lang, curr) => {
@@ -1263,6 +1276,12 @@ function AppContent() {
 
       {/* 10. Global Notification & Toast Stack Container */}
       <GlobalToastContainer />
+
+      {/* CYBERPOOL: AuthGate modal — mở khi khách bấm Đăng nhập hoặc thao tác
+          cần tài khoản (ví/nạp/mua/gom đơn). Khách XEM web không cần đăng nhập. */}
+      {authGateOpen && !isAuthenticated && (
+        <AuthGate onClose={() => setAuthGateOpen(false)} />
+      )}
     </div>
   );
 }

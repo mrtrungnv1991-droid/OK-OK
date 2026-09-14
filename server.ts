@@ -26,7 +26,10 @@ import { startCryptoGateScanner } from './server/services/cryptoGateService';
 
 async function startServer() {
   const app = express();
-  const PORT = 3000;
+  // CYBERPOOL DEPLOY FIX: Passenger/LiteSpeed cấp PORT động qua env — có thể là
+  // SỐ (docker/standalone) hoặc ĐƯỜNG DẪN UNIX SOCKET (Passenger). Giữ nguyên
+  // chuỗi gốc; hardcode/số hóa sẽ khiến app không bind đúng nơi Passenger chờ.
+  const PORT = process.env.PORT || 3000;
 
   // Middleware
   // CYBERPOOL BINANCE PAY WEBHOOK: chữ ký webhook của Binance là RSA trên RAW BODY
@@ -111,10 +114,21 @@ async function startServer() {
     });
   }
 
-  app.listen(PORT, '0.0.0.0', () => {
-    console.log(`⚡ [CYBERPOOL BACKEND] Running at http://0.0.0.0:${PORT}`);
+  // CYBERPOOL DEPLOY FIX (Passenger/LiteSpeed): khi chạy dưới Passenger,
+  // process.env.PORT là ĐƯỜNG DẪN UNIX SOCKET (vd /passenger.xxx), KHÔNG phải
+  // số cổng. app.listen(socketPath, '0.0.0.0') sẽ throw EADDRINVAL → app seed
+  // xong rồi chết lặng lẽ (LiteSpeed trả 503). Đúng contract Passenger:
+  // listen(PORT) không kèm host khi PORT không phải số.
+  const portIsSocket = typeof PORT === 'string' && !/^\d+$/.test(PORT);
+  const onListening = () => {
+    console.log(`⚡ [CYBERPOOL BACKEND] Running at ${portIsSocket ? PORT : `http://0.0.0.0:${PORT}`}`);
     console.log(`🚀 [API v1] Mounted: /api/v1/auth, /api/v1/wallet, /api/v1/orders, /api/v1/escrow, /api/v1/admin`);
-  });
+  };
+  if (portIsSocket) {
+      app.listen(PORT, onListening);
+    } else {
+      app.listen(Number(PORT), '0.0.0.0', onListening);
+    }
 }
 
 startServer();

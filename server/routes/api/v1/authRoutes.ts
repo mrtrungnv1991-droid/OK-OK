@@ -36,8 +36,15 @@ authRouter.post('/login', loginRateLimit, (req, res) => {
   }
 
   let matchedUser: ServerUser | undefined;
+  // CYBERPOOL: đăng nhập chấp nhận EMAIL hoặc USERNAME (vd admin "mrtee").
+  // Match theo thứ tự: email chính xác -> phần trước @ của email -> id.
+  const loginId = email.trim().toLowerCase();
   for (const u of db.users.values()) {
-    if (u.email.toLowerCase() === email.trim().toLowerCase()) {
+    const uEmail = u.email.toLowerCase();
+    if (uEmail === loginId ||
+        (u as any).username && String((u as any).username).toLowerCase() === loginId ||
+        uEmail.split('@')[0] === loginId ||
+        u.id.toLowerCase() === loginId) {
       matchedUser = u;
       break;
     }
