@@ -143,14 +143,19 @@ export const AuthGate: React.FC<{ onClose?: () => void }> = ({ onClose }) => {
             )}
 
             <div>
-              <label className="block text-[11px] font-bold text-slate-400 mb-1 font-mono uppercase">Email *</label>
+              {/* CYBERPOOL: login cho phép username (vd mrtee) HOẶC email.
+                  type="email" ở chế độ login khiến một số trình duyệt chặn
+                  username không có @ → dùng type="text" khi login. */}
+              <label className="block text-[11px] font-bold text-slate-400 mb-1 font-mono uppercase">
+                {mode === 'register' ? 'Email *' : 'Tên đăng nhập hoặc Email *'}
+              </label>
               <input
-                type="email"
+                type={mode === 'register' ? 'email' : 'text'}
                 value={email}
                 onChange={e => setEmail(e.target.value)}
-                placeholder="ban@email.com"
+                placeholder={mode === 'register' ? 'ban@email.com' : 'mrtee hoặc ban@email.com'}
                 className="w-full bg-slate-950 border border-slate-700 focus:border-cyan-500 rounded-lg px-3 py-2.5 text-sm text-white outline-none transition-colors"
-                autoComplete="email"
+                autoComplete={mode === 'register' ? 'email' : 'username'}
               />
             </div>
 
