@@ -26,7 +26,7 @@ import { startCryptoGateScanner } from './server/services/cryptoGateService';
 
 async function startServer() {
   const app = express();
-  const PORT = Number(process.env.PORT) || 3000;
+  const PORT = 3000;
 
   // Middleware
   // CYBERPOOL BINANCE PAY WEBHOOK: chữ ký webhook của Binance là RSA trên RAW BODY

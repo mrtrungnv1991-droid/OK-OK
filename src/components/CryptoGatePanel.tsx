@@ -331,18 +331,9 @@ export const CryptoGatePanel: React.FC<Props> = ({ currency, userBalance, onDepo
                 <div className="flex items-center justify-center">
                   <img
                     src={`https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${encodeURIComponent(
-                      // CYBERPOOL: QR nhúng SỐ LẺ DUY NHẤT + memo reference để khách
-                      // chuyển ĐÚNG số coin của đơn (10.000023 chứ không phải 10.00)
-                      // → hệ thống match chính xác, không cần memo chung.
-                      // URI scheme theo chuẩn từng chain; EVM (BSC/Polygon) không có
-                      // URI chuẩn cho ERC20 amount → vẫn show số lẻ to + copy.
                       intent.coin === 'LTC'
-                        ? `litecoin:${intent.address}?amount=${intent.amountCrypto}&message=CG${intent.id.replace(/[^A-Za-z0-9]/g, '')}`
-                        : intent.network === 'TRON'
-                          ? `tron:${intent.address}?amount=${intent.amountCrypto}&memo=CG${intent.id.replace(/[^A-Za-z0-9]/g, '')}`
-                          : intent.network === 'SOLANA'
-                            ? `solana:${intent.address}?amount=${intent.amountCrypto}&memo=CG${intent.id.replace(/[^A-Za-z0-9]/g, '')}`
-                            : intent.address
+                        ? `litecoin:${intent.address}?amount=${intent.amountCrypto}`
+                        : intent.address
                     )}`}
                     alt="QR địa chỉ ví"
                     className="w-40 h-40 rounded-lg border border-slate-700 bg-white p-1"

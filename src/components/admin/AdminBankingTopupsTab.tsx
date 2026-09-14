@@ -188,10 +188,10 @@ export const AdminBankingTopupsTab: React.FC<AdminBankingTopupsTabProps> = ({
     const moduleNameMap: Record<DepositModuleId, string> = {
       vietqr: 'VietQR Ngân Hàng Napas 24/7',
       telco: 'Đổi Thẻ Cào Telco Card24h',
-      momo: 'Ví Điện Tử MoMo / ZaloPay',
-      crypto: 'Crypto USDT (TRC20 / BEP20)',
+      momo: 'Ví Điện Tử MoMo Business Auto',
+      crypto: 'Cổng Crypto Multi-Network (Direct-to-Wallet)',
       ltc: 'Litecoin (LTC Core Node)',
-      binance: 'Binance Pay (0% Fee)'
+      binance: 'Binance Pay'
     };
 
     if (nextEnabled) {
@@ -292,31 +292,9 @@ export const AdminBankingTopupsTab: React.FC<AdminBankingTopupsTabProps> = ({
       raw?: any;
     } | null>(null);
 
-    // CYBERPOOL FIX: test kết nối + xác thực credential THẬT cho Binance / USDT / LTC
-    const [binanceTesting, setBinanceTesting] = useState(false);
-    const [binanceTestResult, setBinanceTestResult] = useState<{
-      success: boolean;
-      message: string;
-      latencyMs?: number;
-      raw?: any;
-    } | null>(null);
-    const [cryptoUsdtTesting, setCryptoUsdtTesting] = useState(false);
     // CYBERPOOL CRYPTOGATE: state nút quét on-chain thủ công
     const [cryptoGateScanning, setCryptoGateScanning] = useState(false);
     const [cryptoGateScanResult, setCryptoGateScanResult] = useState<{ success: boolean; message: string } | null>(null);
-    const [cryptoUsdtTestResult, setCryptoUsdtTestResult] = useState<{
-      success: boolean;
-      message: string;
-      latencyMs?: number;
-      raw?: any;
-    } | null>(null);
-    const [ltcTesting, setLtcTesting] = useState(false);
-    const [ltcTestResult, setLtcTestResult] = useState<{
-      success: boolean;
-      message: string;
-      latencyMs?: number;
-      raw?: any;
-    } | null>(null);
   const [copiedCallback, setCopiedCallback] = useState(false);
 
   const handleTestCard24hConnection = async () => {
@@ -350,78 +328,7 @@ export const AdminBankingTopupsTab: React.FC<AdminBankingTopupsTabProps> = ({
       }
     };
 
-    // CYBERPOOL FIX: Binance — test ping + xác thực chữ ký HMAC-SHA512 thật qua
-    // order/query (server gọi Binance Pay OpenAPI v2; credential đúng → trả
-    // 'Order not found', sai → 'Invalid API-key'). Không qua loa: ping công khai
-    // không chứng minh được key đúng.
-    const handleTestBinanceConnection = async () => {
-      setBinanceTesting(true);
-      setBinanceTestResult(null);
-      try {
-        const res = await adminApi.testBinance({
-                apiKey: gatewayForm.binanceApiKey,
-                secretKey: gatewayForm.binanceSecretKey
-              });
-              if (res.data && res.data.success !== false) {
-                const auth = res.data.authCheck;
-                const authNote = auth
-                  ? ` [HTTP ${auth.httpStatus} | API ${auth.apiStatus} | ${auth.message || auth.error || 'no msg'}]`
-                  : '';
-                setBinanceTestResult({
-                  success: true,
-                  message: `${res.data.merchantStatus || res.data.note || 'OK'}${authNote}`,
-                  latencyMs: res.data.latencyMs,
-                  raw: res.data
-                });
-              } else {
-                setBinanceTestResult({
-                  success: false,
-                  message: (res.data && res.data.error) || res.error || 'Không thể gọi API kiểm tra Binance.'
-                });
-              }
-      } catch (err: any) {
-        setBinanceTestResult({
-          success: false,
-          message: err?.message || 'Lỗi kiểm tra kết nối Binance'
-        });
-      } finally {
-        setBinanceTesting(false);
-      }
-    };
-
-    // CYBERPOOL FIX: USDT — test TronScan/BSC explorer live với địa chỉ ví đang nhập
-    const handleTestCryptoUsdtConnection = async () => {
-      setCryptoUsdtTesting(true);
-      setCryptoUsdtTestResult(null);
-      try {
-        const res = await adminApi.testCryptoUsdt({
-                address: gatewayForm.cryptoUsdtAddress,
-                network: gatewayForm.cryptoNetwork
-              });
-              if (res.data && res.data.success !== false) {
-                setCryptoUsdtTestResult({
-                  success: true,
-                  message: `${res.data.onChainStatus || 'ONLINE'} | Wallet ${res.data.walletAddress || ''} | ${res.data.trxBalance || ''} | ${res.data.bandwidth || ''}`,
-                  latencyMs: res.data.latencyMs,
-                  raw: res.data
-                });
-              } else {
-                setCryptoUsdtTestResult({
-                  success: false,
-                  message: (res.data && res.data.error) || res.error || 'Không thể truy vấn node blockchain USDT.'
-                });
-              }
-      } catch (err: any) {
-        setCryptoUsdtTestResult({
-          success: false,
-          message: err?.message || 'Lỗi kiểm tra kết nối USDT'
-        });
-      } finally {
-        setCryptoUsdtTesting(false);
-      }
-    };
-
-    // CYBERPOOL FIX: LTC — test Blockchair explorer live với địa chỉ ví đang nhập
+    // CYBERPOOL CRYPTOGATE: Quét on-chain thủ công
     const handleTestCryptoGateScan = async () => {
       setCryptoGateScanning(true);
       setCryptoGateScanResult(null);
@@ -441,36 +348,6 @@ export const AdminBankingTopupsTab: React.FC<AdminBankingTopupsTabProps> = ({
         setCryptoGateScanResult({ success: false, message: err?.message || 'Lỗi kết nối server.' });
       } finally {
         setCryptoGateScanning(false);
-      }
-    };
-
-    const handleTestLtcConnection = async () => {
-      setLtcTesting(true);
-      setLtcTestResult(null);
-      try {
-        const res = await adminApi.testLtc({
-                address: gatewayForm.cryptoLtcAddress
-              });
-              if (res.data && res.data.success !== false) {
-                setLtcTestResult({
-                  success: true,
-                  message: `${res.data.onChainStatus || 'ONLINE'} | Wallet ${res.data.walletAddress || ''} | ${res.data.confirmationsNote || ''}`,
-                  latencyMs: res.data.latencyMs,
-                  raw: res.data
-                });
-              } else {
-                setLtcTestResult({
-                  success: false,
-                  message: (res.data && res.data.error) || res.error || 'Không thể truy vấn node Litecoin mainnet.'
-                });
-              }
-      } catch (err: any) {
-        setLtcTestResult({
-          success: false,
-          message: err?.message || 'Lỗi kiểm tra kết nối LTC'
-        });
-      } finally {
-        setLtcTesting(false);
       }
     };
 
@@ -574,13 +451,13 @@ export const AdminBankingTopupsTab: React.FC<AdminBankingTopupsTabProps> = ({
         <div>
           <h3 className="text-sm font-bold text-white uppercase flex items-center gap-2 tracking-wide">
             <Zap className="w-4 h-4 text-emerald-400" />
-            <span>CỔNG NẠP TIỀN TỰ ĐỘNG & QUẢN LÝ HÓA ĐƠN ({invoices.length} GIAO DỊCH)</span>
+            <span>QUẢN LÝ CỔNG NẠP TIỀN & HÓA ĐƠN</span>
             <span className="px-2 py-0.5 rounded text-xs bg-emerald-950 text-emerald-300 border border-emerald-500/30 font-medium">
               Payment Gateways
             </span>
           </h3>
           <p className="text-xs text-slate-400 mt-1">
-            Quản lý API VietQR MBBank, TheSieuRe gạch thẻ cào, MoMo IPN, Crypto USDT và phê duyệt giao dịch.
+            Cấu hình bật/tắt trực tiếp tại từng module nạp tiền (VietQR, Gạch thẻ, MoMo, Crypto Multi-Network) và kiểm duyệt hóa đơn.
           </p>
         </div>
 
@@ -947,441 +824,58 @@ export const AdminBankingTopupsTab: React.FC<AdminBankingTopupsTabProps> = ({
       {/* SUB-TAB 2: CẤU HÌNH API CỔNG NẠP */}
       {activeSubTab === 'gateways' && (
         <form onSubmit={handleSaveGateways} className="space-y-5">
-          {/* MASTER SWITCHBOARD: TẮT / BẬT CỔNG API NẠP TIỀN CHO TỪNG MODULE */}
-          <div className="p-4 rounded-xl bg-gradient-to-b from-slate-900 via-slate-900/95 to-slate-950 border-2 border-cyan-500/40 shadow-xl shadow-cyan-950/20 space-y-4">
-            <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-3 border-b border-slate-800/80 pb-3.5">
-              <div className="flex items-start gap-3">
-                <div className="p-2 rounded-xl bg-gradient-to-br from-cyan-500/20 to-blue-500/10 border border-cyan-500/40 text-cyan-400 shrink-0">
-                  <Power className="w-5 h-5" />
-                </div>
-                <div>
-                  <div className="flex flex-wrap items-center gap-2">
-                    <h4 className="text-sm font-black text-white uppercase tracking-wider">
-                      BẬT / TẮT CỔNG API NẠP TIỀN CHO TỪNG MODULE
-                    </h4>
-                    {(() => {
-                      const enabledCount = [
-                        depositModules.vietqr?.enabled,
-                        depositModules.telco?.enabled,
-                        depositModules.momo?.enabled,
-                        depositModules.crypto?.enabled,
-                        depositModules.ltc?.enabled,
-                        depositModules.binance?.enabled
-                      ].filter(Boolean).length;
-                      return (
-                        <span className={`px-2.5 py-0.5 rounded-full text-xs font-bold border ${
-                          enabledCount === 6
-                            ? 'bg-emerald-950 text-emerald-300 border-emerald-500/40'
-                            : enabledCount === 0
-                            ? 'bg-rose-950 text-rose-300 border-rose-500/40'
-                            : 'bg-amber-950 text-amber-300 border-amber-500/40'
-                        }`}>
-                          {enabledCount} / 6 Cổng Đang Hoạt Động
-                        </span>
-                      );
-                    })()}
-                  </div>
-                  <p className="text-xs text-slate-400 mt-1 max-w-3xl leading-relaxed">
-                    Kiểm soát bật hoặc tạm tắt từng kênh nạp tiền (VietQR, Thẻ Cào, MoMo/ZaloPay, Crypto USDT, LTC, Binance Pay). 
-                    Khi tắt một cổng, thành viên trên toàn hệ thống sẽ thấy thông báo bảo trì cụ thể và không thể gửi lệnh nạp qua cổng đó.
-                  </p>
-                </div>
+          {/* TỔNG QUAN VÀ TÁC VỤ NHANH TRẠNG THÁI CÁC CỔNG */}
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-3.5 rounded-xl bg-slate-900/80 border border-slate-800 shadow-md">
+            <div className="flex items-center gap-2.5">
+              <div className="p-1.5 rounded-lg bg-emerald-500/10 border border-emerald-500/30 text-emerald-400">
+                <Power className="w-4 h-4" />
               </div>
-
-              {/* Master Bulk Actions */}
-              <div className="flex items-center gap-2 self-start lg:self-center shrink-0">
-                <button
-                  type="button"
-                  onClick={() => handleToggleAllModules(true)}
-                  className="px-3 py-1.5 rounded-lg bg-emerald-500/20 hover:bg-emerald-500/30 text-emerald-300 border border-emerald-500/40 text-xs font-bold flex items-center gap-1.5 transition-all cursor-pointer shadow-sm"
-                >
-                  <Check className="w-3.5 h-3.5" />
-                  <span>Bật Tất Cả Cổng</span>
-                </button>
-                <button
-                  type="button"
-                  onClick={() => handleToggleAllModules(false)}
-                  className="px-3 py-1.5 rounded-lg bg-rose-500/20 hover:bg-rose-500/30 text-rose-300 border border-rose-500/40 text-xs font-bold flex items-center gap-1.5 transition-all cursor-pointer shadow-sm"
-                >
-                  <Ban className="w-3.5 h-3.5" />
-                  <span>Tắt Toàn Bộ (Bảo Trì)</span>
-                </button>
+              <div>
+                <div className="flex flex-wrap items-center gap-2">
+                  <span className="text-xs font-bold text-white uppercase tracking-wider">Trạng Thái Hệ Thống Cổng Nạp:</span>
+                  {(() => {
+                    const activeCount = [
+                      depositModules.vietqr?.enabled,
+                      depositModules.telco?.enabled,
+                      depositModules.momo?.enabled,
+                      depositModules.crypto?.enabled
+                    ].filter(Boolean).length;
+                    return (
+                      <span className={`px-2 py-0.5 rounded text-[11px] font-bold border ${
+                        activeCount === 4
+                          ? 'bg-emerald-950 text-emerald-300 border-emerald-500/40'
+                          : activeCount === 0
+                          ? 'bg-rose-950 text-rose-300 border-rose-500/40'
+                          : 'bg-amber-950 text-amber-300 border-amber-500/40'
+                      }`}>
+                        {activeCount} / 4 Cổng Đang Hoạt Động
+                      </span>
+                    );
+                  })()}
+                </div>
+                <p className="text-[11px] text-slate-400 mt-0.5">
+                  Tắt / mở từng kênh nạp trực tiếp tại mỗi module bên dưới hoặc dùng nút thao tác nhanh cho toàn bộ hệ thống.
+                </p>
               </div>
             </div>
 
-            {/* Grid of 6 Modules */}
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3.5">
-              {/* MODULE 1: VietQR & Ngân Hàng Napas */}
-              <div className={`p-3.5 rounded-xl border transition-all ${
-                depositModules.vietqr?.enabled
-                  ? 'bg-slate-950/80 border-cyan-500/30 shadow-sm'
-                  : 'bg-rose-950/20 border-rose-500/40 opacity-95'
-              }`}>
-                <div className="flex items-start justify-between gap-2 mb-2">
-                  <div className="flex items-center gap-2">
-                    <div className="p-1.5 rounded-lg bg-cyan-500/10 border border-cyan-500/30 text-cyan-400">
-                      <Landmark className="w-4 h-4" />
-                    </div>
-                    <div>
-                      <div className="text-xs font-bold text-white flex items-center gap-1.5">
-                        <span>VietQR & Napas 24/7</span>
-                      </div>
-                      <span className="text-[10px] text-slate-400">Ngân hàng MBBank, VCB...</span>
-                    </div>
-                  </div>
-
-                  {/* Switch Toggle */}
-                  <button
-                    type="button"
-                    onClick={() => handleToggleModule('vietqr')}
-                    className={`relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none ${
-                      depositModules.vietqr?.enabled ? 'bg-emerald-500' : 'bg-slate-700'
-                    }`}
-                    title={depositModules.vietqr?.enabled ? 'Bấm để tắt cổng này' : 'Bấm để bật cổng này'}
-                  >
-                    <span
-                      className={`pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow-md ring-0 transition duration-200 ease-in-out ${
-                        depositModules.vietqr?.enabled ? 'translate-x-5' : 'translate-x-0'
-                      }`}
-                    />
-                  </button>
-                </div>
-
-                <div className="flex items-center justify-between text-xs pt-1 border-t border-slate-800/80">
-                  <span className="text-slate-400 text-[11px]">Trạng thái:</span>
-                  <span className={`font-bold text-[11px] px-2 py-0.5 rounded ${
-                    depositModules.vietqr?.enabled
-                      ? 'bg-emerald-950 text-emerald-300 border border-emerald-500/30'
-                      : 'bg-rose-950 text-rose-300 border border-rose-500/30'
-                  }`}>
-                    {depositModules.vietqr?.enabled ? '🟢 ĐANG HOẠT ĐỘNG' : '🔴 ĐÃ TẮT BẢO TRÌ'}
-                  </span>
-                </div>
-
-                {/* Maintenance Message (editable) */}
-                <div className="mt-2 pt-2 border-t border-slate-800/80">
-                  <label className="text-[10px] text-slate-400 block mb-1">
-                    Thông báo bảo trì hiển thị cho khách:
-                  </label>
-                  <input
-                    type="text"
-                    value={depositModules.vietqr?.maintenanceMessage || ''}
-                    onChange={(e) => handleUpdateMaintenanceMessage('vietqr', e.target.value)}
-                    placeholder="VD: Cổng VietQR đang tạm bảo trì hệ thống 15 phút..."
-                    className="w-full bg-slate-900 border border-slate-700/80 rounded-lg px-2.5 py-1 text-xs text-slate-200 placeholder:text-slate-500 focus:border-cyan-400 focus:outline-none"
-                  />
-                </div>
-              </div>
-
-              {/* MODULE 2: Gạch Thẻ Cào Telco */}
-              <div className={`p-3.5 rounded-xl border transition-all ${
-                depositModules.telco?.enabled
-                  ? 'bg-slate-950/80 border-amber-500/30 shadow-sm'
-                  : 'bg-rose-950/20 border-rose-500/40 opacity-95'
-              }`}>
-                <div className="flex items-start justify-between gap-2 mb-2">
-                  <div className="flex items-center gap-2">
-                    <div className="p-1.5 rounded-lg bg-amber-500/10 border border-amber-500/30 text-amber-400">
-                      <CreditCard className="w-4 h-4" />
-                    </div>
-                    <div>
-                      <div className="text-xs font-bold text-white flex items-center gap-1.5">
-                        <span>Đổi Thẻ Cào Telco</span>
-                      </div>
-                      <span className="text-[10px] text-slate-400">Card24h, TheSieuRe, Doithe1s</span>
-                    </div>
-                  </div>
-
-                  {/* Switch Toggle */}
-                  <button
-                    type="button"
-                    onClick={() => handleToggleModule('telco')}
-                    className={`relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none ${
-                      depositModules.telco?.enabled ? 'bg-emerald-500' : 'bg-slate-700'
-                    }`}
-                    title={depositModules.telco?.enabled ? 'Bấm để tắt cổng này' : 'Bấm để bật cổng này'}
-                  >
-                    <span
-                      className={`pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow-md ring-0 transition duration-200 ease-in-out ${
-                        depositModules.telco?.enabled ? 'translate-x-5' : 'translate-x-0'
-                      }`}
-                    />
-                  </button>
-                </div>
-
-                <div className="flex items-center justify-between text-xs pt-1 border-t border-slate-800/80">
-                  <span className="text-slate-400 text-[11px]">Trạng thái:</span>
-                  <span className={`font-bold text-[11px] px-2 py-0.5 rounded ${
-                    depositModules.telco?.enabled
-                      ? 'bg-emerald-950 text-emerald-300 border border-emerald-500/30'
-                      : 'bg-rose-950 text-rose-300 border border-rose-500/30'
-                  }`}>
-                    {depositModules.telco?.enabled ? '🟢 ĐANG HOẠT ĐỘNG' : '🔴 ĐÃ TẮT BẢO TRÌ'}
-                  </span>
-                </div>
-
-                {/* Maintenance Message */}
-                <div className="mt-2 pt-2 border-t border-slate-800/80">
-                  <label className="text-[10px] text-slate-400 block mb-1">
-                    Thông báo bảo trì hiển thị cho khách:
-                  </label>
-                  <input
-                    type="text"
-                    value={depositModules.telco?.maintenanceMessage || ''}
-                    onChange={(e) => handleUpdateMaintenanceMessage('telco', e.target.value)}
-                    placeholder="VD: Cổng đổi thẻ cào đang tạm nâng cấp đối tác..."
-                    className="w-full bg-slate-900 border border-slate-700/80 rounded-lg px-2.5 py-1 text-xs text-slate-200 placeholder:text-slate-500 focus:border-amber-400 focus:outline-none"
-                  />
-                </div>
-              </div>
-
-              {/* MODULE 3: Ví MoMo & ZaloPay */}
-              <div className={`p-3.5 rounded-xl border transition-all ${
-                depositModules.momo?.enabled
-                  ? 'bg-slate-950/80 border-pink-500/30 shadow-sm'
-                  : 'bg-rose-950/20 border-rose-500/40 opacity-95'
-              }`}>
-                <div className="flex items-start justify-between gap-2 mb-2">
-                  <div className="flex items-center gap-2">
-                    <div className="p-1.5 rounded-lg bg-pink-500/10 border border-pink-500/30 text-pink-400">
-                      <Smartphone className="w-4 h-4" />
-                    </div>
-                    <div>
-                      <div className="text-xs font-bold text-white flex items-center gap-1.5">
-                        <span>Ví MoMo / ZaloPay</span>
-                      </div>
-                      <span className="text-[10px] text-slate-400">Ví điện tử số điện thoại</span>
-                    </div>
-                  </div>
-
-                  {/* Switch Toggle */}
-                  <button
-                    type="button"
-                    onClick={() => handleToggleModule('momo')}
-                    className={`relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none ${
-                      depositModules.momo?.enabled ? 'bg-emerald-500' : 'bg-slate-700'
-                    }`}
-                    title={depositModules.momo?.enabled ? 'Bấm để tắt cổng này' : 'Bấm để bật cổng này'}
-                  >
-                    <span
-                      className={`pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow-md ring-0 transition duration-200 ease-in-out ${
-                        depositModules.momo?.enabled ? 'translate-x-5' : 'translate-x-0'
-                      }`}
-                    />
-                  </button>
-                </div>
-
-                <div className="flex items-center justify-between text-xs pt-1 border-t border-slate-800/80">
-                  <span className="text-slate-400 text-[11px]">Trạng thái:</span>
-                  <span className={`font-bold text-[11px] px-2 py-0.5 rounded ${
-                    depositModules.momo?.enabled
-                      ? 'bg-emerald-950 text-emerald-300 border border-emerald-500/30'
-                      : 'bg-rose-950 text-rose-300 border border-rose-500/30'
-                  }`}>
-                    {depositModules.momo?.enabled ? '🟢 ĐANG HOẠT ĐỘNG' : '🔴 ĐÃ TẮT BẢO TRÌ'}
-                  </span>
-                </div>
-
-                {/* Maintenance Message */}
-                <div className="mt-2 pt-2 border-t border-slate-800/80">
-                  <label className="text-[10px] text-slate-400 block mb-1">
-                    Thông báo bảo trì hiển thị cho khách:
-                  </label>
-                  <input
-                    type="text"
-                    value={depositModules.momo?.maintenanceMessage || ''}
-                    onChange={(e) => handleUpdateMaintenanceMessage('momo', e.target.value)}
-                    placeholder="VD: Cổng ví MoMo đang tạm nâng cấp hạn mức..."
-                    className="w-full bg-slate-900 border border-slate-700/80 rounded-lg px-2.5 py-1 text-xs text-slate-200 placeholder:text-slate-500 focus:border-pink-400 focus:outline-none"
-                  />
-                </div>
-              </div>
-
-              {/* MODULE 4: Crypto USDT */}
-              <div className={`p-3.5 rounded-xl border transition-all ${
-                depositModules.crypto?.enabled
-                  ? 'bg-slate-950/80 border-emerald-500/30 shadow-sm'
-                  : 'bg-rose-950/20 border-rose-500/40 opacity-95'
-              }`}>
-                <div className="flex items-start justify-between gap-2 mb-2">
-                  <div className="flex items-center gap-2">
-                    <div className="p-1.5 rounded-lg bg-emerald-500/10 border border-emerald-500/30 text-emerald-400">
-                      <Coins className="w-4 h-4" />
-                    </div>
-                    <div>
-                      <div className="text-xs font-bold text-white flex items-center gap-1.5">
-                        <span>Crypto USDT</span>
-                      </div>
-                      <span className="text-[10px] text-slate-400">TRC20, BEP20, ERC20</span>
-                    </div>
-                  </div>
-
-                  {/* Switch Toggle */}
-                  <button
-                    type="button"
-                    onClick={() => handleToggleModule('crypto')}
-                    className={`relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none ${
-                      depositModules.crypto?.enabled ? 'bg-emerald-500' : 'bg-slate-700'
-                    }`}
-                    title={depositModules.crypto?.enabled ? 'Bấm để tắt cổng này' : 'Bấm để bật cổng này'}
-                  >
-                    <span
-                      className={`pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow-md ring-0 transition duration-200 ease-in-out ${
-                        depositModules.crypto?.enabled ? 'translate-x-5' : 'translate-x-0'
-                      }`}
-                    />
-                  </button>
-                </div>
-
-                <div className="flex items-center justify-between text-xs pt-1 border-t border-slate-800/80">
-                  <span className="text-slate-400 text-[11px]">Trạng thái:</span>
-                  <span className={`font-bold text-[11px] px-2 py-0.5 rounded ${
-                    depositModules.crypto?.enabled
-                      ? 'bg-emerald-950 text-emerald-300 border border-emerald-500/30'
-                      : 'bg-rose-950 text-rose-300 border border-rose-500/30'
-                  }`}>
-                    {depositModules.crypto?.enabled ? '🟢 ĐANG HOẠT ĐỘNG' : '🔴 ĐÃ TẮT BẢO TRÌ'}
-                  </span>
-                </div>
-
-                {/* Maintenance Message */}
-                <div className="mt-2 pt-2 border-t border-slate-800/80">
-                  <label className="text-[10px] text-slate-400 block mb-1">
-                    Thông báo bảo trì hiển thị cho khách:
-                  </label>
-                  <input
-                    type="text"
-                    value={depositModules.crypto?.maintenanceMessage || ''}
-                    onChange={(e) => handleUpdateMaintenanceMessage('crypto', e.target.value)}
-                    placeholder="VD: Cổng USDT đang đồng bộ node blockchain..."
-                    className="w-full bg-slate-900 border border-slate-700/80 rounded-lg px-2.5 py-1 text-xs text-slate-200 placeholder:text-slate-500 focus:border-emerald-400 focus:outline-none"
-                  />
-                </div>
-              </div>
-
-              {/* MODULE 5: Litecoin LTC */}
-              <div className={`p-3.5 rounded-xl border transition-all ${
-                depositModules.ltc?.enabled
-                  ? 'bg-slate-950/80 border-blue-500/30 shadow-sm'
-                  : 'bg-rose-950/20 border-rose-500/40 opacity-95'
-              }`}>
-                <div className="flex items-start justify-between gap-2 mb-2">
-                  <div className="flex items-center gap-2">
-                    <div className="p-1.5 rounded-lg bg-blue-500/10 border border-blue-500/30 text-blue-400">
-                      <Zap className="w-4 h-4" />
-                    </div>
-                    <div>
-                      <div className="text-xs font-bold text-white flex items-center gap-1.5">
-                        <span>Litecoin (LTC)</span>
-                      </div>
-                      <span className="text-[10px] text-slate-400">LTC Core Blockchain Node</span>
-                    </div>
-                  </div>
-
-                  {/* Switch Toggle */}
-                  <button
-                    type="button"
-                    onClick={() => handleToggleModule('ltc')}
-                    className={`relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none ${
-                      depositModules.ltc?.enabled ? 'bg-emerald-500' : 'bg-slate-700'
-                    }`}
-                    title={depositModules.ltc?.enabled ? 'Bấm để tắt cổng này' : 'Bấm để bật cổng này'}
-                  >
-                    <span
-                      className={`pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow-md ring-0 transition duration-200 ease-in-out ${
-                        depositModules.ltc?.enabled ? 'translate-x-5' : 'translate-x-0'
-                      }`}
-                    />
-                  </button>
-                </div>
-
-                <div className="flex items-center justify-between text-xs pt-1 border-t border-slate-800/80">
-                  <span className="text-slate-400 text-[11px]">Trạng thái:</span>
-                  <span className={`font-bold text-[11px] px-2 py-0.5 rounded ${
-                    depositModules.ltc?.enabled
-                      ? 'bg-emerald-950 text-emerald-300 border border-emerald-500/30'
-                      : 'bg-rose-950 text-rose-300 border border-rose-500/30'
-                  }`}>
-                    {depositModules.ltc?.enabled ? '🟢 ĐANG HOẠT ĐỘNG' : '🔴 ĐÃ TẮT BẢO TRÌ'}
-                  </span>
-                </div>
-
-                {/* Maintenance Message */}
-                <div className="mt-2 pt-2 border-t border-slate-800/80">
-                  <label className="text-[10px] text-slate-400 block mb-1">
-                    Thông báo bảo trì hiển thị cho khách:
-                  </label>
-                  <input
-                    type="text"
-                    value={depositModules.ltc?.maintenanceMessage || ''}
-                    onChange={(e) => handleUpdateMaintenanceMessage('ltc', e.target.value)}
-                    placeholder="VD: Cổng LTC đang đồng bộ block mạng chính..."
-                    className="w-full bg-slate-900 border border-slate-700/80 rounded-lg px-2.5 py-1 text-xs text-slate-200 placeholder:text-slate-500 focus:border-blue-400 focus:outline-none"
-                  />
-                </div>
-              </div>
-
-              {/* MODULE 6: Binance Pay */}
-              <div className={`p-3.5 rounded-xl border transition-all ${
-                depositModules.binance?.enabled
-                  ? 'bg-slate-950/80 border-amber-500/30 shadow-sm'
-                  : 'bg-rose-950/20 border-rose-500/40 opacity-95'
-              }`}>
-                <div className="flex items-start justify-between gap-2 mb-2">
-                  <div className="flex items-center gap-2">
-                    <div className="w-6 h-6 rounded-lg bg-amber-400/20 border border-amber-400/40 text-amber-400 font-black text-xs flex items-center justify-center">
-                      B
-                    </div>
-                    <div>
-                      <div className="text-xs font-bold text-white flex items-center gap-1.5">
-                        <span>Binance Pay & UID</span>
-                      </div>
-                      <span className="text-[10px] text-slate-400">0% Phí qua PayID</span>
-                    </div>
-                  </div>
-
-                  {/* Switch Toggle */}
-                  <button
-                    type="button"
-                    onClick={() => handleToggleModule('binance')}
-                    className={`relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none ${
-                      depositModules.binance?.enabled ? 'bg-emerald-500' : 'bg-slate-700'
-                    }`}
-                    title={depositModules.binance?.enabled ? 'Bấm để tắt cổng này' : 'Bấm để bật cổng này'}
-                  >
-                    <span
-                      className={`pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow-md ring-0 transition duration-200 ease-in-out ${
-                        depositModules.binance?.enabled ? 'translate-x-5' : 'translate-x-0'
-                      }`}
-                    />
-                  </button>
-                </div>
-
-                <div className="flex items-center justify-between text-xs pt-1 border-t border-slate-800/80">
-                  <span className="text-slate-400 text-[11px]">Trạng thái:</span>
-                  <span className={`font-bold text-[11px] px-2 py-0.5 rounded ${
-                    depositModules.binance?.enabled
-                      ? 'bg-emerald-950 text-emerald-300 border border-emerald-500/30'
-                      : 'bg-rose-950 text-rose-300 border border-rose-500/30'
-                  }`}>
-                    {depositModules.binance?.enabled ? '🟢 ĐANG HOẠT ĐỘNG' : '🔴 ĐÃ TẮT BẢO TRÌ'}
-                  </span>
-                </div>
-
-                {/* Maintenance Message */}
-                <div className="mt-2 pt-2 border-t border-slate-800/80">
-                  <label className="text-[10px] text-slate-400 block mb-1">
-                    Thông báo bảo trì hiển thị cho khách:
-                  </label>
-                  <input
-                    type="text"
-                    value={depositModules.binance?.maintenanceMessage || ''}
-                    onChange={(e) => handleUpdateMaintenanceMessage('binance', e.target.value)}
-                    placeholder="VD: Cổng Binance Pay đang tạm bảo trì API..."
-                    className="w-full bg-slate-900 border border-slate-700/80 rounded-lg px-2.5 py-1 text-xs text-slate-200 placeholder:text-slate-500 focus:border-amber-400 focus:outline-none"
-                  />
-                </div>
-              </div>
+            <div className="flex items-center gap-2 self-start sm:self-auto shrink-0">
+              <button
+                type="button"
+                onClick={() => handleToggleAllModules(true)}
+                className="px-3 py-1.5 rounded-lg bg-emerald-500/20 hover:bg-emerald-500/30 text-emerald-300 border border-emerald-500/40 text-xs font-bold flex items-center gap-1.5 transition-all cursor-pointer shadow-sm"
+              >
+                <Check className="w-3.5 h-3.5" />
+                <span>Bật Tất Cả Cổng</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => handleToggleAllModules(false)}
+                className="px-3 py-1.5 rounded-lg bg-rose-500/20 hover:bg-rose-500/30 text-rose-300 border border-rose-500/40 text-xs font-bold flex items-center gap-1.5 transition-all cursor-pointer shadow-sm"
+              >
+                <Ban className="w-3.5 h-3.5" />
+                <span>Tắt Toàn Bộ (Bảo Trì)</span>
+              </button>
             </div>
           </div>
 
@@ -1393,10 +887,14 @@ export const AdminBankingTopupsTab: React.FC<AdminBankingTopupsTabProps> = ({
                   <Landmark className="w-5 h-5" />
                 </div>
                 <div>
-                  <div className="flex items-center gap-2">
+                  <div className="flex flex-wrap items-center gap-2">
                     <span className="font-bold text-white text-sm">CỔNG THANH TOÁN & MÃ QR NGÂN HÀNG (VIETQR / CUSTOM QR)</span>
-                    <span className="px-2 py-0.5 rounded bg-emerald-950 text-emerald-300 border border-emerald-500/30 text-[10px] font-semibold">
-                      Auto Gateway
+                    <span className={`px-2 py-0.5 rounded text-[10px] font-bold border ${
+                      depositModules.vietqr?.enabled
+                        ? 'bg-emerald-950 text-emerald-300 border-emerald-500/40'
+                        : 'bg-rose-950 text-rose-300 border-rose-500/40'
+                    }`}>
+                      {depositModules.vietqr?.enabled ? '🟢 ĐANG BẬT' : '🔴 ĐÃ TẮT BẢO TRÌ'}
                     </span>
                   </div>
                   <p className="text-[11px] text-slate-400">
@@ -1405,33 +903,61 @@ export const AdminBankingTopupsTab: React.FC<AdminBankingTopupsTabProps> = ({
                 </div>
               </div>
 
-              {/* Mode Toggle Pills */}
-              <div className="flex items-center gap-1 bg-slate-950 p-1 rounded-lg border border-slate-800 self-start sm:self-auto">
+              {/* In-module on/off switch & Mode Toggle Pills */}
+              <div className="flex flex-wrap items-center gap-2 self-start sm:self-auto">
                 <button
                   type="button"
-                  onClick={() => setGatewayForm(prev => ({ ...prev, qrDisplayMode: 'vietqr_auto' }))}
-                  className={`px-2.5 py-1 rounded text-xs font-semibold transition-all flex items-center gap-1.5 cursor-pointer ${
-                    gatewayForm.qrDisplayMode === 'vietqr_auto'
-                      ? 'bg-cyan-500 text-black shadow-md'
-                      : 'text-slate-400 hover:text-white'
+                  onClick={() => handleToggleModule('vietqr')}
+                  className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer border shadow-sm ${
+                    depositModules.vietqr?.enabled
+                      ? 'bg-emerald-500/20 hover:bg-emerald-500/30 text-emerald-300 border-emerald-500/40'
+                      : 'bg-rose-500/20 hover:bg-rose-500/30 text-rose-300 border-rose-500/40'
                   }`}
+                  title="Bấm để bật hoặc tắt cổng VietQR"
                 >
-                  <QrCode className="w-3.5 h-3.5" />
-                  <span>VietQR Tự Động</span>
+                  <Power className="w-3.5 h-3.5" />
+                  <span>{depositModules.vietqr?.enabled ? 'Đang Bật (Tắt)' : 'Đang Tắt (Bật)'}</span>
                 </button>
-                <button
-                  type="button"
-                  onClick={() => setGatewayForm(prev => ({ ...prev, qrDisplayMode: 'custom_image' }))}
-                  className={`px-2.5 py-1 rounded text-xs font-semibold transition-all flex items-center gap-1.5 cursor-pointer ${
-                    gatewayForm.qrDisplayMode === 'custom_image'
-                      ? 'bg-purple-500 text-white shadow-md'
-                      : 'text-slate-400 hover:text-white'
-                  }`}
-                >
-                  <ImageIcon className="w-3.5 h-3.5" />
-                  <span>Ảnh QR Tải Lên</span>
-                </button>
+
+                <div className="flex items-center gap-1 bg-slate-950 p-1 rounded-lg border border-slate-800">
+                  <button
+                    type="button"
+                    onClick={() => setGatewayForm(prev => ({ ...prev, qrDisplayMode: 'vietqr_auto' }))}
+                    className={`px-2.5 py-1 rounded text-xs font-semibold transition-all flex items-center gap-1.5 cursor-pointer ${
+                      gatewayForm.qrDisplayMode === 'vietqr_auto'
+                        ? 'bg-cyan-500 text-black shadow-md'
+                        : 'text-slate-400 hover:text-white'
+                    }`}
+                  >
+                    <QrCode className="w-3.5 h-3.5" />
+                    <span>VietQR Tự Động</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setGatewayForm(prev => ({ ...prev, qrDisplayMode: 'custom_image' }))}
+                    className={`px-2.5 py-1 rounded text-xs font-semibold transition-all flex items-center gap-1.5 cursor-pointer ${
+                      gatewayForm.qrDisplayMode === 'custom_image'
+                        ? 'bg-purple-500 text-white shadow-md'
+                        : 'text-slate-400 hover:text-white'
+                    }`}
+                  >
+                    <ImageIcon className="w-3.5 h-3.5" />
+                    <span>Ảnh QR Tải Lên</span>
+                  </button>
+                </div>
               </div>
+            </div>
+
+            {/* In-Module Maintenance message */}
+            <div className="flex items-center gap-2 p-2.5 rounded-lg bg-slate-950/70 border border-slate-800 text-xs">
+              <span className="text-[11px] text-slate-400 font-bold shrink-0">Thông báo khi bảo trì:</span>
+              <input
+                type="text"
+                value={depositModules.vietqr?.maintenanceMessage || ''}
+                onChange={(e) => handleUpdateMaintenanceMessage('vietqr', e.target.value)}
+                placeholder="VD: Cổng VietQR đang tạm bảo trì hệ thống 15 phút..."
+                className="flex-1 bg-slate-900 border border-slate-700/80 rounded px-2.5 py-1 text-xs text-slate-200 placeholder:text-slate-500 focus:border-cyan-400 focus:outline-none"
+              />
             </div>
 
             <div className="grid grid-cols-1 lg:grid-cols-12 gap-5 items-start">
@@ -1685,10 +1211,14 @@ export const AdminBankingTopupsTab: React.FC<AdminBankingTopupsTabProps> = ({
                   <Zap className="w-4 h-4" />
                 </div>
                 <div>
-                  <div className="flex items-center gap-2">
+                  <div className="flex flex-wrap items-center gap-2">
                     <span className="font-bold text-white text-xs uppercase tracking-wide">CỔNG GẠCH THẺ CÀO AUTO (CARD24H.COM API V2)</span>
-                    <span className="px-2 py-0.5 rounded bg-amber-500/20 text-amber-300 border border-amber-500/40 text-[10px] font-bold">
-                      Đang Hoạt Động
+                    <span className={`px-2 py-0.5 rounded text-[10px] font-bold border ${
+                      depositModules.telco?.enabled
+                        ? 'bg-emerald-950 text-emerald-300 border-emerald-500/40'
+                        : 'bg-rose-950 text-rose-300 border-rose-500/40'
+                    }`}>
+                      {depositModules.telco?.enabled ? '🟢 ĐANG BẬT' : '🔴 ĐÃ TẮT BẢO TRÌ'}
                     </span>
                   </div>
                   <p className="text-[11px] text-slate-400">
@@ -1696,17 +1226,43 @@ export const AdminBankingTopupsTab: React.FC<AdminBankingTopupsTabProps> = ({
                   </p>
                 </div>
               </div>
-              <div className="flex items-center gap-2">
+              <div className="flex flex-wrap items-center gap-2 self-start sm:self-auto">
+                <button
+                  type="button"
+                  onClick={() => handleToggleModule('telco')}
+                  className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer border shadow-sm ${
+                    depositModules.telco?.enabled
+                      ? 'bg-emerald-500/20 hover:bg-emerald-500/30 text-emerald-300 border-emerald-500/40'
+                      : 'bg-rose-500/20 hover:bg-rose-500/30 text-rose-300 border-rose-500/40'
+                  }`}
+                  title="Bấm để bật hoặc tắt cổng Thẻ cào"
+                >
+                  <Power className="w-3.5 h-3.5" />
+                  <span>{depositModules.telco?.enabled ? 'Đang Bật (Tắt)' : 'Đang Tắt (Bật)'}</span>
+                </button>
+
                 <select
                   value={gatewayForm.telcoProvider || 'card24h'}
                   onChange={(e) => setGatewayForm({ ...gatewayForm, telcoProvider: e.target.value as any })}
-                  className="bg-slate-950 border border-amber-500/30 text-amber-300 font-bold rounded-lg px-2.5 py-1 text-xs cursor-pointer"
+                  className="bg-slate-950 border border-amber-500/30 text-amber-300 font-bold rounded-lg px-2.5 py-1.5 text-xs cursor-pointer"
                 >
                   <option value="card24h">Cổng Card24h.com (Khuyên dùng)</option>
                   <option value="thesieure">Cổng TheSieuRe.com</option>
                   <option value="doithe1s">Cổng Doithe1s.vn</option>
                 </select>
               </div>
+            </div>
+
+            {/* In-Module Maintenance message */}
+            <div className="flex items-center gap-2 p-2.5 rounded-lg bg-slate-950/70 border border-slate-800 text-xs">
+              <span className="text-[11px] text-slate-400 font-bold shrink-0">Thông báo khi bảo trì:</span>
+              <input
+                type="text"
+                value={depositModules.telco?.maintenanceMessage || ''}
+                onChange={(e) => handleUpdateMaintenanceMessage('telco', e.target.value)}
+                placeholder="VD: Cổng đổi thẻ cào đang tạm ngưng bảo trì đối tác..."
+                className="flex-1 bg-slate-900 border border-slate-700/80 rounded px-2.5 py-1 text-xs text-slate-200 placeholder:text-slate-500 focus:border-amber-400 focus:outline-none"
+              />
             </div>
 
             <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3">
@@ -1832,407 +1388,253 @@ export const AdminBankingTopupsTab: React.FC<AdminBankingTopupsTabProps> = ({
             </div>
           </div>
 
-          {/* MoMo & Crypto USDT */}
-          {/* Row: MoMo & Crypto USDT */}
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div className="p-4 rounded-xl bg-slate-900/60 border border-pink-500/30 space-y-3">
-              <div className="flex items-center gap-2 border-b border-slate-800 pb-2">
-                <Smartphone className="w-4 h-4 text-pink-400" />
-                <span className="font-bold text-white text-xs">VÍ ĐIỆN TỬ MOMO BUSINESS AUTO</span>
-              </div>
-              <div className="space-y-2">
-                              <div>
-                                <label className="text-[11px] text-slate-400">Số Điện Thoại MoMo:</label>
-                                <input
-                                  type="text"
-                                  value={gatewayForm.momoPhone}
-                                  onChange={(e) => setGatewayForm({ ...gatewayForm, momoPhone: e.target.value })}
-                                  className="w-full bg-slate-950 border border-slate-700 rounded-lg p-2 text-white mt-1 text-xs"
-                                />
-                              </div>
-                              <div>
-                                <label className="text-[11px] text-slate-400">Tên Tài Khoản MoMo:</label>
-                                <input
-                                  type="text"
-                                  value={gatewayForm.momoName}
-                                  onChange={(e) => setGatewayForm({ ...gatewayForm, momoName: e.target.value })}
-                                  className="w-full bg-slate-950 border border-slate-700 rounded-lg p-2 text-white mt-1 text-xs"
-                                />
-                              </div>
-                              {/* CYBERPOOL FIX: bổ sung 3 credentials MoMo Business (Partner Code / Access Key / Secret Key)
-                                  — cần thiết cho endpoint create-payment (captureWallet) vừa thêm */}
-                              <div>
-                                <label className="text-[11px] text-slate-400">Partner Code (Ví MoMo Business):</label>
-                                <input
-                                  type="text"
-                                  value={gatewayForm.momoPartnerCode || ''}
-                                  onChange={(e) => setGatewayForm({ ...gatewayForm, momoPartnerCode: e.target.value })}
-                                  placeholder="VD: MOMOBKUN20180529"
-                                  className="w-full bg-slate-950 border border-slate-700 rounded-lg p-2 text-pink-300 font-mono mt-1 text-xs"
-                                />
-                              </div>
-                              <div>
-                                <label className="text-[11px] text-slate-400">Access Key (MoMo):</label>
-                                <input
-                                  type="text"
-                                  value={gatewayForm.momoAccessKey || ''}
-                                  onChange={(e) => setGatewayForm({ ...gatewayForm, momoAccessKey: e.target.value })}
-                                  placeholder="Access Key từ cổng MoMo"
-                                  className="w-full bg-slate-950 border border-slate-700 rounded-lg p-2 text-pink-300 font-mono mt-1 text-xs"
-                                />
-                              </div>
-                              <div>
-                                <label className="text-[11px] text-slate-400">Secret Key (MoMo):</label>
-                                <input
-                                  type="password"
-                                  value={gatewayForm.momoSecretKey || ''}
-                                  onChange={(e) => setGatewayForm({ ...gatewayForm, momoSecretKey: e.target.value })}
-                                  placeholder="••••••••••••••••"
-                                  className="w-full bg-slate-950 border border-slate-700 rounded-lg p-2 text-pink-300 font-mono mt-1 text-xs"
-                                />
-                              </div>
-                            </div>
-            </div>
-
-            {/* ============================================================ */}
-            {/* CYBERPOOL CRYPTOGATE — multi-network direct-to-wallet */}
-            {/* ============================================================ */}
-            <div className="p-4 rounded-xl bg-slate-900/60 border border-emerald-500/40 space-y-3 mb-4">
-              <div className="flex items-center justify-between border-b border-slate-800 pb-2">
-                <div className="flex items-center gap-2">
-                  <Coins className="w-4 h-4 text-emerald-400" />
-                  <span className="font-bold text-white text-xs">CỔNG CRYPTO MULTI-NETWORK (DIRECT-TO-WALLET)</span>
-                  <span className="px-2 py-0.5 rounded bg-emerald-950 text-emerald-300 border border-emerald-500/30 text-[10px] font-bold">5 MẠNG • AUTO-DETECT</span>
+          {/* Ví MoMo Business Auto */}
+          <div className="p-4 rounded-xl bg-slate-900/80 border border-pink-500/40 space-y-4">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between border-b border-slate-800 pb-2.5 gap-2">
+              <div className="flex items-center gap-2">
+                <div className="p-1.5 rounded-lg bg-pink-500/10 border border-pink-500/30 text-pink-400">
+                  <Smartphone className="w-4 h-4" />
                 </div>
-                <label className="flex items-center gap-2 cursor-pointer">
-                  <span className="text-[11px] text-slate-400 font-bold">Bật cổng:</span>
-                  <input
-                    type="checkbox"
-                    checked={gatewayForm.cryptoGateEnabled}
-                    onChange={(e) => setGatewayForm({ ...gatewayForm, cryptoGateEnabled: e.target.checked })}
-                    className="w-4 h-4 accent-emerald-500 cursor-pointer"
-                  />
-                </label>
-              </div>
-
-              <p className="text-[11px] text-slate-400 bg-slate-950/60 border border-slate-800 rounded-lg p-2.5 leading-relaxed">
-                Mỗi lệnh nạp được gán <b className="text-emerald-300">một số coin duy nhất</b> (vd 3.944821 USDT) — khách chuyển đúng số đó vào đúng ví mạng, hệ thống quét blockchain mỗi {gatewayForm.cryptoGateScanIntervalSeconds}s và <b className="text-emerald-300">tự động cộng ví</b> khi đủ xác nhận. Không cần memo. Nhập địa chỉ ví THẬT của shop cho từng mạng bên dưới (mạng bỏ trống = tự khóa với khách).
-              </p>
-
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                {[
-                  { key: 'cryptoGateTronAddress', label: 'Ví USDT — TRON (TRC20)', color: 'text-rose-300', ph: 'T... (34 ký tự base58)' },
-                  { key: 'cryptoGateBscAddress', label: 'Ví USDT — BNB Chain (BEP20)', color: 'text-amber-300', ph: '0x... (42 ký tự)' },
-                  { key: 'cryptoGatePolygonAddress', label: 'Ví USDT — Polygon', color: 'text-purple-300', ph: '0x... (42 ký tự)' },
-                  { key: 'cryptoGateSolanaAddress', label: 'Ví USDT — Solana', color: 'text-cyan-300', ph: 'base58 (32-44 ký tự)' },
-                  { key: 'cryptoGateLtcAddress', label: 'Ví Litecoin (LTC)', color: 'text-blue-300', ph: 'L... / M... / ltc1...' },
-                  { key: 'cryptoGateBinanceId', label: 'Binance ID (hiển thị, nạp qua tab Binance Pay)', color: 'text-yellow-300', ph: 'vd 159582002' }
-                ].map(field => (
-                  <div key={field.key}>
-                    <label className="text-[11px] text-slate-400">{field.label}:</label>
-                    <input
-                      type="text"
-                      value={(gatewayForm as any)[field.key]}
-                      onChange={(e) => setGatewayForm({ ...gatewayForm, [field.key]: e.target.value })}
-                      placeholder={field.ph}
-                      className={`w-full bg-slate-950 border border-slate-700 rounded-lg p-2 font-mono mt-1 text-xs ${field.color}`}
-                    />
+                <div>
+                  <div className="flex flex-wrap items-center gap-2">
+                    <span className="font-bold text-white text-xs uppercase tracking-wide">VÍ ĐIỆN TỬ MOMO BUSINESS AUTO</span>
+                    <span className={`px-2 py-0.5 rounded text-[10px] font-bold border ${
+                      depositModules.momo?.enabled
+                        ? 'bg-emerald-950 text-emerald-300 border-emerald-500/40'
+                        : 'bg-rose-950 text-rose-300 border-rose-500/40'
+                    }`}>
+                      {depositModules.momo?.enabled ? '🟢 ĐANG BẬT' : '🔴 ĐÃ TẮT BẢO TRÌ'}
+                    </span>
                   </div>
-                ))}
-              </div>
-
-              <div className="grid grid-cols-2 md:grid-cols-4 gap-2 pt-1 border-t border-slate-800">
-                <div>
-                  <label className="text-[11px] text-slate-400">Thời hạn lệnh (phút):</label>
-                  <input
-                    type="number" min={5} max={120}
-                    value={gatewayForm.cryptoGateOrderTtlMinutes}
-                    onChange={(e) => setGatewayForm({ ...gatewayForm, cryptoGateOrderTtlMinutes: parseInt(e.target.value) || 30 })}
-                    className="w-full bg-slate-950 border border-slate-700 rounded-lg p-2 text-cyan-300 font-bold mt-1 text-xs"
-                  />
-                </div>
-                <div>
-                  <label className="text-[11px] text-slate-400">Chu kỳ quét (giây):</label>
-                  <input
-                    type="number" min={15} max={300}
-                    value={gatewayForm.cryptoGateScanIntervalSeconds}
-                    onChange={(e) => setGatewayForm({ ...gatewayForm, cryptoGateScanIntervalSeconds: parseInt(e.target.value) || 30 })}
-                    className="w-full bg-slate-950 border border-slate-700 rounded-lg p-2 text-cyan-300 font-bold mt-1 text-xs"
-                  />
-                </div>
-                <div>
-                  <label className="text-[11px] text-slate-400">Merchant ID (nhà cung cấp):</label>
-                  <input
-                    type="text"
-                    value={gatewayForm.cryptoGateMerchantId}
-                    onChange={(e) => setGatewayForm({ ...gatewayForm, cryptoGateMerchantId: e.target.value })}
-                    placeholder="chưa dùng — on-chain là nguồn thật"
-                    className="w-full bg-slate-950 border border-slate-700 rounded-lg p-2 text-slate-300 font-mono mt-1 text-xs"
-                  />
-                </div>
-                <div>
-                  <label className="text-[11px] text-slate-400">Api Key (nhà cung cấp):</label>
-                  <input
-                    type="password"
-                    value={gatewayForm.cryptoGateApiKey}
-                    onChange={(e) => setGatewayForm({ ...gatewayForm, cryptoGateApiKey: e.target.value })}
-                    placeholder="•••• (tùy chọn)"
-                    className="w-full bg-slate-950 border border-slate-700 rounded-lg p-2 text-slate-300 font-mono mt-1 text-xs"
-                  />
+                  <p className="text-[11px] text-slate-400">
+                    Cấu hình nhận thanh toán qua ví điện tử MoMo cá nhân hoặc cổng MoMo Business API
+                  </p>
                 </div>
               </div>
-
-              <div className="flex items-center gap-2.5 pt-0.5">
+              <div className="flex items-center gap-2 self-start sm:self-auto">
                 <button
                   type="button"
-                  onClick={handleTestCryptoGateScan}
-                  disabled={cryptoGateScanning}
-                  className="px-3 py-2 rounded-lg bg-emerald-500/15 hover:bg-emerald-500/25 border border-emerald-500/40 text-emerald-300 text-[11px] font-bold flex items-center gap-1.5 cursor-pointer disabled:opacity-50"
+                  onClick={() => handleToggleModule('momo')}
+                  className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer border shadow-sm ${
+                    depositModules.momo?.enabled
+                      ? 'bg-emerald-500/20 hover:bg-emerald-500/30 text-emerald-300 border-emerald-500/40'
+                      : 'bg-rose-500/20 hover:bg-rose-500/30 text-rose-300 border-rose-500/40'
+                  }`}
+                  title="Bấm để bật hoặc tắt cổng MoMo"
                 >
-                  <RefreshCw className={`w-3 h-3 ${cryptoGateScanning ? 'animate-spin' : ''}`} />
-                  {cryptoGateScanning ? 'Đang quét on-chain...' : 'Quét On-Chain Ngay'}
+                  <Power className="w-3.5 h-3.5" />
+                  <span>{depositModules.momo?.enabled ? 'Đang Bật (Tắt)' : 'Đang Tắt (Bật)'}</span>
                 </button>
-                {cryptoGateScanResult && (
-                  <span className={`text-[10px] font-bold flex-1 ${cryptoGateScanResult.success ? 'text-emerald-400' : 'text-rose-400'}`}>
-                    {cryptoGateScanResult.message}
-                  </span>
-                )}
               </div>
-              <p className="text-[10px] text-slate-500 font-mono">
-                Merchant ID / Api Key được lưu an toàn (mask khi đọc) nhưng hiện CHƯNG dùng để tự động cộng tiền — nguồn sự thật duy nhất là blockchain. Khi có tài liệu API chính thức của nhà cung cấp, trường cryptoGateApiBase sẽ nối lệnh tạo đơn/webhook.
-              </p>
             </div>
 
-            <div className="p-4 rounded-xl bg-slate-900/60 border border-purple-500/30 space-y-3">
-              <div className="flex items-center gap-2 border-b border-slate-800 pb-2">
-                <Coins className="w-4 h-4 text-purple-400" />
-                <span className="font-bold text-white text-xs">CỔNG CRYPTO USDT (BLOCKCHAIN)</span>
+            {/* In-Module Maintenance message */}
+            <div className="flex items-center gap-2 p-2.5 rounded-lg bg-slate-950/70 border border-slate-800 text-xs">
+              <span className="text-[11px] text-slate-400 font-bold shrink-0">Thông báo khi bảo trì:</span>
+              <input
+                type="text"
+                value={depositModules.momo?.maintenanceMessage || ''}
+                onChange={(e) => handleUpdateMaintenanceMessage('momo', e.target.value)}
+                placeholder="VD: Cổng nạp MoMo đang tạm bảo trì hạn mức..."
+                className="flex-1 bg-slate-900 border border-slate-700/80 rounded px-2.5 py-1 text-xs text-slate-200 placeholder:text-slate-500 focus:border-pink-400 focus:outline-none"
+              />
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-5 gap-3">
+              <div>
+                <label className="text-[11px] text-slate-400">Số Điện Thoại MoMo:</label>
+                <input
+                  type="text"
+                  value={gatewayForm.momoPhone}
+                  onChange={(e) => setGatewayForm({ ...gatewayForm, momoPhone: e.target.value })}
+                  placeholder="0987654321"
+                  className="w-full bg-slate-950 border border-slate-700 rounded-lg p-2 text-white mt-1 text-xs focus:border-pink-500 focus:outline-none"
+                />
               </div>
-              <div className="space-y-2">
+              <div>
+                <label className="text-[11px] text-slate-400">Tên Tài Khoản MoMo:</label>
+                <input
+                  type="text"
+                  value={gatewayForm.momoName}
+                  onChange={(e) => setGatewayForm({ ...gatewayForm, momoName: e.target.value })}
+                  placeholder="NGUYEN VAN A"
+                  className="w-full bg-slate-950 border border-slate-700 rounded-lg p-2 text-white mt-1 text-xs focus:border-pink-500 focus:outline-none"
+                />
+              </div>
+              <div>
+                <label className="text-[11px] text-slate-400">Partner Code (Business):</label>
+                <input
+                  type="text"
+                  value={gatewayForm.momoPartnerCode || ''}
+                  onChange={(e) => setGatewayForm({ ...gatewayForm, momoPartnerCode: e.target.value })}
+                  placeholder="MOMOBKUN..."
+                  className="w-full bg-slate-950 border border-slate-700 rounded-lg p-2 text-pink-300 font-mono mt-1 text-xs focus:border-pink-500 focus:outline-none"
+                />
+              </div>
+              <div>
+                <label className="text-[11px] text-slate-400">Access Key (Business):</label>
+                <input
+                  type="text"
+                  value={gatewayForm.momoAccessKey || ''}
+                  onChange={(e) => setGatewayForm({ ...gatewayForm, momoAccessKey: e.target.value })}
+                  placeholder="Access Key"
+                  className="w-full bg-slate-950 border border-slate-700 rounded-lg p-2 text-pink-300 font-mono mt-1 text-xs focus:border-pink-500 focus:outline-none"
+                />
+              </div>
+              <div>
+                <label className="text-[11px] text-slate-400">Secret Key (Business):</label>
+                <input
+                  type="password"
+                  value={gatewayForm.momoSecretKey || ''}
+                  onChange={(e) => setGatewayForm({ ...gatewayForm, momoSecretKey: e.target.value })}
+                  placeholder="••••••••"
+                  className="w-full bg-slate-950 border border-slate-700 rounded-lg p-2 text-pink-300 font-mono mt-1 text-xs focus:border-pink-500 focus:outline-none"
+                />
+              </div>
+            </div>
+          </div>
+
+          {/* CYBERPOOL CRYPTOGATE — multi-network direct-to-wallet */}
+          <div className="p-4 rounded-xl bg-slate-900/80 border border-emerald-500/40 space-y-4">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between border-b border-slate-800 pb-2.5 gap-2">
+              <div className="flex items-center gap-2">
+                <div className="p-1.5 rounded-lg bg-emerald-500/10 border border-emerald-500/30 text-emerald-400">
+                  <Coins className="w-4 h-4" />
+                </div>
                 <div>
-                  <label className="text-[11px] text-slate-400">Địa Chỉ Ví Nhận USDT:</label>
+                  <div className="flex flex-wrap items-center gap-2">
+                    <span className="font-bold text-white text-xs uppercase tracking-wide">CỔNG CRYPTO MULTI-NETWORK (DIRECT-TO-WALLET)</span>
+                    <span className="px-2 py-0.5 rounded bg-emerald-950 text-emerald-300 border border-emerald-500/30 text-[10px] font-bold">5 MẠNG • AUTO-DETECT</span>
+                    <span className={`px-2 py-0.5 rounded text-[10px] font-bold border ${
+                      depositModules.crypto?.enabled && gatewayForm.cryptoGateEnabled
+                        ? 'bg-emerald-950 text-emerald-300 border-emerald-500/40'
+                        : 'bg-rose-950 text-rose-300 border-rose-500/40'
+                    }`}>
+                      {depositModules.crypto?.enabled && gatewayForm.cryptoGateEnabled ? '🟢 ĐANG BẬT' : '🔴 ĐÃ TẮT BẢO TRÌ'}
+                    </span>
+                  </div>
+                  <p className="text-[11px] text-slate-400">
+                    Cổng nạp Crypto thế hệ mới: USDT (TRC20, BEP20, Polygon, Solana), Litecoin (LTC) & Binance Pay ID. Tự động kiểm tra on-chain và cộng tiền ngay khi nhận đủ xác nhận.
+                  </p>
+                </div>
+              </div>
+              <div className="flex items-center gap-2 self-start sm:self-auto">
+                <button
+                  type="button"
+                  onClick={() => {
+                    const next = !(depositModules.crypto?.enabled && gatewayForm.cryptoGateEnabled);
+                    handleToggleModule('crypto');
+                    setGatewayForm(prev => ({ ...prev, cryptoGateEnabled: next }));
+                  }}
+                  className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer border shadow-sm ${
+                    depositModules.crypto?.enabled && gatewayForm.cryptoGateEnabled
+                      ? 'bg-emerald-500/20 hover:bg-emerald-500/30 text-emerald-300 border-emerald-500/40'
+                      : 'bg-rose-500/20 hover:bg-rose-500/30 text-rose-300 border-rose-500/40'
+                  }`}
+                  title="Bấm để bật hoặc tắt cổng Crypto"
+                >
+                  <Power className="w-3.5 h-3.5" />
+                  <span>{depositModules.crypto?.enabled && gatewayForm.cryptoGateEnabled ? 'Đang Bật (Tắt)' : 'Đang Tắt (Bật)'}</span>
+                </button>
+              </div>
+            </div>
+
+            {/* In-Module Maintenance message */}
+            <div className="flex items-center gap-2 p-2.5 rounded-lg bg-slate-950/70 border border-slate-800 text-xs">
+              <span className="text-[11px] text-slate-400 font-bold shrink-0">Thông báo khi bảo trì:</span>
+              <input
+                type="text"
+                value={depositModules.crypto?.maintenanceMessage || ''}
+                onChange={(e) => handleUpdateMaintenanceMessage('crypto', e.target.value)}
+                placeholder="VD: Cổng Crypto đang tạm bảo trì node blockchain..."
+                className="flex-1 bg-slate-900 border border-slate-700/80 rounded px-2.5 py-1 text-xs text-slate-200 placeholder:text-slate-500 focus:border-emerald-400 focus:outline-none"
+              />
+            </div>
+
+            <p className="text-[11px] text-slate-400 bg-slate-950/60 border border-slate-800 rounded-lg p-2.5 leading-relaxed">
+              Mỗi lệnh nạp được gán <b className="text-emerald-300">một số coin duy nhất</b> (vd 3.944821 USDT) — khách chuyển đúng số đó vào đúng ví mạng, hệ thống quét blockchain mỗi {gatewayForm.cryptoGateScanIntervalSeconds}s và <b className="text-emerald-300">tự động cộng ví</b> khi đủ xác nhận. Không cần memo. Nhập địa chỉ ví THẬT của shop cho từng mạng bên dưới (mạng bỏ trống = tự khóa với khách).
+            </p>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
+              {[
+                { key: 'cryptoGateTronAddress', label: 'Ví USDT — TRON (TRC20)', color: 'text-rose-300', ph: 'T... (34 ký tự base58)' },
+                { key: 'cryptoGateBscAddress', label: 'Ví USDT — BNB Chain (BEP20)', color: 'text-amber-300', ph: '0x... (42 ký tự)' },
+                { key: 'cryptoGatePolygonAddress', label: 'Ví USDT — Polygon', color: 'text-purple-300', ph: '0x... (42 ký tự)' },
+                { key: 'cryptoGateSolanaAddress', label: 'Ví USDT — Solana', color: 'text-cyan-300', ph: 'base58 (32-44 ký tự)' },
+                { key: 'cryptoGateLtcAddress', label: 'Ví Litecoin (LTC Core)', color: 'text-blue-300', ph: 'L... / M... / ltc1...' },
+                { key: 'cryptoGateBinanceId', label: 'Binance Pay ID (Hiển thị nạp P2P)', color: 'text-yellow-300', ph: 'vd 159582002' }
+              ].map(field => (
+                <div key={field.key}>
+                  <label className="text-[11px] text-slate-400">{field.label}:</label>
                   <input
                     type="text"
-                    value={gatewayForm.cryptoUsdtAddress}
-                    onChange={(e) => setGatewayForm({ ...gatewayForm, cryptoUsdtAddress: e.target.value })}
-                    className="w-full bg-slate-950 border border-slate-700 rounded-lg p-2 text-purple-300 font-mono mt-1 text-xs"
+                    value={(gatewayForm as any)[field.key]}
+                    onChange={(e) => setGatewayForm({ ...gatewayForm, [field.key]: e.target.value })}
+                    placeholder={field.ph}
+                    className={`w-full bg-slate-950 border border-slate-700 rounded-lg p-2 font-mono mt-1 text-xs ${field.color} focus:border-emerald-500 focus:outline-none`}
                   />
                 </div>
-                <div>
-                  <label className="text-[11px] text-slate-400">Mạng Lưới (Network):</label>
-                  <select
-                    value={gatewayForm.cryptoNetwork}
-                    onChange={(e) => setGatewayForm({ ...gatewayForm, cryptoNetwork: e.target.value as any })}
-                    className="w-full bg-slate-950 border border-slate-700 rounded-lg p-2 text-white mt-1 text-xs"
-                  >
-                    <option value="TRC20">TRON (TRC20) - Phí thấp, xác nhận 1-2 phút</option>
-                    <option value="BEP20">BNB Smart Chain (BEP20)</option>
-                    <option value="ERC20">Ethereum (ERC20)</option>
-                                      </select>
-                                    </div>
+              ))}
+            </div>
 
-                                    {/* CYBERPOOL FIX: test kết nối TronScan/BSC explorer live */}
-                                    <div className="flex items-center gap-2.5 pt-0.5">
-                                      <button
-                                        type="button"
-                                        onClick={handleTestCryptoUsdtConnection}
-                                        disabled={cryptoUsdtTesting}
-                                        className="px-3 py-2 rounded-lg bg-emerald-500/15 hover:bg-emerald-500/25 border border-emerald-500/40 text-emerald-300 text-[11px] font-bold flex items-center gap-1.5 cursor-pointer disabled:opacity-50"
-                                      >
-                                        <RefreshCw className={`w-3 h-3 ${cryptoUsdtTesting ? 'animate-spin' : ''}`} />
-                                        {cryptoUsdtTesting ? 'Đang quét node...' : 'Kiểm Tra Kết Nối USDT'}
-                                      </button>
-                                      {cryptoUsdtTestResult && (
-                                        <span className={`text-[10px] font-bold flex-1 ${cryptoUsdtTestResult.success ? 'text-emerald-400' : 'text-rose-400'}`}>
-                                          {cryptoUsdtTestResult.message}
-                                          {cryptoUsdtTestResult.latencyMs != null && ` (${cryptoUsdtTestResult.latencyMs}ms)`}
-                                        </span>
-                                      )}
-                                    </div>
-                                    {!gatewayForm.cryptoUsdtAddress && (
-                                      <p className="text-[10px] text-rose-400 font-bold bg-rose-950/30 border border-rose-500/30 rounded-lg px-2.5 py-1.5">
-                                        ⚠ CHƯA CẤU HÌNH ví USDT — cổng nạp sẽ tạm khóa cho khách cho đến khi nhập địa chỉ ví thật.
-                                      </p>
-                                    )}
-                                  </div>
-                                </div>
-                              </div>
-
-          {/* Row: Litecoin LTC & Binance Pay Gateways */}
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            {/* LTC Gateway */}
-            <div className="p-4 rounded-xl bg-slate-900/60 border border-blue-500/30 space-y-3">
-              <div className="flex items-center justify-between border-b border-slate-800 pb-2">
-                <div className="flex items-center gap-2">
-                  <Zap className="w-4 h-4 text-blue-400" />
-                  <span className="font-bold text-white text-xs">CỔNG NẠP LITECOIN (LTC NODE MAINNET)</span>
-                </div>
-                <span className="px-2 py-0.5 rounded bg-blue-950 text-blue-300 border border-blue-500/30 text-[10px] font-bold">
-                  LTC Core
-                </span>
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-2 pt-1 border-t border-slate-800">
+              <div>
+                <label className="text-[11px] text-slate-400">Thời hạn lệnh (phút):</label>
+                <input
+                  type="number" min={5} max={120}
+                  value={gatewayForm.cryptoGateOrderTtlMinutes}
+                  onChange={(e) => setGatewayForm({ ...gatewayForm, cryptoGateOrderTtlMinutes: parseInt(e.target.value) || 30 })}
+                  className="w-full bg-slate-950 border border-slate-700 rounded-lg p-2 text-cyan-300 font-bold mt-1 text-xs"
+                />
               </div>
-              <div className="space-y-2.5">
-                <div>
-                  <label className="text-[11px] text-slate-400">Địa Chỉ Ví Nhận Litecoin (LTC Core):</label>
-                  <input
-                    type="text"
-                    value={gatewayForm.cryptoLtcAddress}
-                    onChange={(e) => setGatewayForm({ ...gatewayForm, cryptoLtcAddress: e.target.value })}
-                    className="w-full bg-slate-950 border border-slate-700 rounded-lg p-2 text-blue-300 font-mono mt-1 text-xs"
-                  />
-                </div>
-                <div className="grid grid-cols-2 gap-2">
-                  <div>
-                    <label className="text-[11px] text-slate-400">Tỷ Giá Quy Đổi (1 LTC = ₫):</label>
-                    <input
-                      type="number"
-                      value={gatewayForm.cryptoLtcRate}
-                      onChange={(e) => setGatewayForm({ ...gatewayForm, cryptoLtcRate: parseFloat(e.target.value) || 2150000 })}
-                      className="w-full bg-slate-950 border border-slate-700 rounded-lg p-2 text-emerald-400 font-bold mt-1 text-xs"
-                    />
-                  </div>
-                  <div>
-                                      <label className="text-[11px] text-slate-400">Số Blocks Xác Nhận:</label>
-                                      <input
-                                        type="number"
-                                        value={gatewayForm.cryptoLtcConfirmations}
-                                        onChange={(e) => setGatewayForm({ ...gatewayForm, cryptoLtcConfirmations: parseInt(e.target.value) || 2 })}
-                                        className="w-full bg-slate-950 border border-slate-700 rounded-lg p-2 text-cyan-300 font-bold mt-1 text-xs"
-                                      />
-                                    </div>
-                                  </div>
-
-                                  {/* CYBERPOOL FIX: test kết nối Blockchair explorer live */}
-                                  <div className="flex items-center gap-2.5 pt-0.5">
-                                    <button
-                                      type="button"
-                                      onClick={handleTestLtcConnection}
-                                      disabled={ltcTesting}
-                                      className="px-3 py-2 rounded-lg bg-blue-500/15 hover:bg-blue-500/25 border border-blue-500/40 text-blue-300 text-[11px] font-bold flex items-center gap-1.5 cursor-pointer disabled:opacity-50"
-                                    >
-                                      <RefreshCw className={`w-3 h-3 ${ltcTesting ? 'animate-spin' : ''}`} />
-                                      {ltcTesting ? 'Đang quét LTC...' : 'Kiểm Tra Kết Nối LTC'}
-                                    </button>
-                                    {ltcTestResult && (
-                                      <span className={`text-[10px] font-bold flex-1 ${ltcTestResult.success ? 'text-emerald-400' : 'text-rose-400'}`}>
-                                        {ltcTestResult.message}
-                                        {ltcTestResult.latencyMs != null && ` (${ltcTestResult.latencyMs}ms)`}
-                                      </span>
-                                    )}
-                                  </div>
-                                  {!gatewayForm.cryptoLtcAddress && (
-                                    <p className="text-[10px] text-rose-400 font-bold bg-rose-950/30 border border-rose-500/30 rounded-lg px-2.5 py-1.5">
-                                      ⚠ CHƯA CẤU HÌNH ví LTC — cổng nạp sẽ tạm khóa cho khách cho đến khi nhập địa chỉ ví thật.
-                                    </p>
-                                  )}
-                                </div>
-                              </div>
-
-            {/* Binance Pay Gateway */}
-            <div className="p-4 rounded-xl bg-slate-900/60 border border-amber-500/30 space-y-3">
-              <div className="flex items-center justify-between border-b border-slate-800 pb-2">
-                <div className="flex items-center gap-2">
-                  <div className="w-3.5 h-3.5 rounded-full bg-amber-400 text-black font-black text-[9px] flex items-center justify-center">B</div>
-                  <span className="font-bold text-white text-xs">CỔNG BINANCE PAY & ID BINANCE (UID)</span>
-                </div>
-                <span className="px-2 py-0.5 rounded bg-amber-950 text-amber-300 border border-amber-500/30 text-[10px] font-bold">
-                  0% Fee
-                </span>
+              <div>
+                <label className="text-[11px] text-slate-400">Chu kỳ quét (giây):</label>
+                <input
+                  type="number" min={15} max={300}
+                  value={gatewayForm.cryptoGateScanIntervalSeconds}
+                  onChange={(e) => setGatewayForm({ ...gatewayForm, cryptoGateScanIntervalSeconds: parseInt(e.target.value) || 30 })}
+                  className="w-full bg-slate-950 border border-slate-700 rounded-lg p-2 text-cyan-300 font-bold mt-1 text-xs"
+                />
               </div>
-              <div className="space-y-2.5">
-                <div className="grid grid-cols-2 gap-2">
-                  <div>
-                    <label className="text-[11px] text-slate-400">Binance Pay ID:</label>
-                    <input
-                      type="text"
-                      value={gatewayForm.binancePayId}
-                      onChange={(e) => setGatewayForm({ ...gatewayForm, binancePayId: e.target.value })}
-                      className="w-full bg-slate-950 border border-slate-700 rounded-lg p-2 text-amber-300 font-mono font-bold mt-1 text-xs"
-                    />
-                  </div>
-                  <div>
-                    <label className="text-[11px] text-slate-400">Binance UID (User ID):</label>
-                    <input
-                      type="text"
-                      value={gatewayForm.binanceUid}
-                      onChange={(e) => setGatewayForm({ ...gatewayForm, binanceUid: e.target.value })}
-                      className="w-full bg-slate-950 border border-slate-700 rounded-lg p-2 text-cyan-300 font-mono font-bold mt-1 text-xs"
-                    />
-                  </div>
-                </div>
+              <div>
+                <label className="text-[11px] text-slate-400">Merchant ID (nhà cung cấp):</label>
+                <input
+                  type="text"
+                  value={gatewayForm.cryptoGateMerchantId}
+                  onChange={(e) => setGatewayForm({ ...gatewayForm, cryptoGateMerchantId: e.target.value })}
+                  placeholder="chưa dùng — on-chain là nguồn thật"
+                  className="w-full bg-slate-950 border border-slate-700 rounded-lg p-2 text-slate-300 font-mono mt-1 text-xs"
+                />
+              </div>
+              <div>
+                <label className="text-[11px] text-slate-400">Api Key (nhà cung cấp):</label>
+                <input
+                  type="password"
+                  value={gatewayForm.cryptoGateApiKey}
+                  onChange={(e) => setGatewayForm({ ...gatewayForm, cryptoGateApiKey: e.target.value })}
+                  placeholder="•••• (tùy chọn)"
+                  className="w-full bg-slate-950 border border-slate-700 rounded-lg p-2 text-slate-300 font-mono mt-1 text-xs"
+                />
+              </div>
+            </div>
 
-                <div className="grid grid-cols-2 gap-2">
-                  <div>
-                    <label className="text-[11px] text-slate-400">Biệt Danh (Nickname):</label>
-                    <input
-                      type="text"
-                      value={gatewayForm.binanceNickname}
-                      onChange={(e) => setGatewayForm({ ...gatewayForm, binanceNickname: e.target.value })}
-                      className="w-full bg-slate-950 border border-slate-700 rounded-lg p-2 text-white mt-1 text-xs"
-                    />
-                  </div>
-                  <div>
-                                      <label className="text-[11px] text-slate-400">Tỷ Giá Binance (1 USDT = ₫):</label>
-                                      <input
-                                        type="number"
-                                        value={gatewayForm.usdToVndRate}
-                                        onChange={(e) => setGatewayForm({ ...gatewayForm, usdToVndRate: parseFloat(e.target.value) || 25400 })}
-                                        className="w-full bg-slate-950 border border-slate-700 rounded-lg p-2 text-emerald-400 font-bold mt-1 text-xs"
-                                      />
-                                    </div>
-                                  </div>
-
-                                  {/* CYBERPOOL FIX: API credentials Binance Pay — "API" thật để tạo
-                                      lệnh + query + IPN auto-credit (không chỉ Pay ID/UID nhận dạng) */}
-                                  <div className="grid grid-cols-2 gap-2 pt-1">
-                                    <div>
-                                      <label className="text-[11px] text-slate-400">Binance Pay API Key (Certificate SN):</label>
-                                      <input
-                                        type="text"
-                                        value={gatewayForm.binanceApiKey || ''}
-                                        onChange={(e) => setGatewayForm({ ...gatewayForm, binanceApiKey: e.target.value })}
-                                        placeholder="vd: live_xxxx... / 1st6_test_xxx..."
-                                        className="w-full bg-slate-950 border border-slate-700 rounded-lg p-2 text-amber-300 font-mono mt-1 text-xs"
-                                      />
-                                    </div>
-                                    <div>
-                                      <label className="text-[11px] text-slate-400">Binance Pay API Secret Key:</label>
-                                      <input
-                                        type="password"
-                                        value={gatewayForm.binanceSecretKey || ''}
-                                        onChange={(e) => setGatewayForm({ ...gatewayForm, binanceSecretKey: e.target.value })}
-                                        placeholder="•••••••••••••••• (không hiển thị)"
-                                        className="w-full bg-slate-950 border border-slate-700 rounded-lg p-2 text-amber-300 font-mono mt-1 text-xs"
-                                      />
-                                    </div>
-                                  </div>
-
-                                  {/* CYBERPOOL FIX: test kết nối + xác thực chữ ký thật */}
-                                  <div className="flex items-center gap-2.5 pt-0.5">
-                                    <button
-                                      type="button"
-                                      onClick={handleTestBinanceConnection}
-                                      disabled={binanceTesting}
-                                      className="px-3 py-2 rounded-lg bg-amber-500/15 hover:bg-amber-500/25 border border-amber-500/40 text-amber-300 text-[11px] font-bold flex items-center gap-1.5 cursor-pointer disabled:opacity-50"
-                                    >
-                                      <RefreshCw className={`w-3 h-3 ${binanceTesting ? 'animate-spin' : ''}`} />
-                                      {binanceTesting ? 'Đang kiểm tra...' : 'Kiểm Tra Kết Nối + Chữ Ký API'}
-                                    </button>
-                                    {binanceTestResult && (
-                                      <span className={`text-[10px] font-bold flex-1 ${binanceTestResult.success ? 'text-emerald-400' : 'text-rose-400'}`}>
-                                        {binanceTestResult.message}
-                                        {binanceTestResult.latencyMs != null && ` (${binanceTestResult.latencyMs}ms)`}
-                                      </span>
-                                    )}
-                                  </div>
-                                  <p className="text-[10px] text-slate-500 leading-relaxed">
-                                    <ShieldCheck className="w-3 h-3 inline mr-1 text-amber-500" />
-                                    API Key + Secret Key dùng để tạo lệnh thanh toán (create order), query trạng thái và nhận IPN tự động cộng tiền.
-                                    Nút kiểm tra gửi một yêu cầu order/query có chữ ký HMAC-SHA512 thật tới Binance để xác nhận credential hợp lệ.
-                                  </p>
-                                </div>
-                              </div>
-                            </div>
+            <div className="flex items-center gap-2.5 pt-0.5">
+              <button
+                type="button"
+                onClick={handleTestCryptoGateScan}
+                disabled={cryptoGateScanning}
+                className="px-3 py-2 rounded-lg bg-emerald-500/15 hover:bg-emerald-500/25 border border-emerald-500/40 text-emerald-300 text-[11px] font-bold flex items-center gap-1.5 cursor-pointer disabled:opacity-50"
+              >
+                <RefreshCw className={`w-3 h-3 ${cryptoGateScanning ? 'animate-spin' : ''}`} />
+                {cryptoGateScanning ? 'Đang quét on-chain...' : 'Quét On-Chain Ngay'}
+              </button>
+              {cryptoGateScanResult && (
+                <span className={`text-[10px] font-bold flex-1 ${cryptoGateScanResult.success ? 'text-emerald-400' : 'text-rose-400'}`}>
+                  {cryptoGateScanResult.message}
+                </span>
+              )}
+            </div>
+          </div>
 
           <div className="flex justify-end pt-2">
             <button
