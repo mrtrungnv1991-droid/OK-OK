@@ -27,6 +27,7 @@
 import { db } from '../db/store';
 import { LedgerService } from './ledgerService';
 import { GatewayVerificationService } from './gatewayVerificationService';
+import { IdempotencyService } from './idempotencyService';
 
 export type CryptoGateNetwork = 'TRON' | 'BSC' | 'POLYGON' | 'SOLANA' | 'LTC';
 
@@ -421,18 +422,18 @@ export class CryptoGateService {
       return { success: false, message: `Giao dịch mới có ${tx.confirmations}/${minConfirmations(params.network)} xác nhận — chưa đủ an toàn để cộng tiền. Hệ thống sẽ TỰ ĐỘNG cộng khi đủ xác nhận, không cần thao tác thêm.` };
     }
 
-    return this.matchAndCredit(tx, params.network, params.userId, params.ipAddress);
+    return await this.matchAndCredit(tx, params.network, params.userId, params.ipAddress);
   }
 
   // ==========================================================================
   // 4. MATCH + CREDIT — trái tim của cổng (dùng chung auto-scan & manual)
   // ==========================================================================
-  private static matchAndCredit(
+  private static async matchAndCredit(
     tx: OnChainTransfer,
     network: CryptoGateNetwork,
     userIdHint: string,
     ipAddress?: string
-  ): { success: boolean; message: string; creditedVnd?: number; intentId?: string } {
+  ): Promise<{ success: boolean; message: string; creditedVnd?: number; intentId?: string }> {
     if (GatewayVerificationService.isAlreadyRedeemed(tx.txHash)) {
       return { success: false, message: 'Giao dịch đã được xử lý trước đó.' };
     }
@@ -463,14 +464,14 @@ export class CryptoGateService {
       return { success: false, message: 'Lệnh nạp này không thuộc tài khoản của bạn.' };
     }
 
-    return this.creditIntent(matched, tx, ipAddress);
+    return await this.creditIntent(matched, tx, ipAddress);
   }
 
-  private static creditIntent(
+  private static async creditIntent(
     intent: CryptoGateIntent,
     tx: OnChainTransfer,
     ipAddress?: string
-  ): { success: boolean; message: string; creditedVnd?: number; intentId?: string } {
+  ): Promise<{ success: boolean; message: string; creditedVnd?: number; intentId?: string }> {
     const user = db.users.get(intent.userId);
     if (!user) {
       return { success: false, message: 'Tài khoản của lệnh nạp không còn tồn tại.' };
@@ -480,44 +481,73 @@ export class CryptoGateService {
     // tạo và lúc tiền về).
     const creditedVnd = intent.amountVnd;
 
-    const ledgerRes = { pending: true };
-    // LedgerService.executeTransaction là async → gọi không chặn ở scanner;
-    // nhưng với manual verify ta cần await. Dùng IIFE + đánh dấu intent ngay
-    // để chống double-credit race (txHash redeem trước, credit sau).
-    GatewayVerificationService.markRedeemed(tx.txHash, {
-      gateway: `CRYPTOGATE_${intent.network}`,
-      amount: creditedVnd,
-      userId: intent.userId,
-      memo: intent.id
-    });
-    intent.status = 'COMPLETED';
-    intent.txHash = tx.txHash;
-    intent.creditedVnd = creditedVnd;
-    db.cryptoGateIntents.set(intent.id, intent);
+    // CYBERPOOL FIX (CRITICAL — race mất tiền): trước đây creditIntent đánh dấu
+    // intent COMPLETED + redeem txHash fire-and-forget TRƯỚC khi
+    // LedgerService.executeTransaction (async) chạy xong. Nếu ledger fail thì
+    // tiền KHÔNG vào ví nhưng intent đã COMPLETED + txHash đã bị đánh dấu redeem
+    // → không bao giờ cộng lại được (tiền khách mất, admin không refund được).
+    // Giờ: (1) lock txHash chống 2 scan cycle đè nhau credit cùng 1 giao dịch,
+    // (2) Ledger chạy THÀNH CÔNG trước, (3) chỉ khi led successful mới chốt intent
+    // + redeem txHash. Ledger fail → intent giữ PENDING, txHash tự do (retry sau).
 
-    LedgerService.executeTransaction({
-      userId: intent.userId,
-      type: 'DEPOSIT',
-      amount: creditedVnd,
-      description: `Nạp CryptoGate ${intent.coin} (${intent.network}) +${intent.amountCrypto} ${intent.coin} ≈ ${creditedVnd.toLocaleString('vi-VN')}₫ — Tx: ${tx.txHash.substring(0, 18)}...`,
-      referenceId: tx.txHash,
-      actorId: `CRYPTOGATE_${intent.network}`,
-      actorName: `CryptoGate ${intent.network} On-chain Verifier`,
-      ipAddress
-    }).then(r => {
-      if (!r.success) {
-        console.error(`[CryptoGate] Ledger credit FAILED cho intent ${intent.id}:`, r.error);
+    const lockKey = `CRYPTOGATE_${intent.network}_${tx.txHash}`;
+    let locked = false;
+    try {
+      locked = await IdempotencyService.acquireLock(lockKey, 5000);
+    } catch { locked = false; }
+    if (!locked) {
+      return { success: false, message: 'Giao dịch này đang được xử lý (lock) — đợi lượt scan kế tiếp.' };
+    }
+
+    try {
+      // Re-check sau khi có lock: intent vẫn PENDING? tx chưa redeem?
+      const fresh = db.cryptoGateIntents.get(intent.id);
+      if (!fresh || fresh.status !== 'PENDING') {
+        return { success: false, message: 'Intent đã được xử lý trước đó (không credit 2 lần).' };
       }
-    }).catch(e => console.error('[CryptoGate] Ledger credit error:', e));
+      if (GatewayVerificationService.isAlreadyRedeemed(tx.txHash)) {
+        return { success: false, message: 'TxHash đã được cộng tiền trước đó (chống nạp trùng).' };
+      }
 
-    db.saveSnapshot();
-    void ledgerRes;
-    return {
-      success: true,
-      message: `Đã xác nhận ${tx.amount} ${intent.coin} (${intent.network}) on-chain — cộng +${creditedVnd.toLocaleString('vi-VN')}₫ vào ví.`,
-      creditedVnd,
-      intentId: intent.id
-    };
+      // BƯỚC 1: Ledger credit (await — tiền PHẢI vào ví trước khi chốt nhận)
+      const ledgerRes = await LedgerService.executeTransaction({
+        userId: intent.userId,
+        type: 'DEPOSIT',
+        amount: creditedVnd,
+        description: `Nạp CryptoGate ${intent.coin} (${intent.network}) +${intent.amountCrypto} ${intent.coin} ≈ ${creditedVnd.toLocaleString('vi-VN')}₫ — Tx: ${tx.txHash.substring(0, 18)}...`,
+        referenceId: tx.txHash,
+        actorId: `CRYPTOGATE_${intent.network}`,
+        actorName: `CryptoGate ${intent.network} On-chain Verifier`,
+        ipAddress
+      });
+
+      if (!ledgerRes.success) {
+        console.error(`[CryptoGate] Ledger credit FAILED cho intent ${intent.id} (${tx.txHash}):`, ledgerRes.error);
+        return { success: false, message: `Ledger từ chối credit: ${ledgerRes.error || 'unknown'}` };
+      }
+
+      // BƯỚC 2: chỉ sau khi tiền THẬT vào ví mới chốt intent + redeem txHash
+      GatewayVerificationService.markRedeemed(tx.txHash, {
+        gateway: `CRYPTOGATE_${intent.network}`,
+        amount: creditedVnd,
+        userId: intent.userId,
+        memo: intent.id
+      });
+      intent.status = 'COMPLETED';
+      intent.txHash = tx.txHash;
+      intent.creditedVnd = creditedVnd;
+      db.cryptoGateIntents.set(intent.id, intent);
+      db.saveSnapshot();
+
+      return {
+        success: true,
+        message: `Đã xác nhận ${tx.amount} ${intent.coin} (${intent.network}) on-chain — cộng +${creditedVnd.toLocaleString('vi-VN')}₫ vào ví.`,
+        creditedVnd,
+        intentId: intent.id
+      };
+    } finally {
+      IdempotencyService.releaseLock(lockKey);
+    }
   }
 
   // ==========================================================================
@@ -578,7 +608,7 @@ export class CryptoGateService {
           }
           if (!matched) continue;
 
-          const credit = this.creditIntent(matched, tx);
+          const credit = await this.creditIntent(matched, tx);
           if (credit.success) result.credited++;
         }
 
