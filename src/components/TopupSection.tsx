@@ -334,7 +334,7 @@ export const TopupSection: React.FC<TopupSectionProps> = ({
       ) : (
         /* GRID VIEW MODE WITH EXPAND / COLLAPSE (THU GỌN) */
         <div className="space-y-4">
-          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-2 sm:gap-4">
+          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-2 sm:gap-4">
             {visibleGridGames.map(game => (
               <div
                 key={game.id}

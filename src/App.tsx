@@ -207,6 +207,17 @@ function AppContent() {
 
   // Purchase Type Filter ('all' | 'retail_instant' | 'escrow_pools')
   const [purchaseTypeFilter, setPurchaseTypeFilter] = useState<'all' | 'retail_instant' | 'escrow_pools'>('all');
+  // CYBERPOOL PAGINATION: grid web tối đa 5 cột × 2 hàng = 10 sản phẩm/trang,
+  // nhiều hơn thì phân trang (1,2,3...99). Reset về trang 1 khi bất kỳ filter
+  // nào đổi để user không bị kẹt ở trang trống.
+  const PRODUCTS_PER_PAGE = 10;
+  const [filtersPage, setFiltersPage] = useState(1);
+  const filtersDeps = [searchTerm, selectedCategory, selectedPlatform, sortBy, purchaseTypeFilter] as const;
+  const prevFiltersDeps = useRef<typeof filtersDeps>(filtersDeps);
+  if (filtersDeps.some((v, i) => v !== prevFiltersDeps.current[i])) {
+    prevFiltersDeps.current = filtersDeps;
+    if (filtersPage !== 1) setFiltersPage(1);
+  }
 
   // Rate Oracle Live Ticker
   const [, setRateVersion] = useState<number>(0);
@@ -562,7 +573,16 @@ function AppContent() {
     return 0;
   });
 
-  const siteContainerClass = systemConfig.uiLayoutConfig?.siteContainerWidth || systemConfig.heroConfig?.containerMaxWidth || 'max-w-7xl';
+    // CYBERPOOL PAGINATION: cắt theo trang (10/trang = 5 cột web × 2 hàng).
+    // Clamp trang hiện tại nếu filter đổi làm giảm tổng trang.
+    const totalFilterPages = Math.max(1, Math.ceil(filteredProducts.length / PRODUCTS_PER_PAGE));
+    const safeFiltersPage = Math.min(filtersPage, totalFilterPages);
+    const pagedProducts = filteredProducts.slice(
+      (safeFiltersPage - 1) * PRODUCTS_PER_PAGE,
+      safeFiltersPage * PRODUCTS_PER_PAGE
+    );
+
+    const siteContainerClass = systemConfig.uiLayoutConfig?.siteContainerWidth || systemConfig.heroConfig?.containerMaxWidth || 'max-w-7xl';
 
   // CYBERPOOL FIX: auth gate — trước đây app luôn render như đã đăng nhập
   // (auto-login admin hardcode). Giờ: đang boot → splash; chưa xác thực →
@@ -827,8 +847,10 @@ function AppContent() {
         </div>
 
 
-        {/* Product Cards Grid */}
-        {filteredProducts.length === 0 ? (
+        {/* Product Cards Grid — CYBERPOOL: tối đa 5 cột trên web (xl+),
+                    1 cột mobile / 2 cột tablet; mỗi trang tối đa 10 sản phẩm (2 hàng × 5),
+                    nhiều hơn = phân trang 1,2,3...99 ngay bên dưới. */}
+                {filteredProducts.length === 0 ? (
           <div className="bg-[#0b1329]/40 border border-slate-800/60 rounded-2xl p-12 text-center">
             <Sparkles className="w-12 h-12 text-slate-600 mx-auto mb-3" />
             <h3 className="text-lg font-bold text-white mb-1">{t('errors.not_found')}</h3>
@@ -843,20 +865,63 @@ function AppContent() {
             </button>
           </div>
         ) : (
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-5">
-            {filteredProducts.map(product => (
-              <ProductCard
-                key={product.id}
-                product={product}
-                currency={currentUser.currency}
-                onOpenPoolModal={(pool) => openModal('poolDetail', { selectedProduct: product, selectedPool: pool })}
-                onCreatePool={() => openModal('createPool', { initialProduct: product })}
-                onInstantBuy={() => handleInstantBuy(product)}
-              />
-            ))}
-          </div>
-        )}
-      </section>
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-4 sm:gap-5">
+                      {pagedProducts.map(product => (
+                        <ProductCard
+                          key={product.id}
+                          product={product}
+                          currency={currentUser.currency}
+                          onOpenPoolModal={(pool) => openModal('poolDetail', { selectedProduct: product, selectedPool: pool })}
+                          onCreatePool={() => openModal('createPool', { initialProduct: product })}
+                          onInstantBuy={() => handleInstantBuy(product)}
+                        />
+                      ))}
+                    </div>
+                  )}
+
+                  {/* CYBERPOOL PAGINATION: 1,2,3...99 (chỉ hiện khi >10 sản phẩm) */}
+                  {filteredProducts.length > PRODUCTS_PER_PAGE && (
+                    <div className="flex items-center justify-center gap-1.5 mt-8 flex-wrap">
+                      <button
+                        onClick={() => setFiltersPage(Math.max(1, safeFiltersPage - 1))}
+                        disabled={safeFiltersPage <= 1}
+                        className="px-3 py-1.5 rounded-lg bg-slate-900/90 border border-slate-700/60 text-xs font-mono font-bold text-slate-300 hover:text-cyan-400 transition-colors disabled:opacity-30 disabled:cursor-not-allowed cursor-pointer"
+                      >
+                        ‹
+                      </button>
+                      {Array.from({ length: totalFilterPages }, (_, i) => i + 1).map(pg => {
+                        // Hiện tối đa 9 nút + nhảy xa: luôn có trang đầu/cuối,
+                        // giữa là cửa sổ quanh trang hiện tại (… cho khoảng cách)
+                        if (totalFilterPages <= 10) {
+                          return (
+                            <PageDot key={pg} pg={pg} active={pg === safeFiltersPage} onClick={() => setFiltersPage(pg)} />
+                          );
+                        }
+                        const nearStart = pg <= 2;
+                        const nearEnd = pg >= totalFilterPages - 1;
+                        const nearActive = Math.abs(pg - safeFiltersPage) <= 1;
+                        if (nearStart || nearEnd || nearActive) {
+                          return (
+                            <PageDot key={pg} pg={pg} active={pg === safeFiltersPage} onClick={() => setFiltersPage(pg)} />
+                          );
+                        }
+                        if (pg === 3 && safeFiltersPage > 4) return <span key={pg} className="text-slate-600 font-mono text-xs px-1 select-none">…</span>;
+                        if (pg === totalFilterPages - 2 && safeFiltersPage < totalFilterPages - 3) return <span key={pg} className="text-slate-600 font-mono text-xs px-1 select-none">…</span>;
+                        return null;
+                      })}
+                      <button
+                        onClick={() => setFiltersPage(Math.min(totalFilterPages, safeFiltersPage + 1))}
+                        disabled={safeFiltersPage >= totalFilterPages}
+                        className="px-3 py-1.5 rounded-lg bg-slate-900/90 border border-slate-700/60 text-xs font-mono font-bold text-slate-300 hover:text-cyan-400 transition-colors disabled:opacity-30 disabled:cursor-not-allowed cursor-pointer"
+                      >
+                        ›
+                      </button>
+                      <span className="ml-2 text-[10px] font-mono text-slate-500">
+                        {safeFiltersPage}/{totalFilterPages} · {filteredProducts.length} SP
+                      </span>
+                    </div>
+                  )}
+                </section>
 
       {/* 7. Footer & Bottom Spacing for Mobile */}
       <footer className="w-full border-t border-slate-800/80 bg-[#060913] py-8 sm:py-10 pb-28 sm:pb-12 text-center text-xs font-mono text-slate-500">
@@ -1207,5 +1272,21 @@ export default function App() {
     <AppProviders>
       <AppContent />
     </AppProviders>
+  );
+}
+
+// CYBERPOOL PAGINATION helper: nút trang (1,2,3...99) trong lưới sản phẩm
+function PageDot({ pg, active, onClick }: { pg: number; active: boolean; onClick: () => void }) {
+  return (
+    <button
+      onClick={onClick}
+      className={`min-w-[30px] h-8 px-2 rounded-lg text-xs font-mono font-bold transition-all cursor-pointer border ${
+        active
+          ? 'bg-cyan-500 text-black border-cyan-400 shadow-[0_0_12px_rgba(6,182,212,0.4)]'
+          : 'bg-slate-900/90 text-slate-400 hover:text-white hover:bg-slate-800 border-slate-700/60'
+      }`}
+    >
+      {pg}
+    </button>
   );
 }

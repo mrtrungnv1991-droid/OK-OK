@@ -364,7 +364,7 @@ export const ActivePoolsShowcase: React.FC<ActivePoolsShowcaseProps> = ({
         </div>
       ) : (
         /* GRID VIEW MODE: 2 cols on mobile (4 tiles per screen view), 3-4 cols on desktop */
-        <div className="grid grid-cols-2 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-2.5 sm:gap-6">
+        <div className="grid grid-cols-2 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-2.5 sm:gap-6">
           {displayedProducts.map(product => (
             <ProductCard
               key={product.id}
